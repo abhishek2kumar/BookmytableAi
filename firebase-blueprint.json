@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "Restaurant": {
+      "title": "Restaurant",
+      "description": "Details about a restaurant registered on the platform.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the restaurant" },
+        "description": { "type": "string" },
+        "cuisine": { "type": "string" },
+        "rating": { "type": "number" },
+        "avgPrice": { "type": "number" },
+        "image": { "type": "string" },
+        "location": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "ownerId": { "type": "string" },
+        "isOpen": { "type": "boolean" },
+        "approved": { "type": "boolean" },
+        "openingHours": {
+           "type": "object",
+           "properties": {
+             "open": { "type": "string" },
+             "close": { "type": "string" },
+             "days": { "type": "string" }
+           }
+        },
+        "facilities": { "type": "array", "items": { "type": "string" } },
+        "offers": { "type": "array", "items": { "type": "string" } },
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "menuImages": { "type": "array", "items": { "type": "string" } },
+        "secondaryImages": { "type": "array", "items": { "type": "string" } },
+        "aiSummary": { "type": "string" },
+        "aiSummaryUpdatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId", "cuisine", "avgPrice"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile data.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "owner", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Table booking request.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "restaurantName": { "type": "string" },
+        "restaurantImage": { "type": "string" },
+        "restaurantOwnerId": { "type": "string" },
+        "dateTime": { "type": "string", "format": "date-time" },
+        "guests": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "restaurantId", "dateTime", "guests", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a restaurant.",
+      "type": "object",
+      "properties": {
+        "restaurantId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "rating": { "type": "number" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["restaurantId", "userId", "rating", "text"]
+    }
+  },
+  "firestore": {
+    "/restaurants/{restaurantId}": {
+      "schema": "Restaurant",
+      "description": "Store restaurant details."
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Table bookings."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User reviews."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    }
+  }
+}

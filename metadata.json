@@ -1,0 +1,6 @@
+{
+  "name": "Bookmytable",
+  "description": "A modern restaurant table booking platform for users, owners, and admins with a polished Swiggy-inspired interface.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": []
+}

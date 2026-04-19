@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // Use exists() before get() to prevent evaluation errors if the user document is missing
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Restaurant Validation ---
+    function isValidRestaurant(data) {
+      // Use resilient checks that allow optional fields and ensure base types
+      return data.get('name', '') is string && data.get('name', '').size() <= 100
+        && data.get('ownerId', '') is string
+        && data.get('cuisine', '') is string
+        && data.get('avgPrice', 0) is number
+        && data.get('location', '') is string
+        && (!('description' in data) || data.description is string)
+        && (!('image' in data) || data.image is string)
+        && (!('isOpen' in data) || data.isOpen is bool)
+        && (!('rating' in data) || data.rating is number)
+        && (!('approved' in data) || data.approved is bool)
+        && (!('facilities' in data) || data.facilities is list)
+        && (!('offers' in data) || data.offers is list)
+        && (!('menu' in data) || data.menu is list)
+        && (!('menuImages' in data) || data.menuImages is list)
+        && (!('secondaryImages' in data) || data.secondaryImages is list)
+        && (!('openingHours' in data) || data.openingHours is map)
+        && (!('aiSummary' in data) || data.aiSummary is string)
+        && (!('aiSummaryUpdatedAt' in data) || data.aiSummaryUpdatedAt is timestamp || data.aiSummaryUpdatedAt == null)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if true; 
+      
+      allow create: if isSignedIn() && isValidId(restaurantId) && (
+        isAdmin() || (
+          isValidRestaurant(incoming()) && 
+          incoming().ownerId == request.auth.uid &&
+          incoming().get('approved', false) == false &&
+          incoming().get('createdAt', request.time) == request.time
+        )
+      );
+
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(existing().ownerId) && (
+          // Strictly control which keys can be modified by the owner
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 
+            'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
+            'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt'
+          ]) &&
+          isValidRestaurant(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().updatedAt == request.time
+        )) ||
+        (
+          // Allow any signed-in user to update the AI cache fields specifically
+          incoming().diff(existing()).affectedKeys().hasOnly(['aiSummary', 'aiSummaryUpdatedAt']) &&
+          incoming().aiSummary is string &&
+          incoming().aiSummaryUpdatedAt is timestamp
+        )
+      );
+      
+      allow delete: if isAdmin();
+    }
+
+    // --- Booking Validation ---
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.restaurantOwnerId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      allow create: if isSignedIn() && (
+        isAdmin() || (
+          incoming().userId == request.auth.uid &&
+          incoming().get('status', 'pending') == 'pending' &&
+          incoming().get('createdAt', request.time) == request.time
+        )
+      );
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (isOwner(existing().restaurantOwnerId) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+         incoming().status in ['confirmed', 'cancelled'] &&
+         incoming().updatedAt == request.time) ||
+        (isOwner(existing().userId) &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+         existing().status == 'pending' &&
+         incoming().status == 'cancelled' &&
+         incoming().updatedAt == request.time)
+      );
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && incoming().createdAt == request.time;
+      allow delete: if isAdmin() || isOwner(existing().userId);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId && (
+          !incoming().diff(existing()).affectedKeys().hasAny(['role', 'createdAt'])
+        )) || isAdmin()
+      );
+    }
+  }
+}
