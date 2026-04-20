@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -13,6 +14,7 @@ import {
   XCircle, 
   Plus, 
   Settings,
+  Star,
   Image as ImageIcon,
   ChefHat,
   MapPin,
@@ -28,19 +30,31 @@ import {
   ImagePlus,
   ArrowRight,
   MessageSquare,
-  Volume2
+  Volume2,
+  Navigation
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+const SUPPORTED_CITIES = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Jaipur'];
+const BANGALORE_COORDS = { lat: 12.9716, lng: 77.5946 };
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DEFAULT_BOOKING_SLOTS = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
 
 type TabType = 'overview' | 'info' | 'menu' | 'gallery' | 'promotions' | 'bookings';
 
 export default function OwnerDashboardView() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingRestaurant, setIsAddingRestaurant] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  
+  const activeTab = (searchParams.get('tab') as TabType) || 'overview';
+  const setActiveTab = (tab: TabType) => {
+    setSearchParams({ tab });
+  };
+
   const [editForm, setEditForm] = useState<Partial<Restaurant>>({});
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,9 +91,10 @@ export default function OwnerDashboardView() {
     setIsSaving(true);
     try {
       const allowedKeys = [
-        'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 
+        'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 
         'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
-        'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages'
+        'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'rating',
+        'dailyTimings', 'isBookingEnabled', 'bookingSlots'
       ];
       
       const updateData: any = {};
@@ -115,15 +130,62 @@ export default function OwnerDashboardView() {
     }
   };
 
-  // New Restaurant Form State
   const [newRes, setNewRes] = useState({
     name: '',
     description: '',
     cuisine: CUISINES[0],
     avgPrice: 500,
     image: '',
-    location: ''
+    location: '',
+    city: SUPPORTED_CITIES[0],
+    lat: BANGALORE_COORDS.lat,
+    lng: BANGALORE_COORDS.lng
   });
+
+  const handleGeocodeAddress = async (target: 'new' | 'edit') => {
+    const dataToUse = target === 'new' ? newRes : editForm;
+    const address = dataToUse.location;
+    const name = dataToUse.name;
+
+    if (!address || address.length < 5) return;
+    
+    try {
+      // Search with both name and address for maximum accuracy
+      const query = name ? `${name}, ${address}` : address;
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const coords = {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        };
+        
+        if (target === 'new') {
+          setNewRes(prev => ({ ...prev, ...coords }));
+        } else {
+          setEditForm(prev => ({ ...prev, ...coords }));
+        }
+      } else if (name) {
+        // Fallback to just address if name+address fails
+        const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData && fallbackData.length > 0) {
+          const coords = {
+            lat: parseFloat(fallbackData[0].lat),
+            lng: parseFloat(fallbackData[0].lon)
+          };
+          if (target === 'new') {
+            setNewRes(prev => ({ ...prev, ...coords }));
+          } else {
+            setEditForm(prev => ({ ...prev, ...coords }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Geocoding error:', err);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -236,12 +298,28 @@ export default function OwnerDashboardView() {
           )}
         </AnimatePresence>
 
+        <div className="mb-10">
+          <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Manage Your Restaurant</h1>
+          <p className="text-slate-500 font-medium mt-2">Control your outlet presence and bookings in real-time.</p>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation */}
           <div className="w-full lg:w-72 space-y-2">
             <div className="p-4 mb-4">
-               <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">Owner Central</h1>
-               <p className="text-sm text-slate-500 mt-1">Powering your culinary dream.</p>
+               <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">
+                 {restaurant ? restaurant.name : 'Owner Central'}
+               </h1>
+               <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
+                 {restaurant ? (
+                   <>
+                     <MapPin size={14} className="text-brand" />
+                     {restaurant.location || restaurant.city}
+                   </>
+                 ) : (
+                   "Powering your culinary dream."
+                 )}
+               </p>
             </div>
 
             <nav className="space-y-1">
@@ -283,29 +361,60 @@ export default function OwnerDashboardView() {
             </nav>
 
             {restaurant && (
-              <div className="mt-8 p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    restaurant.approved ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                  )} />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {restaurant.approved ? 'Live on Zayka' : 'Pending Review'}
-                  </span>
+              <div className="space-y-4 mt-8">
+                {/* Booking Controls */}
+                <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      editForm.isBookingEnabled ? "bg-indigo-500 animate-pulse" : "bg-slate-300"
+                    )} />
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      Booking Status
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Table Reservations</span>
+                    <div 
+                      onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
+                      className={cn(
+                        "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300",
+                        editForm.isBookingEnabled ? "bg-indigo-500" : "bg-slate-300"
+                      )}
+                    >
+                      <motion.div 
+                        animate={{ x: editForm.isBookingEnabled ? 24 : 0 }}
+                        className="w-4 h-4 bg-white rounded-full shadow-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">Ordering App</span>
-                  <div 
-                    onClick={() => setEditForm({...editForm, isOpen: !editForm.isOpen})}
-                    className={cn(
-                      "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300",
-                      editForm.isOpen ? "bg-emerald-500" : "bg-slate-300"
-                    )}
-                  >
-                    <motion.div 
-                      animate={{ x: editForm.isOpen ? 24 : 0 }}
-                      className="w-4 h-4 bg-white rounded-full shadow-sm"
-                    />
+
+                {/* Online Order Controls */}
+                <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      restaurant.approved ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                    )} />
+                    <span className="text-xs font-bold tracking-wider text-slate-500">
+                      {restaurant.approved ? 'Online Order' : 'Pending Review'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Ordering App</span>
+                    <div 
+                      onClick={() => setEditForm({...editForm, isOpen: !editForm.isOpen})}
+                      className={cn(
+                        "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300",
+                        editForm.isOpen ? "bg-emerald-500" : "bg-slate-300"
+                      )}
+                    >
+                      <motion.div 
+                        animate={{ x: editForm.isOpen ? 24 : 0 }}
+                        className="w-4 h-4 bg-white rounded-full shadow-sm"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -338,17 +447,18 @@ export default function OwnerDashboardView() {
                 <form onSubmit={handleAddRestaurant} className="space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Restaurant Name</label>
+                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Restaurant Name</label>
                       <input 
                         required
                         type="text" 
                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
                         value={newRes.name}
                         onChange={e => setNewRes({...newRes, name: e.target.value})}
+                        onBlur={() => handleGeocodeAddress('new')}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Cuisine Type</label>
+                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Cuisine Type</label>
                       <select 
                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
                         value={newRes.cuisine}
@@ -357,9 +467,68 @@ export default function OwnerDashboardView() {
                         {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">City</label>
+                      <select 
+                        required
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
+                        value={newRes.city}
+                        onChange={e => setNewRes({...newRes, city: e.target.value})}
+                      >
+                        {SUPPORTED_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
                   </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="text-xs font-bold text-slate-500 tracking-widest">Restaurant Location</label>
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                          <Navigation size={10} />
+                          Auto-detects coordinates
+                        </div>
+                      </div>
+                      <textarea 
+                        required
+                        placeholder="Enter full physical address..."
+                        rows={3}
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none"
+                        value={newRes.location}
+                        onChange={e => {
+                          setNewRes({...newRes, location: e.target.value});
+                          // Geocode after short delay or on change if needed, but onBlur is cleaner
+                        }}
+                        onBlur={() => handleGeocodeAddress('new')}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1 block px-1">Latitude</label>
+                        <input 
+                          type="number"
+                          step="any"
+                          className="w-full px-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
+                          value={newRes.lat}
+                          onChange={e => setNewRes({...newRes, lat: parseFloat(e.target.value)})}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1 block px-1">Longitude</label>
+                        <input 
+                          type="number"
+                          step="any"
+                          className="w-full px-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
+                          value={newRes.lng}
+                          onChange={e => setNewRes({...newRes, lng: parseFloat(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Primary Image URL</label>
+                    <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Primary Image URL</label>
                     <input 
                       type="url" 
                       placeholder="https://images.unsplash.com/photo-..."
@@ -369,7 +538,7 @@ export default function OwnerDashboardView() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Full Address</label>
+                    <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Full Address</label>
                     <textarea 
                       required
                       rows={3}
@@ -443,7 +612,7 @@ export default function OwnerDashboardView() {
                              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110", stat.bg)}>
                                 <stat.icon className={stat.color} size={28} />
                              </div>
-                             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                             <p className="text-sm font-bold text-slate-500 mb-1">{stat.label}</p>
                              <p className="text-4xl font-display font-black text-slate-900">{stat.value}</p>
                           </div>
                         ))}
@@ -497,7 +666,7 @@ export default function OwnerDashboardView() {
                               {alertsEnabled ? <Volume2 size={16} /> : <div className="relative"><Volume2 size={16} /><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-0.5 bg-slate-500 rotate-45" /></div>}
                               {alertsEnabled ? "Alerts On" : "Enable Alerts"}
                             </button>
-                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">{bookings.filter(b => b.status === 'pending').length} Action Required</span>
+                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-wider">{bookings.filter(b => b.status === 'pending').length} Action required</span>
                          </div>
                       </div>
                       
@@ -506,7 +675,7 @@ export default function OwnerDashboardView() {
                           {/* Pending Bookings Section */}
                           {bookings.some(b => b.status === 'pending') && (
                             <div className="bg-slate-50/50 px-6 py-2 border-b border-slate-100">
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pending Approval</span>
+                               <span className="text-[10px] font-black text-slate-400 tracking-widest">Pending approval</span>
                             </div>
                           )}
                           {bookings.filter(b => b.status === 'pending').map((booking) => (
@@ -565,7 +734,7 @@ export default function OwnerDashboardView() {
                           {/* Historical Bookings Section */}
                           {bookings.some(b => b.status !== 'pending') && (
                             <div className="bg-slate-50/50 px-6 py-2 border-b border-t border-slate-100">
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historical Bookings</span>
+                               <span className="text-[10px] font-black text-slate-400 tracking-widest">Historical bookings</span>
                             </div>
                           )}
                           {bookings.filter(b => b.status !== 'pending').map((booking) => (
@@ -596,7 +765,7 @@ export default function OwnerDashboardView() {
 
                                <div className="flex items-center gap-3 w-full md:w-auto">
                                   <div className={cn(
-                                    "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border-2",
+                                    "px-6 py-2.5 rounded-xl text-xs font-black tracking-widest border-2",
                                     booking.status === 'confirmed' ? "border-emerald-100 text-emerald-600 bg-emerald-50" : "border-red-100 text-red-600 bg-red-50"
                                   )}>
                                     {booking.status}
@@ -625,20 +794,31 @@ export default function OwnerDashboardView() {
                       className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8"
                     >
                       <div className="space-y-6">
-                        <h2 className="text-2xl font-display font-bold text-slate-900 border-b border-slate-100 pb-6">Basic Information</h2>
+                        <h2 className="text-2xl font-display font-bold text-slate-900 border-b border-slate-100 pb-6 uppercase tracking-tight">Basic Information</h2>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                            <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Restaurant Name</label>
+                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Restaurant Name</label>
                               <input 
                                 type="text"
                                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
                                 value={editForm.name || ''}
                                 onChange={e => setEditForm({...editForm, name: e.target.value})}
+                                onBlur={() => handleGeocodeAddress('edit')}
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Signature Cuisine</label>
+                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">City</label>
+                              <select 
+                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all appearance-none"
+                                value={editForm.city || ''}
+                                onChange={e => setEditForm({...editForm, city: e.target.value})}
+                              >
+                                {SUPPORTED_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Signature Cuisine</label>
                               <select 
                                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all appearance-none"
                                 value={editForm.cuisine || ''}
@@ -651,7 +831,7 @@ export default function OwnerDashboardView() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                            <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Description</label>
+                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Description</label>
                               <textarea 
                                 rows={4}
                                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-medium text-slate-700 transition-all resize-none leading-relaxed"
@@ -661,44 +841,261 @@ export default function OwnerDashboardView() {
                               />
                            </div>
                            <div className="space-y-6">
-                              <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Average Cost (for two)</label>
-                                <div className="relative">
-                                  <span className="absolute left-6 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
-                                  <input 
-                                    type="number"
-                                    className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
-                                    value={editForm.avgPrice || ''}
-                                    onChange={e => setEditForm({...editForm, avgPrice: Number(e.target.value)})}
-                                  />
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Average Cost</label>
+                                  <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                                    <input 
+                                      type="number"
+                                      className="w-full pl-8 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
+                                      value={editForm.avgPrice || ''}
+                                      onChange={e => setEditForm({...editForm, avgPrice: Number(e.target.value)})}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Rating</label>
+                                  <div className="relative">
+                                    <Star className="absolute left-4 top-1/2 -translate-y-1/2 text-brand" size={16} />
+                                    <input 
+                                      type="number"
+                                      step="0.1"
+                                      min="1"
+                                      max="5"
+                                      className="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
+                                      value={editForm.rating || ''}
+                                      onChange={e => setEditForm({...editForm, rating: Number(e.target.value)})}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               <div className="space-y-4">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Opening Hours</label>
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase tracking-widest">General Opening hours</label>
+                                  <span className="text-[10px] text-slate-300 font-bold italic">Overrides daily if daily is empty</span>
+                                </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                   <input placeholder="Open" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-center outline-none" value={editForm.openingHours?.open || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', close: ''}), open: e.target.value}})} />
-                                   <input placeholder="Close" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-center outline-none" value={editForm.openingHours?.close || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', open: ''}), close: e.target.value}})} />
-                                   <input placeholder="Days" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-center outline-none" value={editForm.openingHours?.days || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {open: '', close: ''}), days: e.target.value}})} />
+                                   <input placeholder="Open (e.g. 11:00 AM)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.open || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', close: ''}), open: e.target.value}})} />
+                                   <input placeholder="Close (e.g. 11:00 PM)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.close || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', open: ''}), close: e.target.value}})} />
+                                   <input placeholder="Days (e.g. Mon-Sun)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.days || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {open: '', close: ''}), days: e.target.value}})} />
                                 </div>
                               </div>
                            </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Location / Address</label>
-                          <div className="relative">
-                             <MapPin className="absolute left-6 top-5 text-slate-400" size={20} />
-                             <input 
-                                type="text"
-                                className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-medium text-slate-700 transition-all"
-                                value={editForm.location || ''}
-                                onChange={e => setEditForm({...editForm, location: e.target.value})}
-                             />
-                          </div>
+                        {/* Daily Timings Section */}
+                        <div className="space-y-6 pt-6 border-t border-slate-100">
+                           <div className="flex items-center justify-between">
+                              <h3 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Operational Hours (Daily)</h3>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const timings: any = {};
+                                    DAYS_OF_WEEK.forEach(day => {
+                                      timings[day] = { open: '11:00 AM', close: '11:00 PM', closed: false };
+                                    });
+                                    setEditForm({...editForm, dailyTimings: timings});
+                                  }}
+                                  className="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"
+                                >
+                                  Apply Defaults
+                                </button>
+                              </div>
+                           </div>
+                           
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {DAYS_OF_WEEK.map(day => {
+                                const timing = editForm.dailyTimings?.[day] || { open: '', close: '', closed: false };
+                                return (
+                                  <div key={day} className={cn(
+                                    "p-5 rounded-[2rem] border transition-all flex items-center justify-between gap-4",
+                                    timing.closed ? "bg-slate-50 border-slate-200 opacity-60" : "bg-white border-slate-100 shadow-sm"
+                                  )}>
+                                     <div className="flex items-center gap-4">
+                                        <div 
+                                          onClick={() => {
+                                            const next = { ...timing, closed: !timing.closed };
+                                            setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
+                                          }}
+                                          className={cn(
+                                            "w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all",
+                                            timing.closed ? "bg-slate-200 text-slate-500" : "bg-brand/10 text-brand"
+                                          )}
+                                        >
+                                          <Clock size={18} />
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-black text-slate-900">{day}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{timing.closed ? 'Closed' : 'Operational'}</p>
+                                        </div>
+                                     </div>
+
+                                     {!timing.closed && (
+                                       <div className="flex items-center gap-2">
+                                          <input 
+                                            className="w-20 px-2 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-center outline-none focus:border-brand"
+                                            placeholder="11:00 AM"
+                                            value={timing.open}
+                                            onChange={e => {
+                                              const next = { ...timing, open: e.target.value };
+                                              setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
+                                            }}
+                                          />
+                                          <span className="text-slate-300 font-bold">-</span>
+                                          <input 
+                                            className="w-20 px-2 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-center outline-none focus:border-brand"
+                                            placeholder="11:00 PM"
+                                            value={timing.close}
+                                            onChange={e => {
+                                              const next = { ...timing, close: e.target.value };
+                                              setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
+                                            }}
+                                          />
+                                       </div>
+                                     )}
+                                     
+                                     {timing.closed && (
+                                       <button 
+                                          onClick={() => {
+                                            const next = { ...timing, closed: false };
+                                            setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
+                                          }}
+                                          className="text-[10px] font-black text-brand uppercase tracking-widest"
+                                       >
+                                          Open
+                                       </button>
+                                     )}
+                                  </div>
+                                );
+                              })}
+                           </div>
+                        </div>
+
+                        {/* Booking Controls */}
+                        <div className="space-y-6 pt-6 border-t border-slate-100">
+                           <div className="flex items-center justify-between px-1">
+                              <div>
+                                <h3 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Booking Controls</h3>
+                                <p className="text-slate-500 text-xs font-medium">Control table reservation availability and slots.</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                 <span className="text-xs font-bold text-slate-500">{editForm.isBookingEnabled ? 'Reservations Active' : 'Reservations Disabled'}</span>
+                                 <div 
+                                    onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
+                                    className={cn(
+                                      "w-14 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300",
+                                      editForm.isBookingEnabled ? "bg-emerald-500" : "bg-slate-300"
+                                    )}
+                                  >
+                                    <motion.div 
+                                      animate={{ x: editForm.isBookingEnabled ? 28 : 0 }}
+                                      className="w-5 h-5 bg-white rounded-full shadow-lg"
+                                    />
+                                  </div>
+                              </div>
+                           </div>
+
+                           {editForm.isBookingEnabled && (
+                             <motion.div 
+                               initial={{ opacity: 0, y: 10 }}
+                               animate={{ opacity: 1, y: 0 }}
+                               className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 space-y-6"
+                             >
+                                <div className="flex items-center justify-between">
+                                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Available Booking Slots</label>
+                                   <button 
+                                      onClick={() => setEditForm({...editForm, bookingSlots: DEFAULT_BOOKING_SLOTS})}
+                                      className="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"
+                                   >
+                                      Use Standard Slots
+                                   </button>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                   {(editForm.bookingSlots || []).map((slot, idx) => (
+                                      <div key={idx} className="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-3 shadow-sm group">
+                                         <span className="text-xs font-black text-slate-700">{slot}</span>
+                                         <button 
+                                            onClick={() => setEditForm({...editForm, bookingSlots: editForm.bookingSlots?.filter((_, i) => i !== idx)})}
+                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                          >
+                                            <X size={14} />
+                                         </button>
+                                      </div>
+                                   ))}
+                                   
+                                   <div className="flex items-center gap-2">
+                                      <input 
+                                        type="text"
+                                        placeholder="Add Slot (e.g. 15:30)"
+                                        className="w-32 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-brand"
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') {
+                                            const val = e.currentTarget.value.trim();
+                                            if (val) {
+                                               setEditForm({...editForm, bookingSlots: [...(editForm.bookingSlots || []), val]});
+                                               e.currentTarget.value = '';
+                                            }
+                                          }
+                                        }}
+                                      />
+                                      <div className="text-[10px] text-slate-400 font-bold italic">Press Enter</div>
+                                   </div>
+                                </div>
+                             </motion.div>
+                           )}
+                        </div>
+
+                        <div className="space-y-4 pt-2">
+                           <div className="flex items-center justify-between px-1">
+                              <label className="text-xs font-black text-slate-400">Location / Address</label>
+                              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">
+                                <Navigation size={10} />
+                                Syncs to Map
+                              </div>
+                           </div>
+                           <div className="relative">
+                              <MapPin className="absolute left-6 top-5 text-slate-400" size={20} />
+                              <textarea 
+                                 rows={2}
+                                 className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-medium text-slate-700 transition-all resize-none"
+                                 value={editForm.location || ''}
+                                 onChange={e => setEditForm({...editForm, location: e.target.value})}
+                                 onBlur={() => handleGeocodeAddress('edit')}
+                                 placeholder="Enter full physical address..."
+                              />
+                           </div>
+                           
+                           <div className="grid grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
+                                 <input 
+                                    type="number"
+                                    step="any"
+                                    placeholder="e.g. 18.5204"
+                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-mono text-xs font-bold text-slate-600 transition-all"
+                                    value={editForm.lat || ''}
+                                    onChange={e => setEditForm({...editForm, lat: parseFloat(e.target.value)})}
+                                 />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
+                                 <input 
+                                    type="number"
+                                    step="any"
+                                    placeholder="e.g. 73.8567"
+                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-mono text-xs font-bold text-slate-600 transition-all"
+                                    value={editForm.lng || ''}
+                                    onChange={e => setEditForm({...editForm, lng: parseFloat(e.target.value)})}
+                                 />
+                              </div>
+                           </div>
                         </div>
 
                         <div className="space-y-2 pt-4">
-                           <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1 mb-4 block">Facilities & Amenities</label>
+                           <label className="text-xs font-black text-slate-400 px-1 mb-4 block">Facilities & amenities</label>
                            <div className="flex flex-wrap gap-3">
                               {['WiFi', 'Parking', 'AC', 'Outdoor Seating', 'Live Music', 'Bar', 'Valet', 'Family Friendly', 'Kids Play Area'].map(fac => (
                                 <button

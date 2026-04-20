@@ -23,7 +23,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { city, setCity, setCoords, detectLocation, isDetecting } = useLocationContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+
+  // Redirect owner to Manage tab on login
+  React.useEffect(() => {
+    if (profile?.role === 'owner' && !hasRedirected) {
+      if (location.pathname === '/') {
+        setHasRedirected(true);
+        navigate('/owner');
+      }
+    }
+    // If user logs out, reset the redirect flag
+    if (!profile) {
+      setHasRedirected(false);
+    }
+  }, [profile, location.pathname, navigate, hasRedirected]);
 
   const majorCities = [
     { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
@@ -38,11 +54,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setCity(cityName);
     setCoords({ lat, lng });
     setIsLocationModalOpen(false);
+    navigate(`/city/${cityName.toLowerCase()}`);
+  };
+
+  const handleDetectLocation = async () => {
+    await detectLocation();
+    setIsLocationModalOpen(false);
+    navigate('/city/nearby');
   };
 
   const navItems = [
-    { label: 'Explore', path: '/', icon: Search },
-    { label: 'Bookings', path: '/dashboard', icon: Calendar },
+    { label: 'Bookings', path: profile?.role === 'owner' ? '/owner?tab=bookings' : '/dashboard', icon: Calendar },
   ];
 
   if (profile?.role === 'owner') {
@@ -97,7 +119,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     >
                       <div className="p-4 border-b border-gray-50">
                         <button 
-                          onClick={() => { detectLocation(); setIsLocationModalOpen(false); }}
+                          onClick={handleDetectLocation}
                           className="w-full flex items-center gap-3 p-3 text-brand hover:bg-brand-light rounded-xl transition-all font-bold text-sm"
                         >
                           <Navigation size={16} className={isDetecting ? "animate-spin" : ""} />
@@ -166,24 +188,48 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {profile.role}
                     </p>
                   </div>
-                  <div className="group relative">
+                  <div className="relative">
                     <img
                       src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
                       alt="Avatar"
-                      className="w-10 h-10 rounded-full border-2 border-transparent group-hover:border-brand transition-all cursor-pointer"
+                      className={cn(
+                        "w-10 h-10 rounded-full border-2 transition-all cursor-pointer",
+                        isProfileOpen ? "border-brand" : "border-transparent"
+                      )}
                       referrerPolicy="no-referrer"
+                      onClick={() => setIsProfileOpen(!isProfileOpen)}
                     />
-                    <div className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                      <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 w-48">
-                         <button
-                          onClick={signOut}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    <AnimatePresence>
+                      {isProfileOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute right-0 top-full pt-2 z-50"
                         >
-                          <LogOut size={16} />
-                          Sign Out
-                        </button>
-                      </div>
-                    </div>
+                          <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 w-48 ring-4 ring-black/5">
+                            <div className="px-3 py-2 mb-2 border-b border-gray-50 md:hidden">
+                              <p className="text-sm font-semibold text-vibrant-dark truncate">
+                                {profile.displayName}
+                              </p>
+                              <p className="text-xs text-vibrant-gray capitalize">
+                                {profile.role}
+                              </p>
+                            </div>
+                             <button
+                              onClick={() => {
+                                signOut();
+                                setIsProfileOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-semibold"
+                            >
+                              <LogOut size={16} />
+                              Sign Out
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               ) : (
@@ -255,23 +301,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
             </Link>
           ))}
-          {profile ? (
-             <Link
-              to={profile.role === 'owner' ? '/owner' : '/dashboard'}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all active:scale-95",
-                location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/owner') ? "text-brand" : "text-vibrant-gray opacity-50"
-              )}
-            >
-              <div className={cn(
-                "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-                (location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/owner')) ? "bg-brand/10" : ""
-              )}>
-                <UserIcon size={22} className={(location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/owner')) ? "stroke-[2.5]" : ""} />
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Account</span>
-            </Link>
-          ) : (
+          {!profile && (
             <button
               onClick={signInWithGoogle}
               className="flex flex-col items-center gap-1 text-brand active:scale-95"

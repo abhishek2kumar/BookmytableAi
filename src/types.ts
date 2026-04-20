@@ -9,6 +9,12 @@ export interface UserProfile {
   createdAt: any;
 }
 
+export interface DailyTiming {
+  open: string;
+  close: string;
+  closed: boolean;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -18,6 +24,7 @@ export interface Restaurant {
   avgPrice: number;
   image: string;
   location: string;
+  city: string;
   lat?: number;
   lng?: number;
   ownerId: string;
@@ -28,6 +35,11 @@ export interface Restaurant {
     close: string;
     days: string;
   };
+  dailyTimings?: {
+    [key: string]: DailyTiming;
+  };
+  isBookingEnabled?: boolean;
+  bookingSlots?: string[];
   facilities?: string[];
   offers?: string[];
   menu?: {

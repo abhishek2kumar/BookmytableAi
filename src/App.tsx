@@ -3,7 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { LocationProvider } from './components/LocationContext';
 import Layout from './components/Layout';
-import LandingView from './components/LandingView';
+import HomeLandingView from './components/HomeLandingView';
+import ScrollToTop from './components/ScrollToTop';
+import CityView from './components/CityView';
+import CuisineView from './components/CuisineView';
 import RestaurantDetailsView from './components/RestaurantDetailsView';
 import DashboardView from './components/DashboardView';
 import OwnerDashboardView from './components/OwnerDashboardView';
@@ -35,10 +38,13 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
+        <ScrollToTop />
         <LocationProvider>
           <Layout>
             <Routes>
-              <Route path="/" element={<LandingView />} />
+              <Route path="/" element={<HomeLandingView />} />
+              <Route path="/city/:cityId" element={<CityView />} />
+              <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
               <Route path="/restaurant/:id" element={<RestaurantDetailsView />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
               <Route path="/owner" element={<ProtectedRoute role="owner"><OwnerDashboardView /></ProtectedRoute>} />

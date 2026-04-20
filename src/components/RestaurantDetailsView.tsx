@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
-import { Restaurant, Booking } from '../types';
-import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2 } from 'lucide-react';
+import { useRestaurants } from '../hooks/useFirebase';
+import { useLocationContext } from './LocationContext';
+import { RestaurantCard } from './RestaurantCard';
+import { Restaurant, Booking, Review } from '../types';
+import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday } from 'date-fns';
 import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/geminiService';
-import { query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { Review } from '../types';
 import ReactMarkdown from 'react-markdown';
+import { useMemo } from 'react';
 
 export default function RestaurantDetailsView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile, signInWithGoogle } = useAuth();
+  const { coords: userCoords } = useLocationContext();
+  const { restaurants: allRestaurants, loading: restaurantsLoading } = useRestaurants(true);
   
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +36,7 @@ export default function RestaurantDetailsView() {
 
   // Booking Form State
   const [selectedDate, setSelectedDate] = useState(startOfToday());
-  const [selectedTime, setSelectedTime] = useState('19:00');
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [guests, setGuests] = useState(2);
   const [userPhone, setUserPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +49,8 @@ export default function RestaurantDetailsView() {
   const [menuSlideIndex, setMenuSlideIndex] = useState(0);
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [isTimingsOpen, setIsTimingsOpen] = useState(false);
+  const [bannerIndex, setBannerIndex] = useState(0);
 
   useEffect(() => {
     if (user && reviews.length > 0) {
@@ -218,15 +224,44 @@ export default function RestaurantDetailsView() {
     }
   };
 
+  const facilityIcons: Record<string, any> = {
+    'WiFi': Wifi,
+    'Parking': Car,
+    'AC': Wind,
+    'Outdoor Seating': MapPin,
+    'Live Music': Music,
+    'Bar': Wine,
+    'Valet': UserCheck,
+    'Family Friendly': Baby,
+    'Kids Play Area': Gamepad2,
+    'TV': Tv,
+  };
+
   const isCurrentlyOpen = () => {
-    if (!restaurant?.openingHours) return { status: 'Open Now', color: 'text-vibrant-success' };
+    const now = new Date();
+    const day = format(now, 'EEEE');
+    
+    // Check dailyTimings first
+    const daily = restaurant?.dailyTimings?.[day];
+    let openStr = restaurant?.openingHours?.open || '11:00 AM';
+    let closeStr = restaurant?.openingHours?.close || '11:00 PM';
+    let isClosed = false;
+
+    if (daily) {
+      if (daily.closed) isClosed = true;
+      else {
+        openStr = daily.open;
+        closeStr = daily.close;
+      }
+    }
+
+    if (isClosed) return { status: 'Closed Today', color: 'text-red-500', closeTime: 'Tomorrow' };
+
     try {
-      const now = new Date();
-      const openStr = restaurant.openingHours.open.toUpperCase();
-      const closeStr = restaurant.openingHours.close.toUpperCase();
-      
       const parseTime = (timeStr: string) => {
-        const [time, period] = timeStr.split(' ');
+        const parts = timeStr.trim().split(' ');
+        const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
+        const time = parts[0].replace(/AM|PM/i, '');
         let [h, m] = time.split(':').map(Number);
         if (period === 'PM' && h !== 12) h += 12;
         if (period === 'AM' && h === 12) h = 0;
@@ -237,22 +272,83 @@ export default function RestaurantDetailsView() {
       const closeMin = parseTime(closeStr);
       const currentMin = now.getHours() * 60 + now.getMinutes();
 
-      if (currentMin >= openMin && currentMin < closeMin) {
-        if (closeMin - currentMin < 60) return { status: `Open (Closing Soon at ${restaurant.openingHours.close})`, color: 'text-amber-500' };
-        return { status: 'Open Now', color: 'text-vibrant-success' };
+      if (currentMin < openMin) {
+        if (openMin - currentMin <= 60) return { status: 'Opening shortly', color: 'text-amber-500', closeTime: openStr };
+        return { status: 'Closed', color: 'text-red-500', closeTime: openStr };
       }
-      return { status: `Closed (Opens at ${restaurant.openingHours.open})`, color: 'text-red-500' };
+
+      if (currentMin >= openMin && currentMin < closeMin) {
+        if (closeMin - currentMin <= 60) return { status: 'Closing shortly', color: 'text-amber-500', closeTime: closeStr };
+        return { status: 'Open Now', color: 'text-vibrant-success', closeTime: closeStr };
+      }
+      
+      return { status: 'Closed for the day', color: 'text-red-500', closeTime: 'Tomorrow' };
     } catch (e) {
-      return { status: 'Open Now', color: 'text-vibrant-success' };
+      return { status: 'Open Now', color: 'text-vibrant-success', closeTime: closeStr };
     }
   };
 
+  const bannerImages = restaurant ? [restaurant.image, ...(restaurant.secondaryImages || [])] : [];
+
+  useEffect(() => {
+    if (bannerImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setBannerIndex(prev => (prev + 1) % bannerImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [bannerImages.length]);
+
   const status = isCurrentlyOpen();
   const dates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
-  const times = [
-    '12:00', '12:30', '13:00', '13:30', '14:00', 
-    '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
-  ];
+  const times = restaurant?.bookingSlots && restaurant.bookingSlots.length > 0 
+    ? restaurant.bookingSlots 
+    : [
+        '12:00', '12:30', '13:00', '13:30', '14:00', 
+        '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
+      ];
+
+  // Haversine formula for distance in km
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return parseFloat((R * c).toFixed(1));
+  };
+
+  const recommendations = useMemo(() => {
+    if (!restaurant || !allRestaurants.length) return { similar: [], nearby: [], youMayLike: [] };
+
+    const filtered = allRestaurants.filter(r => r.id !== restaurant.id);
+    
+    // Similar: Same cuisine
+    const similar = filtered
+      .filter(r => r.cuisine === restaurant.cuisine)
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 4);
+
+    // Nearby
+    const nearby = filtered
+      .filter(r => r.lat && r.lng && restaurant.lat && restaurant.lng)
+      .map(r => ({
+        ...r,
+        distance: calculateDistance(restaurant.lat!, restaurant.lng!, r.lat!, r.lng!)
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 4);
+
+    // You May Like: High rated other cuisines
+    const youMayLike = filtered
+      .filter(r => r.cuisine !== restaurant.cuisine && r.rating >= 4.5)
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 4);
+
+    return { similar, nearby, youMayLike };
+  }, [restaurant, allRestaurants]);
 
   const isTimeInPast = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -349,16 +445,42 @@ export default function RestaurantDetailsView() {
           </button>
 
           <div className="flex flex-col md:flex-row gap-10 md:pt-0 pt-0">
+            {/* Banner Slider Section */}
             <div className="w-screen md:w-[450px] aspect-[4/3] md:rounded-2xl rounded-none overflow-hidden shadow-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] md:left-auto md:right-auto md:ml-0 md:mr-0 group">
-              <img 
-                src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} 
-                alt={restaurant.name}
-                className="w-full h-full object-cover md:blur-0 blur-[2px] scale-105"
-                referrerPolicy="no-referrer"
-                onError={handleImageError}
-              />
-              {/* Mobile Banner Info Overlap */}
-              <div className="md:hidden absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 flex flex-col justify-end p-6">
+              <div className="relative w-full h-full">
+                <AnimatePresence mode="wait">
+                  <motion.img 
+                    key={bannerIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    src={bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK} 
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={handleImageError}
+                  />
+                </AnimatePresence>
+                
+                {bannerImages.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                    {bannerImages.map((_, i) => (
+                      <button 
+                        key={i} 
+                        onClick={() => setBannerIndex(i)}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-all duration-300",
+                          i === bannerIndex ? "bg-white w-4" : "bg-white/40"
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Banner Info Overlap (Keep for mobile aesthetic or remove if redesigning mobile too) */}
+              <div className="md:hidden absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/20 flex flex-col justify-end p-6 pointer-events-none">
                 <div className="flex items-start justify-between">
                   <div className="pb-10">
                     <h1 className="text-3xl font-display font-bold text-white mb-1 drop-shadow-md">{restaurant.name}</h1>
@@ -373,74 +495,141 @@ export default function RestaurantDetailsView() {
                       <Star size={14} className="fill-white" />
                       <span className="text-lg font-black">{restaurant.rating}</span>
                     </div>
-                    <span className="text-[8px] font-black text-white/70 uppercase tracking-tighter mt-0.5">Rating</span>
+                    <span className="text-[8px] font-black text-white/70 tracking-tighter mt-0.5">Rating</span>
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* Redesigned Details Section (Desktop & Tablet) */}
             <div className="flex-grow md:py-2 md:block hidden py-6 px-4 md:px-0">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-display font-bold text-vibrant-dark mb-1">{restaurant.name}</h1>
-                  <div className="flex items-center gap-2 text-vibrant-gray font-medium">
-                    <span>{restaurant.cuisine}</span>
-                    <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                    <span className="text-sm font-semibold">{restaurant.location.split(',')[0]}</span>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2 text-slate-800 font-display">
+                    <div className="bg-emerald-600 p-1.5 rounded-full text-white">
+                      <Star size={16} className="fill-white" />
+                    </div>
+                    <span className="text-xl font-bold">{restaurant.rating} • {reviews.length} reviews</span>
+                    <span className="text-slate-400 mx-1">|</span>
+                    <span className="text-xl font-bold">₹{restaurant.avgPrice} for two</span>
                   </div>
-                </div>
-                <div className="bg-vibrant-success px-3 py-1.5 rounded-lg flex flex-col items-center shadow-sm shrink-0">
-                  <div className="flex items-center gap-1 text-white">
-                    <Star size={14} className="fill-white" />
-                    <span className="text-lg font-black">{restaurant.rating}</span>
-                  </div>
-                  <span className="text-[8px] font-black text-white/70 uppercase tracking-tighter mt-0.5">Rating</span>
-                </div>
-              </div>
 
-              <div className="flex flex-wrap gap-6 mt-8">
-                <div className="flex items-center gap-2 text-vibrant-gray">
-                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                    <MapPin size={20} className="text-vibrant-gray" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-vibrant-gray/50 uppercase">Location</p>
-                    <p className="text-sm font-semibold text-vibrant-dark">{restaurant.location}</p>
+                  <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">{restaurant.name}</h1>
+                  
+                  <div className="text-xl text-slate-800 font-bold">
+                    {restaurant.cuisine}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-vibrant-gray">
-                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                    <Clock size={20} className={status.color} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-vibrant-gray/50 uppercase">Hours</p>
-                    <p className={cn("text-sm font-bold", status.color)}>{status.status}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-vibrant-gray">
-                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                    <Clock size={20} className="text-vibrant-gray" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-vibrant-gray/50 uppercase">Average Price</p>
-                    <p className="text-sm font-semibold text-vibrant-dark">₹{restaurant.avgPrice} for two</p>
-                  </div>
-                </div>
-              </div>
 
-              <p className="mt-8 text-vibrant-gray leading-relaxed text-lg max-w-2xl border-t border-dashed border-gray-200 pt-6">
-                {restaurant.description || 'Welcome to ' + restaurant.name + ', where culinary excellence meets exceptional atmosphere. Join us for a memorable dining experience characterized by our authentic ' + restaurant.cuisine + ' dishes.'}
-              </p>
-              {restaurant.facilities && restaurant.facilities.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-6">
-                  {restaurant.facilities.map(f => (
-                    <span key={f} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-vibrant-dark text-xs font-bold rounded-full">
-                      <Check size={12} className="text-brand" />
-                      {f}
+                <div className="space-y-3 pt-4">
+                  <div className="flex gap-2 text-xl items-baseline">
+                    <span className="text-slate-500 font-bold shrink-0">Location</span>
+                    <span className="text-slate-800 font-medium line-clamp-1">{restaurant.location}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xl">
+                    <span className={cn("font-bold flex items-center gap-1.5 tracking-tighter", status.color)}>
+                      {status.status}
                     </span>
-                  ))}
+                    <span className="text-slate-400">•</span>
+                    <button 
+                      onClick={() => setIsTimingsOpen(true)}
+                      className="flex items-center gap-1 text-vibrant-gray font-bold tracking-tighter hover:text-brand transition-colors"
+                    >
+                      Open till {status.closeTime}
+                      <ChevronDown size={20} className="text-brand shrink-0" />
+                    </button>
+                  </div>
                 </div>
-              )}
+
+                {/* Horizontal Action Bar */}
+                <div className="flex items-center gap-12 pt-8 border-t border-slate-100 max-w-4xl">
+                  <button 
+                    onClick={() => {
+                      document.getElementById('table-booking-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }}
+                    className="flex items-center gap-3 text-brand font-black text-xl group"
+                  >
+                    <CalendarIcon size={24} className="group-hover:scale-110 transition-transform" />
+                    Book Table
+                  </button>
+                  
+                  <div className="h-8 w-px bg-slate-200" />
+                  
+                  <a 
+                    href="tel:+919876543210" 
+                    className="flex items-center gap-3 text-slate-800 font-black text-xl group"
+                  >
+                    <Phone size={24} className="group-hover:scale-110 transition-transform" />
+                    Call
+                  </a>
+                  
+                  <div className="h-8 w-px bg-slate-200" />
+                  
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 text-brand font-black text-xl group"
+                  >
+                    <Compass size={24} className="group-hover:scale-110 transition-transform" />
+                    Direction
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile Redesigned Header (Optional, but let's align it) */}
+            <div className="md:hidden px-4 -mt-8 relative z-20">
+               <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 space-y-4">
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <div className="bg-emerald-600 p-1 rounded-full text-white">
+                      <Star size={12} className="fill-white" />
+                    </div>
+                    <span className="text-sm font-black">{restaurant.rating} • {reviews.length} reviews • ₹{restaurant.avgPrice} for two</span>
+                  </div>
+
+                  <h1 className="text-2xl font-display font-black text-slate-900">{restaurant.name}</h1>
+                  <p className="text-sm font-bold text-slate-600 tracking-wide">{restaurant.cuisine}</p>
+
+                  <div className="pt-2">
+                    <div className="flex gap-2 text-xs items-baseline mb-2">
+                      <span className="text-slate-400 font-bold shrink-0">Location</span>
+                      <span className="text-slate-800 font-medium line-clamp-1">{restaurant.location}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                       <span className={cn("font-bold tracking-tighter", status.color)}>{status.status}</span>
+                       <span className="text-slate-400">•</span>
+                       <button 
+                        onClick={() => setIsTimingsOpen(true)}
+                        className="flex items-center gap-1 text-slate-600 font-bold tracking-tighter"
+                      >
+                         Open till {status.closeTime}
+                         <ChevronDown size={14} className="text-brand" />
+                       </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
+                     <button className="flex flex-col items-center gap-1 text-brand font-bold text-[10px]">
+                        <CalendarIcon size={18} />
+                        Book
+                     </button>
+                     <a href="tel:+919876543210" className="flex flex-col items-center gap-1 text-slate-800 font-bold text-[10px]">
+                        <Phone size={18} />
+                        Call
+                     </a>
+                     <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-1 text-brand font-bold text-[10px]"
+                    >
+                        <Compass size={18} />
+                        Direction
+                     </a>
+                  </div>
+               </div>
             </div>
           </div>
         </div>
@@ -465,12 +654,12 @@ export default function RestaurantDetailsView() {
           {/* Menu & Offers Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* Offers */}
-            {restaurant.offers && restaurant.offers.length > 0 && (
-              <div className="bg-vibrant-success/5 border border-vibrant-success/20 p-8 rounded-3xl">
-                <div className="flex items-center gap-2 mb-6 text-vibrant-success">
-                  <Gift size={24} />
-                  <h3 className="text-xl font-display font-bold">Exclusive Offers</h3>
-                </div>
+            <div className="bg-vibrant-success/5 border border-vibrant-success/20 p-8 rounded-3xl h-full">
+              <div className="flex items-center gap-2 mb-6 text-vibrant-success">
+                <Gift size={24} />
+                <h3 className="text-xl font-display font-bold">Exclusive Offers</h3>
+              </div>
+              {restaurant.offers && restaurant.offers.length > 0 ? (
                 <div className="space-y-4">
                   {restaurant.offers.map((offer, i) => (
                     <div key={i} className="flex items-start gap-3 bg-white p-4 rounded-xl border border-vibrant-success/10">
@@ -479,16 +668,21 @@ export default function RestaurantDetailsView() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-2xl border border-dashed border-vibrant-success/10">
+                  <Gift size={32} className="mb-3 opacity-20" />
+                  <p className="text-sm font-medium">No offers at the moment</p>
+                </div>
+              )}
+            </div>
 
             {/* Menu Snippet */}
-            {restaurant.menu && restaurant.menu.length > 0 && (
-              <div className="bg-slate-50 border border-gray-200 p-8 rounded-3xl">
-                <div className="flex items-center gap-2 mb-6 text-brand">
-                  <Utensils size={24} />
-                  <h3 className="text-xl font-display font-bold">Popular Dishes</h3>
-                </div>
+            <div className="bg-slate-50 border border-gray-200 p-8 rounded-3xl h-full">
+              <div className="flex items-center gap-2 mb-6 text-brand">
+                <Utensils size={24} />
+                <h3 className="text-xl font-display font-bold">Popular Dishes</h3>
+              </div>
+              {restaurant.menu && restaurant.menu.length > 0 ? (
                 <div className="space-y-4">
                   {restaurant.menu.map((item, i) => (
                     <div key={i} className="flex justify-between items-start border-b border-gray-200 pb-4 last:border-0 last:pb-0">
@@ -500,8 +694,13 @@ export default function RestaurantDetailsView() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-2xl border border-dashed border-gray-200">
+                  <Utensils size={32} className="mb-3 opacity-20" />
+                  <p className="text-sm font-medium">Menu not available yet</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Visual Menu Images Carousel */}
@@ -567,6 +766,43 @@ export default function RestaurantDetailsView() {
               </div>
             </div>
           )}
+
+          {/* Amenities / Facilities Section */}
+          <div className="bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-vibrant">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center">
+                <Settings2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-xl font-display font-bold text-vibrant-dark tracking-tight">Amenities & Facilities</h3>
+                <p className="text-vibrant-gray font-medium text-sm">Everything you need for a comfortable visit</p>
+              </div>
+            </div>
+
+            {restaurant.facilities && restaurant.facilities.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {restaurant.facilities.map((fac, i) => {
+                  const Icon = facilityIcons[fac] || Check;
+                  return (
+                    <div 
+                      key={i} 
+                      className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-brand/30 hover:bg-white transition-all shadow-sm"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-vibrant-gray group-hover:text-brand transition-colors">
+                        <Icon size={18} />
+                      </div>
+                      <span className="text-xs font-bold text-vibrant-dark">{fac}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-3xl border border-dashed border-gray-200">
+                <CheckCircle2 size={32} className="mb-3 opacity-20" />
+                <p className="text-sm font-medium">Standard amenities provided</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Post Review Form */}
@@ -575,11 +811,28 @@ export default function RestaurantDetailsView() {
             {/* Booking Form in Sidebar */}
             <div id="table-booking-card" className="bg-white rounded-3xl border border-gray-100 shadow-vibrant overflow-hidden scroll-mt-24">
               <div className="bg-vibrant-dark p-6 text-white flex flex-col justify-center min-h-[80px]">
-                <h2 className="text-xl font-display font-bold text-white uppercase tracking-tight">Table Booking</h2>
+                <h2 className="text-xl font-display font-bold text-white tracking-tight">Table Booking</h2>
               </div>
 
               <div className="p-6">
-                {bookingSuccess ? (
+                {!restaurant.approved ? (
+                   <div className="py-12 text-center">
+                    <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle size={32} />
+                    </div>
+                    <h3 className="text-lg font-display font-bold text-vibrant-dark mb-1">Coming Soon</h3>
+                    <p className="text-xs text-vibrant-gray">This restaurant is pending verification.</p>
+                  </div>
+                ) : !restaurant.isBookingEnabled ? (
+                  <div className="py-12 text-center">
+                    <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CalendarIcon size={32} />
+                    </div>
+                    <h3 className="text-lg font-display font-bold text-vibrant-dark mb-1">Reservation Unavailable</h3>
+                    <p className="text-xs text-vibrant-gray">Restaurant is currently unavailable for Table reservation</p>
+                    <a href="tel:+919876543210" className="mt-4 inline-block text-brand font-bold text-xs uppercase tracking-widest hover:underline">Call to Enquire</a>
+                  </div>
+                ) : bookingSuccess ? (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -595,7 +848,7 @@ export default function RestaurantDetailsView() {
                   <div className="space-y-8">
                     {/* Date Selection */}
                     <div>
-                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray uppercase tracking-widest mb-3 opacity-60">
+                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray tracking-widest mb-3 opacity-60">
                         <CalendarIcon size={14} />
                         Select Date
                       </label>
@@ -611,7 +864,7 @@ export default function RestaurantDetailsView() {
                                 : "bg-white border-gray-100 text-vibrant-gray hover:border-brand"
                             )}
                           >
-                            <span className="text-[9px] uppercase opacity-60 mb-0.5">{format(date, 'EEE')}</span>
+                            <span className="text-[9px] opacity-60 mb-0.5">{format(date, 'EEE')}</span>
                             <span className="text-sm">{format(date, 'd')}</span>
                           </button>
                         ))}
@@ -620,12 +873,12 @@ export default function RestaurantDetailsView() {
 
                     {/* Time Selection */}
                     <div>
-                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray uppercase tracking-widest mb-3 opacity-60">
+                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray tracking-widest mb-3 opacity-60">
                         <Clock size={14} />
                         Select Time
                       </label>
                       <div className="grid grid-cols-4 gap-2">
-                        {times.slice(0, 8).map((time) => {
+                        {times.map((time) => {
                           const past = isTimeInPast(time);
                           return (
                             <button
@@ -649,7 +902,7 @@ export default function RestaurantDetailsView() {
 
                     {/* Guests */}
                     <div>
-                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray uppercase tracking-widest mb-3 opacity-60">
+                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray tracking-widest mb-3 opacity-60">
                         <Users size={14} />
                         Guests
                       </label>
@@ -673,9 +926,9 @@ export default function RestaurantDetailsView() {
 
                     {/* Phone Number */}
                     <div>
-                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray uppercase tracking-widest mb-3 opacity-60">
+                      <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray tracking-widest mb-3 opacity-60">
                         <MessageSquare size={14} />
-                        Phone Number (for WhatsApp)
+                        Phone number (for WhatsApp)
                       </label>
                       <input 
                         type="tel"
@@ -691,8 +944,8 @@ export default function RestaurantDetailsView() {
                     <button
                       id="booking-form"
                       onClick={handleBooking}
-                      disabled={isSubmitting || !userPhone}
-                      className="w-full bg-brand text-white py-4 rounded-2xl font-bold text-sm tracking-wide hover:bg-brand-dark transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-brand/20 uppercase"
+                      disabled={isSubmitting || !userPhone || !selectedTime || isTimeInPast(selectedTime)}
+                      className="w-full bg-brand text-white py-4 rounded-2xl font-bold text-sm tracking-wide hover:bg-brand-dark transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-brand/20"
                     >
                       {isSubmitting ? 'Processing...' : user ? `Confirm Booking` : 'Sign In to Book'}
                     </button>
@@ -756,7 +1009,7 @@ export default function RestaurantDetailsView() {
               
               <div className="space-y-4">
                 <div className="bg-slate-50 p-4 rounded-2xl">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Your Rating</label>
+                  <label className="text-[10px] font-black text-slate-400 tracking-widest mb-3 block">Your rating</label>
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button 
@@ -786,7 +1039,7 @@ export default function RestaurantDetailsView() {
                 <button 
                   onClick={handlePostReview}
                   disabled={isPostingReview || !userComment.trim() || hasReviewed}
-                  className="w-full bg-vibrant-dark text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50 active:scale-95 shadow-xl shadow-slate-900/10 uppercase tracking-widest"
+                  className="w-full bg-vibrant-dark text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50 active:scale-95 shadow-xl shadow-slate-900/10 tracking-widest"
                 >
                   {isPostingReview ? <Loader2 size={18} className="animate-spin" /> : hasReviewed ? <Check size={16} /> : <Send size={16} />}
                   {hasReviewed ? 'Reviewed' : 'Share Review'}
@@ -851,7 +1104,7 @@ export default function RestaurantDetailsView() {
                     />
                     <div className="overflow-hidden">
                       <h4 className="font-bold text-vibrant-dark text-sm truncate">{review.userName}</h4>
-                      <p className="text-[10px] text-vibrant-gray/50 uppercase font-bold tracking-widest">{formatDate(review.createdAt)}</p>
+                      <p className="text-[10px] text-vibrant-gray/50 font-bold tracking-widest">{formatDate(review.createdAt)}</p>
                     </div>
                   </div>
                   
@@ -870,10 +1123,76 @@ export default function RestaurantDetailsView() {
         </div>
       )}
 
+      {/* Recommended Restaurants Sections */}
+      <div className="max-w-7xl mx-auto px-4 mt-16 space-y-20">
+        {/* Similar Restaurants */}
+        {recommendations.similar.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-brand/10 rounded-full flex items-center justify-center text-brand">
+                <Utensils size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">Similar to {restaurant.name}</h2>
+                <p className="text-vibrant-gray font-medium text-sm">More great {restaurant.cuisine} options you might enjoy</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.similar.map((res) => (
+                <RestaurantCard key={res.id} restaurant={res} className="shadow-vibrant-sm" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Nearby Restaurants */}
+        {recommendations.nearby.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+                <MapPin size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">Nearby Restaurants</h2>
+                <p className="text-vibrant-gray font-medium text-sm">Great dining spots just around the corner</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.nearby.map((res) => (
+                <RestaurantCard key={res.id} restaurant={res} className="shadow-vibrant-sm" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* You May Like */}
+        {recommendations.youMayLike.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center text-amber-600">
+                <TrendingUp size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">You May Also Like</h2>
+                <p className="text-vibrant-gray font-medium text-sm">Top rated experiences in other cuisines</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.youMayLike.map((res) => (
+                <RestaurantCard key={res.id} restaurant={res} className="shadow-vibrant-sm" />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
       {/* Mobile Sticky Booking Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
            <div className="pl-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Starting from</p>
+              <p className="text-[10px] font-black text-slate-400 tracking-widest">Starting from</p>
               <p className="text-xl font-display font-black text-slate-900">₹{restaurant.avgPrice}<span className="text-sm text-slate-400 font-bold ml-1">/2</span></p>
            </div>
            <button 
@@ -888,7 +1207,7 @@ export default function RestaurantDetailsView() {
                   window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
                 }
               }}
-              className="bg-brand text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
+              className="bg-brand text-white px-8 py-3.5 rounded-2xl font-black text-sm tracking-widest shadow-xl shadow-brand/20 active:scale-95 transition-all"
            >
               Book Table
            </button>
@@ -896,6 +1215,66 @@ export default function RestaurantDetailsView() {
 
       {/* Menu Image Popup Modal */}
       <AnimatePresence>
+        {isTimingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-8 border-b border-slate-50">
+                <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight">Outlet Timings</h2>
+                <button 
+                  onClick={() => setIsTimingsOpen(false)}
+                  className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-8 space-y-4">
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+                  const daily = restaurant.dailyTimings?.[day];
+                  const isToday = format(new Date(), 'EEEE') === day;
+                  return (
+                    <div key={day} className={cn(
+                      "flex items-center justify-between py-3 border-b border-slate-50 last:border-0",
+                      isToday && "bg-brand/5 -mx-4 px-4 rounded-xl"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("font-bold text-lg", isToday ? "text-brand" : "text-slate-700")}>{day}</span>
+                        {isToday && <span className="bg-brand text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Today</span>}
+                      </div>
+                      <span className={cn(
+                        "font-medium text-lg",
+                        daily?.closed ? "text-red-500" : "text-slate-900"
+                      )}>
+                        {daily ? (daily.closed ? 'Closed' : `${daily.open} - ${daily.close}`) : `${restaurant.openingHours?.open || '12:30 PM'} - ${restaurant.openingHours?.close || '11:59 PM'}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="p-8 bg-slate-50/50 flex justify-center">
+                <button 
+                  onClick={() => setIsTimingsOpen(false)}
+                  className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold transition-transform active:scale-95"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md -z-10" onClick={() => setIsTimingsOpen(false)} />
+          </motion.div>
+        )}
+
         {selectedMenuImage && (
           <motion.div
             initial={{ opacity: 0 }}

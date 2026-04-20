@@ -11,7 +11,7 @@ import {
 import { db } from '../lib/firebase';
 import { Restaurant, Booking } from '../types';
 
-export function useRestaurants(onlyApproved = true) {
+export function useRestaurants(onlyApproved = false) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
 
