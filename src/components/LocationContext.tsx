@@ -42,10 +42,31 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     
     return new Promise<void>((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newCoords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        async (position) => {
+          const { latitude: lat, longitude: lng } = position.coords;
+          const newCoords = { lat, lng };
           setCoords(newCoords);
-          setCity('Nearby You');
+          
+          try {
+            // Use Nominatim (OSM) for free reverse geocoding
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+            const data = await response.json();
+            
+            // Try to find the city in the response
+            const detectedCityRaw = data.address.city || 
+                               data.address.town || 
+                               data.address.suburb || 
+                               data.address.village || 
+                               data.address.state || 
+                               'Nearby You';
+            
+            // Note: We'll keep the raw name for now, but in CityView we'll capitalize properly
+            setCity(detectedCityRaw);
+          } catch (error) {
+            console.error("Reverse geocoding error:", error);
+            setCity('Nearby You');
+          }
+          
           setIsDetecting(false);
           resolve();
         },

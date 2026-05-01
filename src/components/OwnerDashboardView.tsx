@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
+import { useMasterData } from './MasterDataContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { Restaurant, Booking, CUISINES } from '../types';
+import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { Restaurant, Booking } from '../types';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
 import { 
   Store, 
@@ -35,7 +36,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const SUPPORTED_CITIES = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 'Pune', 'Kolkata', 'Jaipur'];
 const BANGALORE_COORDS = { lat: 12.9716, lng: 77.5946 };
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DEFAULT_BOOKING_SLOTS = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
@@ -44,6 +44,7 @@ type TabType = 'overview' | 'info' | 'menu' | 'gallery' | 'promotions' | 'bookin
 
 export default function OwnerDashboardView() {
   const { user } = useAuth();
+  const { cities, cuisines } = useMasterData();
   const [searchParams, setSearchParams] = useSearchParams();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -91,9 +92,9 @@ export default function OwnerDashboardView() {
     setIsSaving(true);
     try {
       const allowedKeys = [
-        'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 
+        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'city', 
         'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
-        'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'rating',
+        'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages',
         'dailyTimings', 'isBookingEnabled', 'bookingSlots'
       ];
       
@@ -119,6 +120,8 @@ export default function OwnerDashboardView() {
       }
       
       updateData.updatedAt = serverTimestamp();
+      updateData.lastModifiedBy = user.email || user.displayName || user.uid;
+      updateData.lastModifiedByType = 'owner';
 
       await updateDoc(doc(db, 'restaurants', restaurant.id), updateData);
       showNotification('success', 'Changes saved successfully!');
@@ -133,11 +136,12 @@ export default function OwnerDashboardView() {
   const [newRes, setNewRes] = useState({
     name: '',
     description: '',
-    cuisine: CUISINES[0],
+    cuisine: 'North Indian',
     avgPrice: 500,
+    contactNumber: '',
     image: '',
     location: '',
-    city: SUPPORTED_CITIES[0],
+    city: 'Bangalore',
     lat: BANGALORE_COORDS.lat,
     lng: BANGALORE_COORDS.lng
   });
@@ -244,12 +248,29 @@ export default function OwnerDashboardView() {
     if (!user) return;
 
     try {
+      // Duplicate Check: Name + Location (Trimmed)
+      const duplicateQuery = query(
+        collection(db, 'restaurants'), 
+        where('name', '==', newRes.name.trim()),
+        where('location', '==', newRes.location.trim())
+      );
+      
+      const duplicateSnap = await getDocs(duplicateQuery);
+      if (!duplicateSnap.empty) {
+        showNotification('error', 'A restaurant with this name and location already exists!');
+        return;
+      }
+
       await addDoc(collection(db, 'restaurants'), {
         ...newRes,
+        name: newRes.name.trim(),
+        location: newRes.location.trim(),
         ownerId: user.uid,
-        rating: 4.5,
         isOpen: true,
         approved: false,
+        rating: 4.0, // Default base rating
+        lastModifiedBy: user.email || user.displayName || user.uid,
+        lastModifiedByType: 'owner',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -424,7 +445,7 @@ export default function OwnerDashboardView() {
           {/* Main Content Area */}
           <div className="flex-grow">
             {!restaurant && !isAddingRestaurant ? (
-              <div className="bg-white rounded-[2rem] p-12 text-center border-2 border-dashed border-slate-200">
+              <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-slate-200">
                 <div className="w-20 h-20 bg-brand-light rounded-full flex items-center justify-center mx-auto mb-6">
                   <Store className="text-brand" size={40} />
                 </div>
@@ -441,7 +462,7 @@ export default function OwnerDashboardView() {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-xl max-w-2xl"
+                className="bg-white rounded-3xl p-10 border border-slate-200 shadow-xl max-w-2xl"
               >
                 <h2 className="text-3xl font-display font-bold mb-8 text-slate-900">Partner Registration</h2>
                 <form onSubmit={handleAddRestaurant} className="space-y-6">
@@ -458,13 +479,24 @@ export default function OwnerDashboardView() {
                       />
                     </div>
                     <div>
+                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Contact Number</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
+                        placeholder="e.g. +91 98765 43210"
+                        value={newRes.contactNumber}
+                        onChange={e => setNewRes({...newRes, contactNumber: e.target.value})}
+                      />
+                    </div>
+                    <div>
                       <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Cuisine Type</label>
                       <select 
                         className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
                         value={newRes.cuisine}
                         onChange={e => setNewRes({...newRes, cuisine: e.target.value})}
                       >
-                        {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {cuisines.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        {cuisines.length === 0 && <option value="North Indian">North Indian</option>}
                       </select>
                     </div>
                     <div>
@@ -475,7 +507,8 @@ export default function OwnerDashboardView() {
                         value={newRes.city}
                         onChange={e => setNewRes({...newRes, city: e.target.value})}
                       >
-                        {SUPPORTED_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        {cities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        {cities.length === 0 && <option value="Bangalore">Bangalore</option>}
                       </select>
                     </div>
                   </div>
@@ -608,8 +641,8 @@ export default function OwnerDashboardView() {
                       {/* Stats Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {stats.map((stat, idx) => (
-                          <div key={idx} className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-md transition-all">
-                             <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110", stat.bg)}>
+                          <div key={idx} className="bg-white p-8 rounded-lg border border-slate-200 shadow-sm group hover:shadow-md transition-all">
+                             <div className={cn("w-14 h-14 rounded-lg flex items-center justify-center mb-6 transition-transform group-hover:scale-110", stat.bg)}>
                                 <stat.icon className={stat.color} size={28} />
                              </div>
                              <p className="text-sm font-bold text-slate-500 mb-1">{stat.label}</p>
@@ -619,7 +652,7 @@ export default function OwnerDashboardView() {
                       </div>
 
                       {/* Welcome Card */}
-                      <div className="bg-brand rounded-[2.5rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
+                      <div className="bg-brand rounded-xl p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
                          <div className="relative z-10">
                             <h2 className="text-3xl font-display font-bold mb-3">Hello, {restaurant?.name}!</h2>
                             <p className="text-white/80 max-w-md font-medium leading-relaxed">
@@ -627,12 +660,12 @@ export default function OwnerDashboardView() {
                             </p>
                             <button 
                               onClick={() => setActiveTab('bookings')}
-                              className="mt-6 bg-white text-brand px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-sm"
+                              className="mt-6 bg-white text-brand px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-sm"
                             >
                               Check Recent Bookings <ArrowRight size={18} />
                             </button>
                          </div>
-                         <div className="relative z-10 w-full md:w-64 aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-white/20">
+                         <div className="relative z-10 w-full md:w-64 aspect-video rounded-lg overflow-hidden shadow-2xl border-4 border-white/20">
                             <img 
                               src={restaurant?.image || RESTAURANT_IMAGE_FALLBACK} 
                               className="w-full h-full object-cover" 
@@ -651,7 +684,7 @@ export default function OwnerDashboardView() {
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm"
+                      className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm"
                     >
                       <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                          <h2 className="text-2xl font-display font-bold text-slate-900">Manage Bookings</h2>
@@ -659,7 +692,7 @@ export default function OwnerDashboardView() {
                             <button 
                               onClick={toggleAlerts}
                               className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                                "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
                                 alertsEnabled ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-slate-100 text-slate-500"
                               )}
                             >
@@ -681,7 +714,7 @@ export default function OwnerDashboardView() {
                           {bookings.filter(b => b.status === 'pending').map((booking) => (
                             <div key={booking.id} className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:bg-slate-50/50 transition-colors">
                                <div className="flex items-center gap-4">
-                                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm">
+                                  <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-slate-100 shadow-sm">
                                      <img 
                                       src={`https://ui-avatars.com/api/?name=${booking.userName}&background=random&bold=true`} 
                                       alt="User" 
@@ -711,19 +744,19 @@ export default function OwnerDashboardView() {
                                         const text = encodeURIComponent(`Hello ${booking.userName}, this is ${restaurant?.name}. We have received your booking for ${booking.guests} guests on ${formatDate(booking.dateTime)} at ${formatTime(booking.dateTime)}. Would you like to confirm this?`);
                                         window.open(`https://wa.me/${booking.userPhone?.replace(/\D/g, '')}?text=${text}`, '_blank');
                                       }}
-                                      className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all border border-emerald-100"
+                                      className="p-3 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all border border-emerald-100"
                                    >
                                       <MessageSquare size={18} />
                                    </button>
                                    <button 
                                       onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                      className="flex-grow md:flex-none px-6 py-3 bg-brand text-white rounded-xl font-bold text-sm shadow-lg shadow-brand/10 hover:scale-105 active:scale-95 transition-all"
+                                      className="flex-grow md:flex-none px-6 py-3 bg-brand text-white rounded-lg font-bold text-sm shadow-lg shadow-brand/10 hover:scale-105 active:scale-95 transition-all"
                                    >
                                       Accept
                                    </button>
                                    <button 
                                       onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                      className="flex-grow md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
+                                      className="flex-grow md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
                                    >
                                       Decline
                                    </button>
@@ -791,7 +824,7 @@ export default function OwnerDashboardView() {
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8"
+                      className="bg-white rounded-lg border border-slate-200 shadow-sm p-10 space-y-8"
                     >
                       <div className="space-y-6">
                         <h2 className="text-2xl font-display font-bold text-slate-900 border-b border-slate-100 pb-6 uppercase tracking-tight">Basic Information</h2>
@@ -808,13 +841,24 @@ export default function OwnerDashboardView() {
                               />
                            </div>
                            <div className="space-y-2">
+                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Contact Number</label>
+                              <input 
+                                type="text"
+                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
+                                placeholder="e.g. +91 98765 43210"
+                                value={editForm.contactNumber || ''}
+                                onChange={e => setEditForm({...editForm, contactNumber: e.target.value})}
+                              />
+                           </div>
+                           <div className="space-y-2">
                               <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">City</label>
                               <select 
                                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all appearance-none"
                                 value={editForm.city || ''}
                                 onChange={e => setEditForm({...editForm, city: e.target.value})}
                               >
-                                {SUPPORTED_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                {cities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                {cities.length === 0 && <option value="Bangalore">Bangalore</option>}
                               </select>
                            </div>
                            <div className="space-y-2">
@@ -824,7 +868,8 @@ export default function OwnerDashboardView() {
                                 value={editForm.cuisine || ''}
                                 onChange={e => setEditForm({...editForm, cuisine: e.target.value})}
                               >
-                                {CUISINES.map(c => <option key={c} value={c}>{c}</option>)}
+                                {cuisines.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                {cuisines.length === 0 && <option value="North Indian">North Indian</option>}
                               </select>
                            </div>
                         </div>
@@ -854,22 +899,6 @@ export default function OwnerDashboardView() {
                                     />
                                   </div>
                                 </div>
-                                <div className="space-y-2">
-                                  <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Rating</label>
-                                  <div className="relative">
-                                    <Star className="absolute left-4 top-1/2 -translate-y-1/2 text-brand" size={16} />
-                                    <input 
-                                      type="number"
-                                      step="0.1"
-                                      min="1"
-                                      max="5"
-                                      className="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
-                                      value={editForm.rating || ''}
-                                      onChange={e => setEditForm({...editForm, rating: Number(e.target.value)})}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
                               <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                   <label className="text-[10px] font-black text-slate-400 px-1 uppercase tracking-widest">General Opening hours</label>
@@ -883,6 +912,8 @@ export default function OwnerDashboardView() {
                               </div>
                            </div>
                         </div>
+
+                      </div>
 
                         {/* Daily Timings Section */}
                         <div className="space-y-6 pt-6 border-t border-slate-100">

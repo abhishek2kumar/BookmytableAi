@@ -41,7 +41,11 @@
         "menuImages": { "type": "array", "items": { "type": "string" } },
         "secondaryImages": { "type": "array", "items": { "type": "string" } },
         "aiSummary": { "type": "string" },
+        "contactNumber": { "type": "string" },
+        "aiSummary": { "type": "string" },
         "aiSummaryUpdatedAt": { "type": "string", "format": "date-time" },
+        "lastModifiedBy": { "type": "string" },
+        "lastModifiedByType": { "type": "string", "enum": ["admin", "owner"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -94,6 +98,33 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["restaurantId", "userId", "rating", "text"]
+    },
+    "City": {
+      "title": "City",
+      "description": "Cities where the platform is available.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "isPopular": { "type": "boolean" },
+        "isKnown": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "lat", "lng"]
+    },
+    "Cuisine": {
+      "title": "Cuisine",
+      "description": "Restaurant cuisine options.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -112,6 +143,14 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles."
+    },
+    "/cities/{cityId}": {
+      "schema": "City",
+      "description": "Store city details."
+    },
+    "/cuisines/{cuisineId}": {
+      "schema": "Cuisine",
+      "description": "Store cuisine details."
     }
   }
 }

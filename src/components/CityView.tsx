@@ -3,22 +3,62 @@ import { useParams, Link } from 'react-router-dom';
 import { useRestaurants } from '../hooks/useFirebase';
 import { Restaurant } from '../types';
 import { RestaurantCard } from './RestaurantCard';
-import { CUISINE_DATA } from '../constants/cuisines';
-import { Star, MapPin, Search, Filter, Navigation, Zap, ChevronRight, TrendingUp, Percent, ArrowRight } from 'lucide-react';
+import { useMasterData } from './MasterDataContext';
+import { Star, MapPin, Search, Filter, Navigation, Zap, ChevronRight, ChevronLeft, TrendingUp, Percent, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
+import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CityView() {
   const { cityId } = useParams();
+  const navigate = useNavigate();
+  const { cities, cuisines } = useMasterData();
   const { restaurants, loading } = useRestaurants();
   const { coords: userCoords, city: contextCity } = useLocationContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(8);
 
-  const cityName = cityId 
-    ? (cityId.toLowerCase() === 'nearby' ? 'Nearby You' : cityId.charAt(0).toUpperCase() + cityId.slice(1)) 
-    : contextCity;
+  // Validate cityId on mount
+  useEffect(() => {
+    if (cityId && cities.length > 0) {
+      const isNearby = cityId.toLowerCase() === 'nearby';
+      const isSupported = cities.some(c => c.name.toLowerCase() === cityId.toLowerCase() && c.lat !== 0);
+      
+      if (!isNearby && !isSupported) {
+        const isKnown = cities.some(c => c.name.toLowerCase() === cityId.toLowerCase() && c.isKnown);
+        if (isKnown) {
+          navigate(`/error?city=${encodeURIComponent(cityId)}&type=unsupported`);
+        } else {
+          navigate(`/error?city=${encodeURIComponent(cityId)}&type=invalid`);
+        }
+      }
+    }
+  }, [cityId, navigate, cities]);
+
+  const featuredRef = useRef<HTMLDivElement>(null);
+  const discountRef = useRef<HTMLDivElement>(null);
+  const nearbyRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -400 : 400;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const cityName = useMemo(() => {
+    if (!cityId || cityId.toLowerCase() === 'nearby') {
+      // If it's the raw detected city name, try to find a match in our cities list for formatting
+      const match = cities.find(c => c.name.toLowerCase() === contextCity.toLowerCase());
+      return match ? match.name : contextCity;
+    }
+    
+    // Check if it matches any known city for proper capitalization
+    const knownCity = cities.find(c => c.name.toLowerCase() === cityId.toLowerCase());
+    return knownCity ? knownCity.name : cityId.charAt(0).toUpperCase() + cityId.slice(1);
+  }, [cityId, contextCity, cities]);
 
   // Haversine formula for distance in km
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -40,21 +80,19 @@ export default function CityView() {
         const resCityNorm = res.city ? res.city.toLowerCase() : '';
         const currentCityNorm = cityName.toLowerCase();
 
-        // If Nearby You is selected, and we have user coords, we show restaurants within a reasonable distance (e.g. 100km)
+        // If Nearby You is selected, and we have user coords, we show restaurants within a reasonable distance (e.g. 50km for strictly "near")
         if (currentCityNorm === 'nearby you' || currentCityNorm === 'nearby') {
-          if (!userCoords) return true; // Show all if we can't get user location yet
+          if (!userCoords) return true; 
           
           if (res.lat && res.lng) {
             const dist = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
-            return dist <= 100; // 100km radius for "Nearby"
+            return dist <= 50; 
           }
-          
-          // If restaurant has no coords, but city matches contextCity, show it as nearby
           return contextCity && resCityNorm === contextCity.toLowerCase();
         }
 
-        const matchesCity = resCityNorm === currentCityNorm ||
-          (res.location && res.location.toLowerCase().includes(currentCityNorm));
+        // Strict match by city field or valid location string
+        const matchesCity = resCityNorm === currentCityNorm;
         return matchesCity;
       })
       .map(res => ({
@@ -63,7 +101,7 @@ export default function CityView() {
           ? calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng)
           : null
       }));
-  }, [restaurants, cityName, userCoords]);
+  }, [restaurants, cityName, userCoords, contextCity]);
 
   const featuredRestaurants = useMemo(() => {
     return [...cityRestaurants].sort((a, b) => b.rating - a.rating).slice(0, 5);
@@ -83,12 +121,12 @@ export default function CityView() {
       res.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
       res.location.toLowerCase().includes(searchQuery.toLowerCase())
     ).sort((a, b) => {
-      if (cityName === 'Nearby You' && a.distance !== null && b.distance !== null) {
+      if ((cityName === 'Nearby You' || cityName === 'Nearby') && a.distance !== null && b.distance !== null) {
         return a.distance - b.distance;
       }
-      return b.rating - a.rating;
+      return a.name.localeCompare(b.name);
     });
-  }, [cityRestaurants, searchQuery]);
+  }, [cityRestaurants, searchQuery, cityName]);
 
   // Infinite scroll
   useEffect(() => {
@@ -104,7 +142,7 @@ export default function CityView() {
   }, [visibleCount, filteredListing.length]);
 
   return (
-    <div className="pb-20 bg-vibrant-bg">
+    <div className="pb-20 bg-vibrant-bg min-h-screen">
       {/* Hero Header */}
       <section className="relative bg-white pt-8 pb-12 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
@@ -140,22 +178,22 @@ export default function CityView() {
               What's on your mind?
             </h2>
             <div className="flex items-start gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-none snap-x">
-              {CUISINE_DATA.map((cuisine) => (
+              {cuisines.map((cuisine) => (
                 <Link 
                   key={cuisine.id}
-                  to={`/cuisine/${cuisine.id}`}
+                  to={`/cuisine/${cuisine.id || cuisine.name.toLowerCase().replace(/ /g, '-')}`}
                   className="flex flex-col items-center gap-3 shrink-0 snap-start group"
                 >
                   <div className="w-20 md:w-32 h-20 md:h-32 rounded-full overflow-hidden shadow-vibrant group-hover:shadow-2xl transition-all duration-300 group-hover:-translate-y-1 relative ring-4 ring-transparent group-hover:ring-brand/10">
                     <img 
-                      src={cuisine.image} 
+                      src={cuisine.image || RESTAURANT_IMAGE_FALLBACK} 
                       alt={cuisine.name} 
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       referrerPolicy="no-referrer"
                       loading="lazy"
                     />
                   </div>
-                  <span className="text-sm md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors">
+                  <span className="text-sm md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors text-center max-w-[80px] md:max-w-[120px]">
                     {cuisine.name}
                   </span>
                 </Link>
@@ -169,16 +207,32 @@ export default function CityView() {
         
         {/* Featured Section */}
         {featuredRestaurants.length > 0 && (
-          <section>
+          <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-display font-black text-vibrant-dark">Featured Restaurants</h2>
                 <p className="text-vibrant-gray font-medium text-sm">Handpicked selections by our food experts</p>
               </div>
-              <TrendingUp className="text-brand" size={24} />
+              <div className="flex items-center gap-3">
+                <TrendingUp className="text-brand" size={24} />
+                <div className="hidden md:flex gap-2">
+                   <button 
+                     onClick={() => scroll(featuredRef, 'left')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronLeft size={20} className="text-vibrant-dark" />
+                   </button>
+                   <button 
+                     onClick={() => scroll(featuredRef, 'right')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronRight size={20} className="text-vibrant-dark" />
+                   </button>
+                </div>
+              </div>
             </div>
             
-            <div className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
+            <div ref={featuredRef} className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
               {featuredRestaurants.map((restaurant) => (
                 <RestaurantCard key={restaurant.id} restaurant={restaurant} className="w-[280px] md:w-[320px] shrink-0 snap-start" />
               ))}
@@ -188,19 +242,35 @@ export default function CityView() {
 
         {/* Top Discount Section */}
         {discountedRestaurants.length > 0 && (
-          <section>
+          <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-display font-black text-vibrant-dark">Top Discounts in {cityName}</h2>
                 <p className="text-vibrant-gray font-medium text-sm">Save big on your next meal</p>
               </div>
-              <div className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-black text-xs flex items-center gap-1">
-                <Percent size={14} />
-                LTD TIME
+              <div className="flex items-center gap-4">
+                <div className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full font-black text-xs flex items-center gap-1">
+                  <Percent size={14} />
+                  LTD TIME
+                </div>
+                <div className="hidden md:flex gap-2">
+                   <button 
+                     onClick={() => scroll(discountRef, 'left')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronLeft size={20} className="text-vibrant-dark" />
+                   </button>
+                   <button 
+                     onClick={() => scroll(discountRef, 'right')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronRight size={20} className="text-vibrant-dark" />
+                   </button>
+                </div>
               </div>
             </div>
             
-            <div className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
+            <div ref={discountRef} className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
               {discountedRestaurants.map((restaurant) => (
                 <RestaurantCard key={restaurant.id} restaurant={restaurant} className="w-[280px] md:w-[320px] shrink-0 snap-start" showFullOffer />
               ))}
@@ -210,16 +280,32 @@ export default function CityView() {
 
         {/* Nearby Section */}
         {nearbyRestaurants.length > 0 && (
-          <section>
+          <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-2xl font-display font-black text-vibrant-dark">Restaurants Near You</h2>
                 <p className="text-vibrant-gray font-medium text-sm">Quick dining options in your immediate vicinity</p>
               </div>
-              <Navigation className="text-brand" size={24} />
+              <div className="flex items-center gap-4">
+                <Navigation className="text-brand" size={24} />
+                <div className="hidden md:flex gap-2">
+                   <button 
+                     onClick={() => scroll(nearbyRef, 'left')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronLeft size={20} className="text-vibrant-dark" />
+                   </button>
+                   <button 
+                     onClick={() => scroll(nearbyRef, 'right')} 
+                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                   >
+                     <ChevronRight size={20} className="text-vibrant-dark" />
+                   </button>
+                </div>
+              </div>
             </div>
             
-            <div className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
+            <div ref={nearbyRef} className="flex gap-8 overflow-x-auto pb-6 scrollbar-none snap-x">
               {nearbyRestaurants.map((restaurant) => (
                 <RestaurantCard key={restaurant.id} restaurant={restaurant} className="w-[280px] md:w-[320px] shrink-0 snap-start" />
               ))}
@@ -246,7 +332,7 @@ export default function CityView() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="animate-pulse">
-                  <div className="bg-slate-200 aspect-[4/3] rounded-[2.5rem] mb-4" />
+                  <div className="bg-slate-200 aspect-[4/3] rounded-2xl mb-4" />
                   <div className="h-6 bg-slate-200 rounded w-3/4 mb-2" />
                   <div className="h-4 bg-slate-200 rounded w-1/2" />
                 </div>
@@ -266,7 +352,7 @@ export default function CityView() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-gray-200">
+            <div className="text-center py-32 bg-white rounded-3xl border border-dashed border-gray-200">
                <h3 className="text-2xl font-display font-black text-slate-400">No restaurants matching your search</h3>
             </div>
           )}

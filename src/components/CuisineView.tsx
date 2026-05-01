@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useRestaurants } from '../hooks/useFirebase';
-import { CUISINE_DATA } from '../constants/cuisines';
+import { useMasterData } from './MasterDataContext';
 import { Star, MapPin, ChevronLeft, Zap, Info } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
@@ -10,12 +10,13 @@ import { useLocationContext } from './LocationContext';
 export default function CuisineView() {
   const { cuisineId } = useParams();
   const navigate = useNavigate();
+  const { cuisines } = useMasterData();
   const { restaurants, loading } = useRestaurants();
-  const { coords: userCoords } = useLocationContext();
+  const { coords: userCoords, city: selectedCity } = useLocationContext();
   const [visibleCount, setVisibleCount] = useState(8);
 
-  const cuisineInfo = CUISINE_DATA.find(c => c.id === cuisineId);
-  const cuisineName = cuisineInfo?.name || cuisineId?.replace('-', ' ');
+  const cuisineInfo = cuisines.find(c => c.id === cuisineId || c.name.toLowerCase().replace(/ /g, '-') === cuisineId);
+  const cuisineName = cuisineInfo?.name || cuisineId?.replace(/-/g, ' ');
 
   // Distance calculator
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -31,7 +32,19 @@ export default function CuisineView() {
   };
 
   const filteredRestaurants = restaurants
-    .filter(res => res.cuisine.toLowerCase() === cuisineName?.toLowerCase())
+    .filter(res => {
+        const matchesCuisine = res.cuisine?.toLowerCase() === cuisineName?.toLowerCase();
+        
+        // Normalize city names for comparison
+        const resCityNorm = res.city ? res.city.toLowerCase() : '';
+        const selectedCityNorm = selectedCity.toLowerCase();
+        
+        // Match by city field or location string containing the city name
+        const matchesCity = resCityNorm === selectedCityNorm || 
+                          (res.location && res.location.toLowerCase().includes(selectedCityNorm));
+        
+        return matchesCuisine && matchesCity;
+    })
     .map(res => ({
       ...res,
       distance: userCoords && res.lat && res.lng 
@@ -128,7 +141,7 @@ export default function CuisineView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
               <div key={i} className="animate-pulse">
-                <div className="bg-slate-200 aspect-[4/3] rounded-[2rem] mb-4" />
+                <div className="bg-slate-200 aspect-[4/3] rounded-2xl mb-4" />
                 <div className="h-6 bg-slate-200 rounded w-3/4 mb-2" />
                 <div className="h-4 bg-slate-200 rounded w-1/2" />
               </div>
@@ -143,7 +156,7 @@ export default function CuisineView() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (index % 4) * 0.1 }}
               >
-                <Link to={`/restaurant/${restaurant.id}`} className="group flex flex-col h-full bg-white rounded-[2rem] shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-1">
+                <Link to={`/restaurant/${restaurant.id}`} className="group flex flex-col h-full bg-white rounded-2xl shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-1">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img 
                       src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} 
@@ -200,7 +213,7 @@ export default function CuisineView() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-gray-200">
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
             <h3 className="text-xl font-display font-bold text-slate-900 mb-2">No {cuisineName} restaurants yet</h3>
             <p className="text-slate-500">We couldn't find any results in this category.</p>
           </div>

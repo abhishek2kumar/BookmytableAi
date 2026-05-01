@@ -139,5 +139,31 @@ service cloud.firestore {
         )) || isAdmin()
       );
     }
+
+    // --- City & Cuisine Management ---
+    function isValidCity(data) {
+      return data.get('name', '') is string && data.get('name', '').size() > 0
+        && data.get('lat', 0) is number
+        && data.get('lng', 0) is number
+        && (!('image' in data) || data.image is string)
+        && (!('isPopular' in data) || data.isPopular is bool)
+        && (!('isKnown' in data) || data.isKnown is bool);
+    }
+
+    function isValidCuisine(data) {
+      return data.get('name', '') is string && data.get('name', '').size() > 0
+        && (!('image' in data) || data.image is string)
+        && (!('description' in data) || data.description is string);
+    }
+
+    match /cities/{cityId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidCity(incoming());
+    }
+
+    match /cuisines/{cuisineId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidCuisine(incoming());
+    }
   }
 }

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vibrant Bites</string>
+    <string name="title_activity_main">Vibrant Bites</string>
+    <string name="package_name">com.vibrantbites.app</string>
+    <string name="custom_url_scheme">com.vibrantbites.app</string>
+</resources>

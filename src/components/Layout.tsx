@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { 
@@ -15,17 +15,21 @@ import {
   Navigation
 } from 'lucide-react';
 import { useLocationContext } from './LocationContext';
+import { useMasterData } from './MasterDataContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import AppIcon from './AppIcon';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut, signInWithGoogle } = useAuth();
   const { city, setCity, setCoords, detectLocation, isDetecting } = useLocationContext();
+  const { cities: allCities } = useMasterData();
   const location = useLocation();
   const navigate = useNavigate();
   const [hasRedirected, setHasRedirected] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
 
   // Redirect owner to Manage tab on login
   React.useEffect(() => {
@@ -50,10 +54,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { name: 'Pune', lat: 18.5204, lng: 73.8567 },
   ];
 
+  const filteredCities = useMemo(() => {
+    if (!citySearchQuery) return majorCities;
+    const query = citySearchQuery.toLowerCase();
+    
+    // Mix majorCities and allCities from master data
+    const combined = [...majorCities];
+    allCities.forEach(c => {
+      if (!combined.some(mc => mc.name.toLowerCase() === c.name.toLowerCase())) {
+        combined.push({ name: c.name, lat: c.lat, lng: c.lng });
+      }
+    });
+
+    return combined
+      .filter(c => c.name.toLowerCase().includes(query))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [citySearchQuery, allCities]);
+
   const handleCitySelect = (cityName: string, lat: number, lng: number) => {
     setCity(cityName);
     setCoords({ lat, lng });
     setIsLocationModalOpen(false);
+    setCitySearchQuery('');
     navigate(`/city/${cityName.toLowerCase()}`);
   };
 
@@ -87,12 +109,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo & Location */}
-            <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center gap-2 group">
-                <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/20 group-hover:scale-105 transition-transform duration-200">
-                  <UtensilsCrossed size={22} />
-                </div>
-                <span className="hidden sm:block text-2xl font-display font-bold text-vibrant-dark tracking-tight">
+            <div className="flex items-center gap-4 sm:gap-8">
+              <Link to="/" className="flex items-center gap-2 group shrink-0">
+                <AppIcon size={40} className="rounded-xl shadow-lg shadow-brand/20 group-hover:scale-105 transition-transform duration-200" />
+                <span className="hidden lg:block text-2xl font-display font-bold text-vibrant-dark tracking-tight">
                   Bookmy<span className="text-brand">Table</span>
                 </span>
               </Link>
@@ -101,12 +121,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="relative">
                 <button 
                   onClick={() => setIsLocationModalOpen(!isLocationModalOpen)}
-                  className="flex items-center gap-2 group cursor-pointer border-l border-gray-200 pl-6 py-1 hover:text-brand transition-all"
+                  className="flex items-center gap-1.5 group cursor-pointer border-l border-gray-200 pl-4 sm:pl-6 py-1 hover:text-brand transition-all max-w-[150px] sm:max-w-none"
                 >
-                  <span className="text-xs font-bold text-vibrant-dark group-hover:text-brand border-b-2 border-vibrant-dark group-hover:border-brand transition-all whitespace-nowrap">
-                    {city}
+                  <span className="text-xs font-bold text-vibrant-dark group-hover:text-brand border-b-2 border-vibrant-dark group-hover:border-brand transition-all whitespace-nowrap truncate leading-tight">
+                    {isDetecting ? 'Detecting...' : city}
                   </span>
-                  <ChevronDown size={14} className="text-brand transition-transform duration-200 group-hover:translate-y-0.5" />
+                  <ChevronDown size={14} className="text-brand transition-transform duration-200 group-hover:translate-y-0.5 shrink-0" />
                 </button>
 
                 <AnimatePresence>
@@ -133,25 +153,34 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             <input 
                               type="text" 
                               placeholder="Search for city..."
+                              value={citySearchQuery}
+                              onChange={(e) => setCitySearchQuery(e.target.value)}
                               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-transparent focus:border-brand/20 rounded-lg text-sm font-medium outline-none transition-all"
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleCitySelect((e.target as HTMLInputElement).value, majorCities[0].lat, majorCities[0].lng);
+                                if (e.key === 'Enter' && filteredCities.length > 0) {
+                                  handleCitySelect(filteredCities[0].name, filteredCities[0].lat, filteredCities[0].lng);
                                 }
                               }}
                             />
                           </div>
                         </div>
-                        <p className="px-4 py-2 text-[10px] font-bold text-vibrant-gray uppercase tracking-widest opacity-40">Popular Cities</p>
-                        {majorCities.map(c => (
-                          <button
-                            key={c.name}
-                            onClick={() => handleCitySelect(c.name, c.lat, c.lng)}
-                            className="w-full text-left px-4 py-3 text-sm font-semibold text-vibrant-dark hover:bg-slate-50 hover:text-brand rounded-xl transition-all"
-                          >
-                            {c.name}
-                          </button>
-                        ))}
+                        <p className="px-4 py-2 text-[10px] font-black text-vibrant-gray uppercase tracking-widest opacity-40">
+                          {citySearchQuery ? 'Found Cities' : 'Popular Cities'}
+                        </p>
+                        <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                          {filteredCities.map(c => (
+                            <button
+                              key={c.name}
+                              onClick={() => handleCitySelect(c.name, c.lat, c.lng)}
+                              className="w-full text-left px-4 py-3 text-sm font-semibold text-vibrant-dark hover:bg-slate-50 hover:text-brand rounded-xl transition-all"
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                          {filteredCities.length === 0 && (
+                            <p className="px-4 py-8 text-center text-xs font-bold text-slate-400">No cities found matching your search</p>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -235,9 +264,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ) : (
                 <button
                   onClick={signInWithGoogle}
-                  className="bg-brand text-white px-6 py-2 rounded-xl font-semibold shadow-lg shadow-brand/20 hover:bg-brand-dark transition-all duration-200 active:scale-95"
+                  className="bg-brand text-white px-4 sm:px-6 py-2 rounded-xl font-semibold shadow-lg shadow-brand/20 hover:bg-brand-dark transition-all duration-200 active:scale-95 text-xs sm:text-sm"
                 >
-                  Sign In
+                  <span className="hidden sm:inline">Sign In</span>
+                  <span className="sm:hidden">Login</span>
                 </button>
               )}
             </div>
@@ -263,8 +293,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Footer */}
       <footer className={cn("bg-vibrant-dark py-12 text-vibrant-gray pb-32 md:pb-12")}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-6 opacity-80 filter grayscale brightness-200">
-            <UtensilsCrossed size={28} />
+          <div className="flex items-center justify-center gap-3 mb-6 opacity-80 filter grayscale brightness-200">
+            <AppIcon size={32} />
             <span className="text-2xl font-display font-bold">Bookmytable</span>
           </div>
           <p className="text-sm mb-6">
@@ -280,40 +310,76 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </footer>
-      {/* Mobile Bottom Navigation - Hidden on Restaurant Page */}
-      {!isRestaurantPage && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)]">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all active:scale-95",
-                location.pathname === item.path ? "text-brand" : "text-vibrant-gray opacity-50"
-              )}
-            >
-              <div className={cn(
-                "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-                location.pathname === item.path ? "bg-brand/10" : ""
-              )}>
-                <item.icon size={22} className={location.pathname === item.path ? "stroke-[2.5]" : ""} />
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
-            </Link>
-          ))}
-          {!profile && (
-            <button
-              onClick={signInWithGoogle}
-              className="flex flex-col items-center gap-1 text-brand active:scale-95"
-            >
-              <div className="w-12 h-8 flex items-center justify-center rounded-2xl bg-brand/10">
-                <LogOut size={22} className="rotate-180 stroke-[2.5]" />
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Login</span>
-            </button>
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
+        <Link
+          to="/"
+          className={cn(
+            "flex flex-col items-center gap-1 transition-all active:scale-95",
+            location.pathname === "/" ? "text-brand" : "text-vibrant-gray opacity-50"
           )}
-        </div>
-      )}
+        >
+          <div className={cn(
+            "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
+            location.pathname === "/" ? "bg-brand/10" : ""
+          )}>
+            <Search size={22} className={location.pathname === "/" ? "stroke-[2.5]" : ""} />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest">Explore</span>
+        </Link>
+
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-all active:scale-95",
+              location.pathname === item.path ? "text-brand" : "text-vibrant-gray opacity-50"
+            )}
+          >
+            <div className={cn(
+              "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
+              location.pathname === item.path ? "bg-brand/10" : ""
+            )}>
+              <item.icon size={22} className={location.pathname === item.path ? "stroke-[2.5]" : ""} />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+          </Link>
+        ))}
+
+        {profile ? (
+          <button
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-all active:scale-95",
+              isProfileOpen ? "text-brand" : "text-vibrant-gray opacity-50"
+            )}
+          >
+            <div className={cn(
+              "w-10 h-10 rounded-full border-2 transition-all overflow-hidden",
+              isProfileOpen ? "border-brand" : "border-transparent"
+            )}>
+              <img
+                src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest">Profile</span>
+          </button>
+        ) : (
+          <button
+            onClick={signInWithGoogle}
+            className="flex flex-col items-center gap-1 text-brand active:scale-95"
+          >
+            <div className="w-12 h-8 flex items-center justify-center rounded-2xl bg-brand/10">
+              <UserIcon size={22} className="stroke-[2.5]" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest">Login</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

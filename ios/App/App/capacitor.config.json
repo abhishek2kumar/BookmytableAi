@@ -1,0 +1,9 @@
+{
+	"appId": "com.vibrantbites.app",
+	"appName": "Vibrant Bites",
+	"webDir": "dist",
+	"packageClassList": [
+		"SplashScreenPlugin",
+		"StatusBarPlugin"
+	]
+}

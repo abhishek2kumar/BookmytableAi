@@ -6,6 +6,7 @@ export interface UserProfile {
   displayName?: string;
   photoURL?: string;
   role: UserRole;
+  favorites?: string[];
   createdAt: any;
 }
 
@@ -49,9 +50,13 @@ export interface Restaurant {
   }[];
   menuImages?: string[];
   secondaryImages?: string[];
+  contactNumber?: string;
   aiSummary?: string;
   aiSummaryUpdatedAt?: any;
+  lastModifiedBy?: string;
+  lastModifiedByType?: 'admin' | 'owner';
   createdAt: any;
+  updatedAt?: any;
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled';

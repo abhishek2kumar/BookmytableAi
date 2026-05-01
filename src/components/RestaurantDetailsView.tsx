@@ -10,7 +10,7 @@ import { Restaurant, Booking, Review } from '../types';
 import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday } from 'date-fns';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { useMemo } from 'react';
@@ -43,14 +43,109 @@ export default function RestaurantDetailsView() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+
+  // Load bookmark status
+  useEffect(() => {
+    if (user && profile && id) {
+      setIsBookmarked((profile.favorites || []).includes(id));
+    }
+  }, [user, profile, id]);
+
+  const toggleBookmark = async () => {
+    if (!user || !profile || !id) {
+      signInWithGoogle();
+      return;
+    }
+
+    setIsBookmarking(true);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const currentFavorites = profile.favorites || [];
+      let newFavorites;
+      
+      if (isBookmarked) {
+        newFavorites = currentFavorites.filter(favId => favId !== id);
+      } else {
+        newFavorites = [...currentFavorites, id];
+      }
+
+      await updateDoc(userRef, {
+        favorites: newFavorites,
+        updatedAt: serverTimestamp()
+      });
+      
+      setIsBookmarked(!isBookmarked);
+    } catch (err) {
+      console.error("Error updating bookmark:", err);
+    } finally {
+      setIsBookmarking(false);
+    }
+  };
 
   // Menu Carousel & Popup State
-  const [selectedMenuImage, setSelectedMenuImage] = useState<string | null>(null);
   const [menuSlideIndex, setMenuSlideIndex] = useState(0);
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [isTimingsOpen, setIsTimingsOpen] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
+
+  // Enhanced Photo Gallery & Viewer State
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [restaurantOwnerEmail, setRestaurantOwnerEmail] = useState<string | null>(null);
+  const allPhotos = useMemo(() => {
+    if (!restaurant) return [];
+    return [
+      restaurant.image,
+      ...(restaurant.secondaryImages || []),
+      ...(restaurant.menuImages || [])
+    ].filter(Boolean);
+  }, [restaurant]);
+
+  const openPhotoViewer = (imageUrl: string) => {
+    const idx = allPhotos.indexOf(imageUrl);
+    setPhotoIndex(idx >= 0 ? idx : 0);
+    setPhotoViewerOpen(true);
+  };
+
+  const nextPhoto = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setPhotoIndex(prev => (prev + 1) % allPhotos.length);
+  };
+
+  const prevPhoto = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setPhotoIndex(prev => (prev - 1 + allPhotos.length) % allPhotos.length);
+  };
+
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe) nextPhoto();
+    if (isRightSwipe) prevPhoto();
+  };
+
+  const distance = useMemo(() => {
+    if (userCoords && restaurant?.lat && restaurant?.lng) {
+      return calculateDistance(userCoords.lat, userCoords.lng, restaurant.lat, restaurant.lng);
+    }
+    return "0.8"; // Fallback to a small realistic number if no coords
+  }, [userCoords, restaurant]);
 
   useEffect(() => {
     if (user && reviews.length > 0) {
@@ -127,6 +222,22 @@ export default function RestaurantDetailsView() {
       }
     }
   }, [restaurant]);
+
+  useEffect(() => {
+    async function fetchOwnerEmail() {
+      if (restaurant?.ownerId) {
+        try {
+          const ownerDoc = await getDoc(doc(db, 'users', restaurant.ownerId));
+          if (ownerDoc.exists()) {
+            setRestaurantOwnerEmail(ownerDoc.data()?.email || null);
+          }
+        } catch (err) {
+          console.error("Error fetching owner email:", err);
+        }
+      }
+    }
+    fetchOwnerEmail();
+  }, [restaurant?.ownerId]);
 
   const handleGenerateSummary = async () => {
     if (!restaurant || !id) return;
@@ -214,6 +325,27 @@ export default function RestaurantDetailsView() {
       };
 
       await addDoc(collection(db, 'bookings'), bookingData);
+
+      // Send Email Confirmations via Backend API
+      try {
+        fetch('/api/confirm-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userEmail: user.email,
+            userName: profile?.displayName || user.displayName || 'Guest',
+            restaurantName: restaurant.name,
+            restaurantLocation: restaurant.location,
+            ownerEmail: restaurantOwnerEmail,
+            dateTime: bookingDateTime.toISOString(),
+            guests,
+            userPhone
+          })
+        }).catch(err => console.error('Silent email fail:', err));
+      } catch (err) {
+        console.error('Failed to trigger email confirmation:', err);
+      }
+
       setBookingSuccess(true);
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
@@ -239,53 +371,115 @@ export default function RestaurantDetailsView() {
 
   const isCurrentlyOpen = () => {
     const now = new Date();
-    const day = format(now, 'EEEE');
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDay = dayNames[now.getDay()];
     
-    // Check dailyTimings first
-    const daily = restaurant?.dailyTimings?.[day];
-    let openStr = restaurant?.openingHours?.open || '11:00 AM';
-    let closeStr = restaurant?.openingHours?.close || '11:00 PM';
-    let isClosed = false;
+    const getTimingsForDay = (day: string) => {
+      const daily = restaurant?.dailyTimings?.[day];
+      let openStr = restaurant?.openingHours?.open || '11:00 AM';
+      let closeStr = restaurant?.openingHours?.close || '11:00 PM';
+      let isClosed = false;
 
-    if (daily) {
-      if (daily.closed) isClosed = true;
-      else {
-        openStr = daily.open;
-        closeStr = daily.close;
+      if (daily) {
+        if (daily.closed) isClosed = true;
+        else {
+          openStr = daily.open;
+          closeStr = daily.close;
+        }
       }
-    }
+      return { openStr, closeStr, isClosed };
+    };
 
-    if (isClosed) return { status: 'Closed Today', color: 'text-red-500', closeTime: 'Tomorrow' };
+    const currentTimings = getTimingsForDay(currentDay);
 
-    try {
-      const parseTime = (timeStr: string) => {
-        const parts = timeStr.trim().split(' ');
-        const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
-        const time = parts[0].replace(/AM|PM/i, '');
-        let [h, m] = time.split(':').map(Number);
-        if (period === 'PM' && h !== 12) h += 12;
-        if (period === 'AM' && h === 12) h = 0;
-        return h * 60 + (m || 0);
+    const parseTime = (timeStr: string) => {
+      if (!timeStr) return 0;
+      const parts = timeStr.trim().split(' ');
+      const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
+      const time = parts[0].replace(/AM|PM/i, '');
+      let [h, m] = time.split(':').map(Number);
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      return h * 60 + (m || 0);
+    };
+
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const yesterdayIndex = (now.getDay() + 6) % 7;
+    const yesterdayDay = dayNames[yesterdayIndex];
+    const yesterdayTimings = getTimingsForDay(yesterdayDay);
+
+    const checkIsOpen = () => {
+      // Check if it's currently open based on today's timings
+      if (!currentTimings.isClosed) {
+        const openMin = parseTime(currentTimings.openStr);
+        const closeMin = parseTime(currentTimings.closeStr);
+
+        if (closeMin > openMin) {
+          if (currentMin >= openMin && currentMin < closeMin) return { open: true, closeTime: currentTimings.closeStr };
+        } else {
+          // Overnight: open today from 'open' till EOD, and closes tomorrow morning
+          if (currentMin >= openMin) return { open: true, closeTime: currentTimings.closeStr };
+        }
+      }
+
+      // Check if it's still open from yesterday's overnight session
+      if (!yesterdayTimings.isClosed) {
+        const yOpenMin = parseTime(yesterdayTimings.openStr);
+        const yCloseMin = parseTime(yesterdayTimings.closeStr);
+
+        if (yCloseMin < yOpenMin) {
+          if (currentMin < yCloseMin) return { open: true, closeTime: yesterdayTimings.closeStr };
+        }
+      }
+
+      return { open: false };
+    };
+
+    const currentStatus = checkIsOpen();
+
+    if (currentStatus.open) {
+      const closeMin = parseTime(currentStatus.closeTime!);
+      if (closeMin - currentMin <= 60 && closeMin > currentMin) {
+        return { 
+          displayText: `Closing soon at ${currentStatus.closeTime}`,
+          color: 'text-amber-500',
+          isClosed: false
+        };
+      }
+      return { 
+        displayText: `Open till ${currentStatus.closeTime}`,
+        color: 'text-vibrant-success',
+        isClosed: false
       };
-
-      const openMin = parseTime(openStr);
-      const closeMin = parseTime(closeStr);
-      const currentMin = now.getHours() * 60 + now.getMinutes();
-
-      if (currentMin < openMin) {
-        if (openMin - currentMin <= 60) return { status: 'Opening shortly', color: 'text-amber-500', closeTime: openStr };
-        return { status: 'Closed', color: 'text-red-500', closeTime: openStr };
-      }
-
-      if (currentMin >= openMin && currentMin < closeMin) {
-        if (closeMin - currentMin <= 60) return { status: 'Closing shortly', color: 'text-amber-500', closeTime: closeStr };
-        return { status: 'Open Now', color: 'text-vibrant-success', closeTime: closeStr };
-      }
-      
-      return { status: 'Closed for the day', color: 'text-red-500', closeTime: 'Tomorrow' };
-    } catch (e) {
-      return { status: 'Open Now', color: 'text-vibrant-success', closeTime: closeStr };
     }
+
+    if (currentTimings.isClosed || currentMin > parseTime(currentTimings.closeStr)) {
+      // Look for next opening
+      let nextDayIndex = (now.getDay() + 1) % 7;
+      let daysAhead = 1;
+      while (daysAhead <= 7) {
+        const nextDayName = dayNames[nextDayIndex];
+        const nextTimings = getTimingsForDay(nextDayName);
+        if (!nextTimings.isClosed) {
+           const label = daysAhead === 1 ? 'tomorrow' : nextDayName;
+           return { 
+             displayText: `Closed, Opens at ${nextTimings.openStr} ${label}`,
+             color: 'text-red-500',
+             isClosed: true
+           };
+        }
+        nextDayIndex = (nextDayIndex + 1) % 7;
+        daysAhead++;
+      }
+    } else if (currentMin < parseTime(currentTimings.openStr)) {
+      return { 
+        displayText: `Closed, opens at ${currentTimings.openStr}`,
+        color: 'text-red-500',
+        isClosed: true
+      };
+    }
+    
+    return { displayText: `Closed`, color: 'text-red-500', isClosed: true };
   };
 
   const bannerImages = restaurant ? [restaurant.image, ...(restaurant.secondaryImages || [])] : [];
@@ -307,23 +501,15 @@ export default function RestaurantDetailsView() {
         '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
       ];
 
-  // Haversine formula for distance in km
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return parseFloat((R * c).toFixed(1));
-  };
-
   const recommendations = useMemo(() => {
     if (!restaurant || !allRestaurants.length) return { similar: [], nearby: [], youMayLike: [] };
 
-    const filtered = allRestaurants.filter(r => r.id !== restaurant.id);
+    // STRICT city-based filtering for recommendations
+    const cityNorm = (restaurant.city || '').toLowerCase();
+    const filtered = allRestaurants.filter(r => 
+      r.id !== restaurant.id && 
+      ((r.city || '').toLowerCase() === cityNorm)
+    );
     
     // Similar: Same cuisine
     const similar = filtered
@@ -336,7 +522,7 @@ export default function RestaurantDetailsView() {
       .filter(r => r.lat && r.lng && restaurant.lat && restaurant.lng)
       .map(r => ({
         ...r,
-        distance: calculateDistance(restaurant.lat!, restaurant.lng!, r.lat!, r.lng!)
+        distance: Number(calculateDistance(restaurant.lat!, restaurant.lng!, r.lat!, r.lng!))
       }))
       .sort((a, b) => a.distance - b.distance)
       .slice(0, 4);
@@ -375,15 +561,15 @@ export default function RestaurantDetailsView() {
     <div className="bg-vibrant-bg min-h-screen pb-20 overflow-x-hidden">
       {/* Mobile Special Header */}
       <div className={cn(
-        "md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 transition-all duration-300",
-        scrolled ? "bg-white shadow-md" : "bg-transparent"
+        "md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-300",
+        scrolled ? "bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-100" : "bg-transparent"
       )}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate(-1)}
             className={cn(
-              "p-2 rounded-full transition-all active:scale-90",
-              scrolled ? "bg-slate-100 text-vibrant-dark" : "bg-black/20 backdrop-blur-md text-white"
+              "w-10 h-10 rounded-full transition-all active:scale-90 flex items-center justify-center",
+              scrolled ? "bg-slate-100 text-slate-800" : "bg-black/20 backdrop-blur-md text-white"
             )}
           >
             <ChevronLeft size={24} />
@@ -395,7 +581,7 @@ export default function RestaurantDetailsView() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="text-base font-display font-bold text-vibrant-dark line-clamp-1"
+                className="text-lg font-display font-black text-slate-900 line-clamp-1"
               >
                 {restaurant.name}
               </motion.h2>
@@ -403,20 +589,22 @@ export default function RestaurantDetailsView() {
           </AnimatePresence>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button 
-            onClick={() => setIsBookmarked(!isBookmarked)}
+            onClick={toggleBookmark}
+            disabled={isBookmarking}
             className={cn(
-              "p-2 rounded-full transition-all active:scale-90",
-              scrolled ? "bg-slate-100 text-vibrant-dark" : "bg-black/20 backdrop-blur-md text-white"
+              "w-10 h-10 rounded-full transition-all active:scale-90 flex items-center justify-center",
+              scrolled ? "bg-slate-100 text-slate-800" : "bg-black/20 backdrop-blur-md text-white",
+              isBookmarking && "opacity-50"
             )}
           >
-            <Heart size={20} className={isBookmarked ? "fill-red-500 text-red-500" : ""} />
+            <Heart size={20} className={cn(isBookmarked ? "fill-red-500 text-red-500" : "", isBookmarking && "animate-pulse")} />
           </button>
           <button 
             className={cn(
-              "p-2 rounded-full transition-all active:scale-90",
-              scrolled ? "bg-slate-100 text-vibrant-dark" : "bg-black/20 backdrop-blur-md text-white"
+              "w-10 h-10 rounded-full transition-all active:scale-90 flex items-center justify-center",
+              scrolled ? "bg-slate-100 text-slate-800" : "bg-black/20 backdrop-blur-md text-white"
             )}
             onClick={() => {
               if (navigator.share) {
@@ -446,7 +634,10 @@ export default function RestaurantDetailsView() {
 
           <div className="flex flex-col md:flex-row gap-10 md:pt-0 pt-0">
             {/* Banner Slider Section */}
-            <div className="w-screen md:w-[450px] aspect-[4/3] md:rounded-2xl rounded-none overflow-hidden shadow-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] md:left-auto md:right-auto md:ml-0 md:mr-0 group">
+            <div 
+              className="w-screen md:w-[450px] aspect-[4/3] md:rounded-lg rounded-none overflow-hidden shadow-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] md:left-auto md:right-auto md:ml-0 md:mr-0 group cursor-zoom-in"
+              onClick={() => openPhotoViewer(bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK)}
+            >
               <div className="relative w-full h-full">
                 <AnimatePresence mode="wait">
                   <motion.img 
@@ -464,40 +655,10 @@ export default function RestaurantDetailsView() {
                 </AnimatePresence>
                 
                 {bannerImages.length > 1 && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                    {bannerImages.map((_, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => setBannerIndex(i)}
-                        className={cn(
-                          "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                          i === bannerIndex ? "bg-white w-4" : "bg-white/40"
-                        )}
-                      />
-                    ))}
+                  <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-md text-white text-[10px] font-black z-10 border border-white/10">
+                    {bannerIndex + 1}/{bannerImages.length}
                   </div>
                 )}
-              </div>
-
-              {/* Mobile Banner Info Overlap (Keep for mobile aesthetic or remove if redesigning mobile too) */}
-              <div className="md:hidden absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/20 flex flex-col justify-end p-6 pointer-events-none">
-                <div className="flex items-start justify-between">
-                  <div className="pb-10">
-                    <h1 className="text-3xl font-display font-bold text-white mb-1 drop-shadow-md">{restaurant.name}</h1>
-                    <div className="flex flex-wrap items-center gap-2 text-white/90 font-medium">
-                      <span>{restaurant.cuisine}</span>
-                      <span className="w-1 h-1 bg-white/50 rounded-full" />
-                      <span>{restaurant.location.split(',')[0]}</span>
-                    </div>
-                  </div>
-                  <div className="bg-vibrant-success px-3 py-1.5 rounded-lg flex flex-col items-center shadow-lg shrink-0 scale-90 border border-white/20">
-                    <div className="flex items-center gap-1 text-white">
-                      <Star size={14} className="fill-white" />
-                      <span className="text-lg font-black">{restaurant.rating}</span>
-                    </div>
-                    <span className="text-[8px] font-black text-white/70 tracking-tighter mt-0.5">Rating</span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -528,15 +689,14 @@ export default function RestaurantDetailsView() {
                   </div>
 
                   <div className="flex items-center gap-2 text-xl">
-                    <span className={cn("font-bold flex items-center gap-1.5 tracking-tighter", status.color)}>
-                      {status.status}
-                    </span>
-                    <span className="text-slate-400">•</span>
                     <button 
                       onClick={() => setIsTimingsOpen(true)}
-                      className="flex items-center gap-1 text-vibrant-gray font-bold tracking-tighter hover:text-brand transition-colors"
+                      className={cn(
+                        "flex items-center gap-1 font-bold tracking-tighter hover:text-brand transition-colors",
+                        status.color
+                      )}
                     >
-                      Open till {status.closeTime}
+                      {status.displayText}
                       <ChevronDown size={20} className="text-brand shrink-0" />
                     </button>
                   </div>
@@ -575,59 +735,149 @@ export default function RestaurantDetailsView() {
                     <Compass size={24} className="group-hover:scale-110 transition-transform" />
                     Direction
                   </a>
+
+                  <div className="h-8 w-px bg-slate-200" />
+                  
+                  <button 
+                    onClick={toggleBookmark}
+                    disabled={isBookmarking}
+                    className={cn(
+                      "flex items-center gap-3 font-black text-xl group transition-all",
+                      isBookmarked ? "text-red-500" : "text-slate-800 hover:text-red-500",
+                      isBookmarking && "opacity-50 animate-pulse"
+                    )}
+                  >
+                    <Heart size={24} className={cn("group-hover:scale-110 transition-transform", isBookmarked && "fill-red-500")} />
+                    {isBookmarked ? 'Saved' : 'Save'}
+                  </button>
                 </div>
               </div>
             </div>
-            
-            {/* Mobile Redesigned Header (Optional, but let's align it) */}
-            <div className="md:hidden px-4 -mt-8 relative z-20">
-               <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800">
-                    <div className="bg-emerald-600 p-1 rounded-full text-white">
-                      <Star size={12} className="fill-white" />
+            {/* Mobile "Dineout" Style Interface */}
+            <div className="md:hidden px-0 -mt-[120px] relative z-20">
+               <div className="bg-white rounded-t-[40px] shadow-2xl border-t border-slate-100 overflow-hidden">
+                  <div className="p-6 space-y-5">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <h1 className="text-[28px] font-black text-slate-900 leading-tight tracking-tight">{restaurant.name}</h1>
+                        <div className="flex items-center flex-wrap gap-1 text-[12px] font-bold text-slate-600">
+                          <span>{distance} km</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="line-clamp-1">{restaurant.location}</span>
+                          <ChevronDown size={14} className="text-brand shrink-0" />
+                        </div>
+                        <p className="text-[12px] font-bold text-slate-500">
+                          {restaurant.cuisine} | ₹{restaurant.avgPrice} for two
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="bg-[#0b8a4a] px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm text-white">
+                          <span className="font-black text-base">{restaurant.rating}</span>
+                          <Star size={14} className="fill-white text-white" />
+                        </div>
+                        <div className="mt-2 text-center">
+                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{reviews.length} ratings</div>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-sm font-black">{restaurant.rating} • {reviews.length} reviews • ₹{restaurant.avgPrice} for two</span>
-                  </div>
 
-                  <h1 className="text-2xl font-display font-black text-slate-900">{restaurant.name}</h1>
-                  <p className="text-sm font-bold text-slate-600 tracking-wide">{restaurant.cuisine}</p>
-
-                  <div className="pt-2">
-                    <div className="flex gap-2 text-xs items-baseline mb-2">
-                      <span className="text-slate-400 font-bold shrink-0">Location</span>
-                      <span className="text-slate-800 font-medium line-clamp-1">{restaurant.location}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                       <span className={cn("font-bold tracking-tighter", status.color)}>{status.status}</span>
-                       <span className="text-slate-400">•</span>
+                    <div className="flex items-center gap-2.5 pt-1">
                        <button 
                         onClick={() => setIsTimingsOpen(true)}
-                        className="flex items-center gap-1 text-slate-600 font-bold tracking-tighter"
-                      >
-                         Open till {status.closeTime}
-                         <ChevronDown size={14} className="text-brand" />
+                        className={cn(
+                          "flex items-center gap-1.5 px-4 py-3 rounded-2xl text-[11px] font-black border transition-colors",
+                          status.isClosed ? "bg-red-50 text-red-700 border-red-100/30" : "bg-emerald-50 text-emerald-700 border-emerald-100/30"
+                        )}
+                       >
+                         {status.displayText}
+                         <ChevronDown size={14} />
                        </button>
+                       
+                       <div className="flex gap-3 ml-auto">
+                          <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
+                            className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100"
+                          >
+                            <Compass size={20} />
+                          </a>
+                          <a href="tel:+919876543210" className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100">
+                            <Phone size={20} />
+                          </a>
+                       </div>
                     </div>
                   </div>
+               </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
-                     <button className="flex flex-col items-center gap-1 text-brand font-bold text-[10px]">
-                        <CalendarIcon size={18} />
-                        Book
-                     </button>
-                     <a href="tel:+919876543210" className="flex flex-col items-center gap-1 text-slate-800 font-bold text-[10px]">
-                        <Phone size={18} />
-                        Call
-                     </a>
-                     <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-col items-center gap-1 text-brand font-bold text-[10px]"
-                    >
-                        <Compass size={18} />
-                        Direction
-                     </a>
+               {/* Offers Section Placeholder */}
+               <div className="mt-8 px-4 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[22px] font-black text-slate-900 tracking-tight">Best Offers for you</h3>
+                  </div>
+
+                  <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden pb-4">
+                     <div className="flex px-4 pt-4 gap-2">
+                        <button className="flex-1 py-3 text-[11px] font-black text-white bg-black rounded-2xl">Pre-booking offers</button>
+                        <button className="flex-1 py-3 text-[11px] font-black text-slate-500 hover:bg-slate-50 rounded-2xl transition-colors">Walk-in offers</button>
+                     </div>
+                     
+                     {restaurant.offers && restaurant.offers.length > 0 ? (
+                       <div className="p-6 space-y-6">
+                          {/* Featured Offer */}
+                          <div className="text-center space-y-3">
+                            <div className="flex items-center justify-center gap-1.5 mb-1">
+                               <span className="text-[10px] font-black text-[#ff4d4d] uppercase tracking-[0.2em] font-display">Bookmytable</span>
+                               <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">EXCLUSIVE</span>
+                            </div>
+                            <h4 className="text-[22px] font-black text-slate-900 tracking-tight leading-7">
+                              {restaurant.offers[0]} <ChevronRight size={18} className="inline text-slate-300" />
+                            </h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Available on All Days</p>
+                            
+                            <div className="flex justify-center gap-1.5 pt-2">
+                               {restaurant.offers.slice(0, 3).map((_, i) => (
+                                 <div 
+                                   key={i} 
+                                   className={cn(
+                                     "w-2 h-2 rounded-full transition-colors duration-300",
+                                     i === 0 ? "bg-brand" : "bg-slate-200"
+                                   )} 
+                                 />
+                               ))}
+                            </div>
+                          </div>
+
+                          {/* Offer Grid */}
+                          {restaurant.offers.length > 1 && (
+                            <div className="grid grid-cols-2 gap-3">
+                              {restaurant.offers.slice(1, 3).map((offer, idx) => (
+                                <div key={idx} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center gap-2 text-center">
+                                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                    <Gift size={14} className="text-amber-600" />
+                                  </div>
+                                  <span className="text-[11px] font-black text-slate-800 leading-tight">{offer}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Extra Offer Banner */}
+                          <div className="bg-[#ebfcf3] px-4 py-3 rounded-2xl flex items-center gap-3 border border-[#d4f5e3]">
+                            <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center p-1 border border-amber-200">
+                               <div className="w-full h-full bg-amber-500 rounded flex items-center justify-center text-[10px] font-black text-white">2X</div>
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-[11px] font-black text-[#008545] block">Earn & Redeem 2X DineCash</span>
+                              <span className="text-[9px] font-bold text-[#008545]/70">on entire bill payment</span>
+                            </div>
+                            <Info size={14} className="text-[#008545]/40" />
+                          </div>
+                       </div>
+                     ) : (
+                        <div className="p-8 text-center">
+                           <p className="text-slate-400 font-bold text-base">No exclusive offers available for this restaurant yet.</p>
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
@@ -635,12 +885,16 @@ export default function RestaurantDetailsView() {
         </div>
       </div>
 
-      {/* Gallery & Features */}
+       {/* Gallery & Features */}
       {restaurant.secondaryImages && restaurant.secondaryImages.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 mt-8 md:mt-12 overflow-x-auto pb-4 scrollbar-none">
           <div className="flex gap-4 md:gap-6">
             {restaurant.secondaryImages.map((img, i) => (
-              <div key={i} className="w-[200px] md:w-[300px] h-32 md:h-48 rounded-xl overflow-hidden shadow-vibrant shrink-0">
+              <div 
+                key={i} 
+                className="w-[200px] md:w-[300px] h-32 md:h-48 rounded-lg overflow-hidden shadow-vibrant shrink-0 cursor-zoom-in active:scale-95 transition-transform"
+                onClick={() => openPhotoViewer(img)}
+              >
                 <img src={img} alt={`${restaurant.name} view ${i}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={handleImageError} />
               </div>
             ))}
@@ -653,8 +907,8 @@ export default function RestaurantDetailsView() {
         <div className="lg:col-span-2 space-y-8 md:space-y-10">
           {/* Menu & Offers Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            {/* Offers */}
-            <div className="bg-vibrant-success/5 border border-vibrant-success/20 p-8 rounded-3xl h-full">
+            {/* Offers (Hide on mobile as it's already shown in the mobile card) */}
+            <div className="hidden md:block bg-vibrant-success/5 border border-vibrant-success/20 p-8 rounded-xl h-full">
               <div className="flex items-center gap-2 mb-6 text-vibrant-success">
                 <Gift size={24} />
                 <h3 className="text-xl font-display font-bold">Exclusive Offers</h3>
@@ -662,14 +916,14 @@ export default function RestaurantDetailsView() {
               {restaurant.offers && restaurant.offers.length > 0 ? (
                 <div className="space-y-4">
                   {restaurant.offers.map((offer, i) => (
-                    <div key={i} className="flex items-start gap-3 bg-white p-4 rounded-xl border border-vibrant-success/10">
+                    <div key={i} className="flex items-start gap-3 bg-white p-4 rounded-lg border border-vibrant-success/10">
                       <Zap className="text-vibrant-success shrink-0" size={18} />
                       <p className="text-sm font-bold text-vibrant-dark">{offer}</p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-2xl border border-dashed border-vibrant-success/10">
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-lg border border-dashed border-vibrant-success/10">
                   <Gift size={32} className="mb-3 opacity-20" />
                   <p className="text-sm font-medium">No offers at the moment</p>
                 </div>
@@ -677,7 +931,7 @@ export default function RestaurantDetailsView() {
             </div>
 
             {/* Menu Snippet */}
-            <div className="bg-slate-50 border border-gray-200 p-8 rounded-3xl h-full">
+            <div className="bg-slate-50 border border-gray-200 p-8 rounded-xl h-full">
               <div className="flex items-center gap-2 mb-6 text-brand">
                 <Utensils size={24} />
                 <h3 className="text-xl font-display font-bold">Popular Dishes</h3>
@@ -695,7 +949,7 @@ export default function RestaurantDetailsView() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-2xl border border-dashed border-gray-200">
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-white/50 rounded-lg border border-dashed border-gray-200">
                   <Utensils size={32} className="mb-3 opacity-20" />
                   <p className="text-sm font-medium">Menu not available yet</p>
                 </div>
@@ -712,8 +966,8 @@ export default function RestaurantDetailsView() {
                   <h2 className="text-2xl font-display font-bold text-vibrant-dark">Visual Menu</h2>
                 </div>
                 
-                {restaurant.menuImages.length > (window.innerWidth >= 768 ? 3 : 2) && (
-                  <div className="flex gap-2">
+                {restaurant.menuImages.length > 3 && (
+                  <div className="hidden md:flex gap-2">
                     <button 
                       onClick={() => setMenuSlideIndex(prev => Math.max(0, prev - 1))}
                       disabled={menuSlideIndex === 0}
@@ -735,19 +989,20 @@ export default function RestaurantDetailsView() {
                 )}
               </div>
 
-              <div className="relative overflow-hidden">
-                <motion.div 
-                  className="flex gap-4"
-                  animate={{ x: `calc(-${menuSlideIndex * (100 / (window.innerWidth >= 768 ? 3 : 2))}% - ${menuSlideIndex * 16}px)` }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                >
-                  {restaurant.menuImages.map((img, i) => (
-                    <motion.div 
-                      key={i}
-                      layout
-                      className="shrink-0 w-[calc(50%-8px)] md:w-[calc(33.333%-11px)] aspect-[3/4] rounded-2xl overflow-hidden shadow-md border border-gray-100 cursor-zoom-in group relative"
-                      onClick={() => setSelectedMenuImage(img)}
-                    >
+              <div className="relative">
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide md:overflow-visible md:pb-0">
+                  <motion.div 
+                    className="flex gap-4 shrink-0"
+                    animate={typeof window !== 'undefined' && window.innerWidth >= 768 ? { x: `calc(-${menuSlideIndex * (100 / (window.innerWidth >= 768 ? 3 : 2))}% - ${menuSlideIndex * 16}px)` } : {}}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    {restaurant.menuImages.map((img, i) => (
+                      <motion.div 
+                        key={i}
+                        layout
+                        className="shrink-0 w-[70vw] md:w-[calc(33.333%-11px)] aspect-[3/4] rounded-lg overflow-hidden shadow-md border border-gray-100 cursor-zoom-in group relative"
+                        onClick={() => openPhotoViewer(img)}
+                      >
                       <img 
                         src={img} 
                         alt={`Menu page ${i + 1}`} 
@@ -765,41 +1020,37 @@ export default function RestaurantDetailsView() {
                 </motion.div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Amenities / Facilities Section */}
-          <div className="bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-vibrant">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center">
-                <Settings2 size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-display font-bold text-vibrant-dark tracking-tight">Amenities & Facilities</h3>
-                <p className="text-vibrant-gray font-medium text-sm">Everything you need for a comfortable visit</p>
+          {/* Amenities / Facilities Section (Minimalistic) */}
+          <div className="bg-white border border-gray-100 p-6 rounded-xl shadow-vibrant">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Settings2 size={16} className="text-brand" />
+                <h3 className="text-sm font-display font-black text-vibrant-dark uppercase tracking-wider">Amenities</h3>
               </div>
             </div>
 
             {restaurant.facilities && restaurant.facilities.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="flex flex-wrap gap-2">
                 {restaurant.facilities.map((fac, i) => {
                   const Icon = facilityIcons[fac] || Check;
                   return (
                     <div 
                       key={i} 
-                      className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-brand/30 hover:bg-white transition-all shadow-sm"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-50/80 border border-slate-100 rounded-full group hover:border-brand/20 hover:bg-white transition-all shadow-sm"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-vibrant-gray group-hover:text-brand transition-colors">
-                        <Icon size={18} />
-                      </div>
-                      <span className="text-xs font-bold text-vibrant-dark">{fac}</span>
+                      <Icon size={12} className="text-brand/60 group-hover:text-brand" />
+                      <span className="text-[11px] font-bold text-slate-700">{fac}</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 rounded-3xl border border-dashed border-gray-200">
-                <CheckCircle2 size={32} className="mb-3 opacity-20" />
-                <p className="text-sm font-medium">Standard amenities provided</p>
+              <div className="flex items-center gap-2 text-slate-400 py-4">
+                <CheckCircle2 size={16} className="opacity-40" />
+                <p className="text-[11px] font-medium tracking-tight">Standard amenities provided at this outlet</p>
               </div>
             )}
           </div>
@@ -963,7 +1214,7 @@ export default function RestaurantDetailsView() {
       <div className="max-w-7xl mx-auto px-4 mt-8 md:mt-12 pt-8 md:pt-12 border-t border-gray-200">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           {/* AI Summary Card */}
-          <div className="bg-gradient-to-br from-indigo-500 to-brand p-6 rounded-[2rem] text-white shadow-xl relative overflow-hidden flex flex-col justify-center min-h-[220px]">
+          <div className="bg-gradient-to-br from-indigo-500 to-brand p-6 rounded-3xl text-white shadow-xl relative overflow-hidden flex flex-col justify-center min-h-[120px]">
              <div className="absolute top-0 right-0 p-6 opacity-10">
                <Sparkles size={80} />
              </div>
@@ -1001,7 +1252,7 @@ export default function RestaurantDetailsView() {
           </div>
 
           {/* Leave a Review Card */}
-          <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-vibrant">
+          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-vibrant">
             <div className="flex items-center gap-2 mb-6">
                 <MessageSquare className="text-brand" size={24} />
                 <h3 className="text-lg font-display font-bold text-vibrant-dark">Leave a Review</h3>
@@ -1226,7 +1477,7 @@ export default function RestaurantDetailsView() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between p-8 border-b border-slate-50">
                 <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight">Outlet Timings</h2>
@@ -1275,44 +1526,83 @@ export default function RestaurantDetailsView() {
           </motion.div>
         )}
 
-        {selectedMenuImage && (
-          <motion.div
+        {photoViewerOpen && (
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center overscroll-none touch-none"
+            onClick={() => setPhotoViewerOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') nextPhoto();
+              if (e.key === 'ArrowLeft') prevPhoto();
+              if (e.key === 'Escape') setPhotoViewerOpen(false);
+            }}
+            tabIndex={0}
           >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center"
+            <button 
+              className="absolute top-6 right-6 z-[110] w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all active:scale-90"
+              onClick={() => setPhotoViewerOpen(false)}
             >
-              <div 
-                className="absolute inset-0 bg-black/90 backdrop-blur-sm -z-10" 
-                onClick={() => setSelectedMenuImage(null)}
-              />
-              
+              <X size={24} />
+            </button>
+
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-white text-[10px] font-black tracking-widest uppercase">
+              {photoIndex + 1} / {allPhotos.length}
+            </div>
+
+            <div 
+              className="relative w-full h-full flex items-center justify-center p-4 md:p-12 select-none"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <button 
-                onClick={() => setSelectedMenuImage(null)}
-                className="absolute top-4 right-4 md:top-0 md:-right-12 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors backdrop-blur-md"
+                className="hidden md:flex absolute left-8 z-[110] w-14 h-14 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full items-center justify-center text-white transition-all active:scale-90"
+                onClick={prevPhoto}
               >
-                <X size={24} />
+                <ChevronLeft size={32} />
               </button>
 
-              <div className="w-full h-full flex items-center justify-center pointer-events-none">
-                <img 
-                  src={selectedMenuImage} 
-                  className="max-w-full max-h-full object-contain shadow-2xl rounded-lg pointer-events-auto"
-                  alt="Full resolution menu"
-                  referrerPolicy="no-referrer"
-                  onError={handleImageError}
-                />
-              </div>
-            </motion.div>
+              <motion.img
+                key={photoIndex}
+                initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 1.1, x: -20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                src={allPhotos[photoIndex]}
+                alt="View"
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg pointer-events-none"
+                referrerPolicy="no-referrer"
+              />
+
+              <button 
+                className="hidden md:flex absolute right-8 z-[110] w-14 h-14 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full items-center justify-center text-white transition-all active:scale-90"
+                onClick={nextPhoto}
+              >
+                <ChevronRight size={32} />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Sticky Bottom Actions (Mobile) - "App Style" */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-slate-100 px-6 py-4 pb-10 flex gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+        <button 
+          onClick={() => {
+            const el = document.getElementById('table-booking-card');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+          className="flex-1 bg-slate-50 text-slate-800 border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-tighter active:scale-95 transition-all shadow-sm"
+        >
+          Book a table
+        </button>
+        <button 
+          className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-xs uppercase tracking-tighter shadow-xl shadow-brand/30 active:scale-95 transition-all"
+        >
+          Pay bill now
+        </button>
+      </div>
     </div>
   );
 }

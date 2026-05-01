@@ -1,41 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, Clock } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, Clock, X, UtensilsCrossed } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
+import { useMasterData } from './MasterDataContext';
 import { cn } from '../lib/utils';
-
-const POPULAR_CITIES = [
-  { name: 'Bangalore', image: 'https://i.pinimg.com/736x/65/2e/12/652e12e6d11188f44bf0094ad8bc245c.jpg??auto=format&fit=crop&q=80&w=400', lat: 12.9716, lng: 77.5946 },
-  { name: 'Mumbai', image: 'https://images.unsplash.com/photo-1529253355930-ddbe423a2ac7?auto=format&fit=crop&q=80&w=400', lat: 19.0760, lng: 72.8777 },
-  { name: 'Delhi', image: 'https://i.pinimg.com/736x/8b/94/6c/8b946c6b3a6d452dbea16a0ac556aa4d.jpg??auto=format&fit=crop&q=80&w=400', lat: 28.6139, lng: 77.2090 },
-  { name: 'Hyderabad', image: 'https://i.pinimg.com/736x/b8/d0/6d/b8d06d9cea5a9831857e093f3403de37.jpg?auto=format&fit=crop&q=80&w=400', lat: 17.3850, lng: 78.4867 },
-  { name: 'Chennai', image: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&q=80&w=400', lat: 13.0827, lng: 80.2707 },
-  { name: 'Pune', image: 'https://i.pinimg.com/736x/72/4f/96/724f96ae23d7889cc27caf8563427d0c.jpg?auto=format&fit=crop&q=80&w=400', lat: 18.5204, lng: 73.8567 },
-  { name: 'Kolkata', image: 'https://i.pinimg.com/736x/9a/de/33/9ade339aeb1fcd1d74195b062d3e8191.jpg?auto=format&fit=crop&q=80&w=400', lat: 22.5726, lng: 88.3639 },
-  { name: 'Jaipur', image: 'https://i.pinimg.com/736x/69/39/b1/6939b19b873db0e4d3402f9d3eff7528.jpg?auto=format&fit=crop&q=80&w=400', lat: 26.9124, lng: 75.7873 }
-];
 
 export default function HomeLandingView() {
   const navigate = useNavigate();
+  const { cities } = useMasterData();
   const { setCity, setCoords, detectLocation, isDetecting } = useLocationContext();
   const [searchValue, setSearchValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const handleCitySelect = (city: string, lat: number, lng: number) => {
-    setCity(city);
-    setCoords({ lat, lng });
-    navigate(`/city/${city.toLowerCase()}`);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCitySelect = (cityName: string, lat?: number, lng?: number) => {
+    const trimmedInput = cityName.trim();
+    if (!trimmedInput) return;
+
+    const cityData = cities.find(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
+    
+    if (cityData) {
+      // Valid & Supported
+      setCity(cityData.name);
+      setCoords({ lat: lat || cityData.lat, lng: lng || cityData.lng });
+      navigate(`/city/${cityData.name.toLowerCase()}`);
+    } else {
+      // Check if it's a known city but unsupported
+      const isKnown = cities.some(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
+      
+      if (isKnown) {
+        // Valid but Unsupported
+        navigate(`/error?city=${encodeURIComponent(trimmedInput)}&type=unsupported`);
+      } else {
+        // Completely Invalid
+        navigate(`/error?city=${encodeURIComponent(trimmedInput)}&type=invalid`);
+      }
+      // Note: setCity is NOT called for invalid/unsupported locations as requested
+    }
+    setShowSuggestions(false);
   };
+
+  const suggestions = searchValue.trim() 
+    ? [...cities]
+        .filter(c => c.name.toLowerCase().includes(searchValue.toLowerCase()) && c.lat !== 0)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
 
   const handleDetectLocation = async () => {
     await detectLocation();
+    // After detection, the context city is updated. 
+    // We can either stay here or navigate to a generic page that shows the detected city.
+    // navigated to /city/nearby which will now display the detected city name thanks to our CityView fix.
     navigate('/city/nearby');
   };
 
   return (
     <div className="bg-white">
       {/* Hero Section */}
-      <section className="relative h-[600px] flex items-center justify-center bg-slate-900 overflow-hidden">
+      <section className="relative h-[500px] md:h-[600px] flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=2000" 
@@ -46,21 +80,21 @@ export default function HomeLandingView() {
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-900"></div>
         </div>
 
-        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto">
+        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-5xl md:text-7xl font-display font-black text-white mb-6 leading-tight drop-shadow-2xl">
+            <h1 className="text-4xl md:text-7xl font-display font-black text-white mb-6 leading-tight drop-shadow-2xl">
               Book the perfect table,<br />
               <span className="text-brand">wherever you are.</span>
             </h1>
-            <p className="text-xl text-slate-100 mb-12 max-w-2xl mx-auto drop-shadow-md">
+            <p className="text-base md:text-xl text-slate-100 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-md">
               Discover and book the finest dining experiences at the best restaurants in your city.
             </p>
             
-            <div className="max-w-3xl mx-auto flex flex-col md:flex-row gap-4">
+            <div className="max-w-3xl mx-auto flex flex-col md:flex-row gap-3 md:gap-4 relative px-4 md:px-0" ref={searchRef}>
               <div className="flex-grow relative group">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-focus-within:text-brand transition-colors" size={20} />
                 <input 
@@ -68,16 +102,48 @@ export default function HomeLandingView() {
                   placeholder="Enter your city (e.g. Pune, Bangalore)"
                   className="w-full pl-12 pr-4 py-4 md:py-5 bg-white border-2 border-transparent focus:border-brand rounded-2xl text-lg font-bold outline-none shadow-elevation transition-all placeholder:text-slate-300"
                   value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && searchValue) {
-                       handleCitySelect(searchValue, 0, 0); // Logic for general city search could be improved with geocoding
+                    if (e.key === 'Enter') {
+                       handleCitySelect(searchValue);
                     }
                   }}
                 />
+
+                {/* Suggestions Dropdown */}
+                <AnimatePresence>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100"
+                    >
+                      {suggestions.map((city) => (
+                        <button
+                          key={city.name}
+                          onClick={() => handleCitySelect(city.name, city.lat, city.lng)}
+                          className="w-full px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors text-left group/item"
+                        >
+                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100">
+                             <img src={city.image} alt={city.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div>
+                            <p className="font-black text-slate-900 group-hover/item:text-brand transition-colors">{city.name}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supported City</p>
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               <button 
-                onClick={() => searchValue && handleCitySelect(searchValue, 0, 0)}
+                onClick={() => handleCitySelect(searchValue)}
                 className="bg-brand text-white px-10 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-brand-dark transition-all transform active:scale-95 shadow-lg shadow-brand/40"
               >
                 Search
@@ -109,7 +175,10 @@ export default function HomeLandingView() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-6 md:gap-8">
-          {POPULAR_CITIES.map((city, index) => (
+          {[...cities]
+            .filter(c => c.isPopular)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((city, index) => (
             <motion.button
               key={city.name}
               initial={{ opacity: 0, scale: 0.9 }}
@@ -119,7 +188,7 @@ export default function HomeLandingView() {
               onClick={() => handleCitySelect(city.name, city.lat, city.lng)}
               className="group flex flex-col items-center gap-4 focus:outline-none"
             >
-              <div className="relative w-full aspect-square rounded-[2rem] overflow-hidden shadow-vibrant group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-vibrant group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                 <img 
                   src={city.image} 
                   alt={city.name} 
@@ -244,8 +313,8 @@ export default function HomeLandingView() {
               viewport={{ once: true }}
               className="relative"
             >
-              <div className="bg-gradient-to-br from-brand to-brand-dark p-1 rounded-[3rem] shadow-2xl">
-                 <div className="bg-slate-900 rounded-[2.8rem] overflow-hidden p-8 md:p-12">
+                <div className="bg-gradient-to-br from-brand to-brand-dark p-1 rounded-2xl shadow-2xl">
+                   <div className="bg-slate-900 rounded-2xl overflow-hidden p-8 md:p-12">
                     <div className="space-y-6">
                        <h3 className="text-2xl font-display font-black text-center mb-8">Onboarding Request</h3>
                        <div>
@@ -297,7 +366,7 @@ export default function HomeLandingView() {
 
       {/* Download App Section */}
       <section className="pb-24 px-4">
-         <div className="max-w-6xl mx-auto bg-gradient-to-br from-slate-900 to-vibrant-dark rounded-[3.5rem] p-10 md:p-20 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12 group shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)]">
+         <div className="max-w-6xl mx-auto bg-gradient-to-br from-slate-900 to-vibrant-dark rounded-3xl p-10 md:p-20 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12 group shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)]">
             <div className="relative z-10 max-w-xl">
                <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-6 leading-tight">
                   Download the <span className="text-brand">BookMyTable</span> Mobile App
@@ -327,21 +396,97 @@ export default function HomeLandingView() {
                </div>
             </div>
             
-            <div className="relative">
-               <div className="w-64 h-[500px] bg-slate-800 rounded-[3rem] border-8 border-slate-700 shadow-2xl relative overflow-hidden group-hover:-translate-y-4 transition-transform duration-700">
-                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-700 flex items-center justify-center">
-                     <div className="w-16 h-1 bg-slate-600 rounded-full" />
+            <div className="relative scale-110 md:translate-x-10">
+               <div className="w-64 h-[500px] bg-slate-900 rounded-[2.5rem] border-[8px] border-slate-800 shadow-2xl relative overflow-hidden group-hover:-translate-y-4 transition-transform duration-700">
+                  {/* Phone Notch/Header */}
+                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 z-30 flex items-center justify-center">
+                     <div className="w-16 h-1 bg-slate-700 rounded-full" />
                   </div>
-                  <img 
-                    src="https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80&w=400" 
-                    alt="App Screenshot" 
-                    className="w-full h-full object-cover opacity-60"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent p-6 flex flex-col justify-end">
-                     <div className="w-10 h-10 bg-brand rounded-lg mb-2" />
-                     <div className="h-4 w-24 bg-white/20 rounded mb-2" />
-                     <div className="h-4 w-32 bg-white/10 rounded" />
+                  
+                  {/* App Content Preview */}
+                  <div className="absolute inset-0 bg-white pt-6 overflow-hidden flex flex-col">
+                    {/* Tiny App Header */}
+                    <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-sm z-10">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={10} className="text-brand" />
+                        <span className="text-[9px] font-black text-slate-900">Pune, Maharashtra</span>
+                        <ChevronDown size={8} className="text-slate-400" />
+                      </div>
+                      <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center">
+                        <div className="w-2.5 h-2.5 bg-brand/20 rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto scrollbar-none pb-12">
+                      {/* Tiny App Hero */}
+                      <div className="px-3 py-3 space-y-3">
+                         <div className="space-y-1">
+                           <h4 className="text-[10px] font-black text-slate-900 leading-tight">Explore the best<br/>dining in Pune</h4>
+                           <div className="h-1.5 w-12 bg-brand/20 rounded-full" />
+                         </div>
+                         <div className="h-7 w-full bg-slate-50 border border-slate-100 rounded-lg flex items-center px-2 shadow-sm">
+                            <Search size={10} className="text-slate-300 mr-1.5" />
+                            <div className="h-1.5 w-24 bg-slate-200/50 rounded-full" />
+                         </div>
+                      </div>
+
+                      {/* Tiny Categories */}
+                      <div className="px-3 space-y-2 mb-4">
+                         <div className="flex justify-between items-center">
+                            <span className="text-[8px] font-black text-slate-900 uppercase tracking-wider">Cuisines</span>
+                            <div className="h-1 w-6 bg-brand/10 rounded-full" />
+                         </div>
+                         <div className="flex gap-2 overflow-x-auto scrollbar-none">
+                            {['Italian', 'Chinese', 'Indian', 'Bakery'].map((c, i) => (
+                              <div key={i} className="flex flex-col items-center gap-1 shrink-0">
+                                 <div className={cn("w-10 h-10 rounded-lg shadow-sm border border-slate-50", i === 0 ? "bg-brand/10" : "bg-slate-50")} />
+                                 <div className="h-1 w-6 bg-slate-200 rounded-full" />
+                              </div>
+                            ))}
+                         </div>
+                      </div>
+
+                      {/* Tiny Restaurant List */}
+                      <div className="px-3 space-y-3">
+                         <div className="flex justify-between items-center">
+                            <span className="text-[8px] font-black text-slate-900 uppercase tracking-wider">Trending Now</span>
+                         </div>
+                         {[1,2,3].map(i => (
+                           <div key={i} className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                              <div className="h-20 w-full bg-slate-100 relative">
+                                 <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded-md shadow-sm flex items-center gap-0.5">
+                                    <Star size={6} className="fill-brand text-brand" />
+                                    <span className="text-[6px] font-black text-brand">4.5</span>
+                                 </div>
+                                 <div className="absolute bottom-2 left-2 h-3.5 w-16 bg-brand/90 rounded px-1 flex items-center gap-1">
+                                    <Zap size={6} className="text-white fill-white" />
+                                    <span className="text-[6px] font-black text-white uppercase">50% OFF</span>
+                                 </div>
+                              </div>
+                              <div className="p-2 space-y-1">
+                                 <div className="flex justify-between items-start">
+                                    <div className="h-2 w-16 bg-slate-900 rounded-full" />
+                                 </div>
+                                 <div className="flex justify-between">
+                                    <div className="h-1.5 w-12 bg-slate-300 rounded-full" />
+                                    <div className="h-1.5 w-8 bg-slate-200 rounded-full" />
+                                 </div>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    </div>
+
+                    {/* Tiny Tab Bar */}
+                    <div className="absolute bottom-0 inset-x-0 border-t border-slate-100 px-6 py-3 flex justify-between bg-white/90 backdrop-blur-md">
+                        {[1,2,3,4].map(i => (
+                          <div key={i} className={cn("w-1.5 h-1.5 rounded-full", i === 1 ? "bg-brand" : "bg-slate-200")} />
+                        ))}
+                    </div>
                   </div>
+
+                  {/* Glass overlay for realism */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none z-20" />
                </div>
                
                {/* Decorative floating stats */}

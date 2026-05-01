@@ -12,7 +12,7 @@ interface RestaurantCardProps {
 
 export function RestaurantCard({ restaurant, className, showFullOffer }: RestaurantCardProps) {
   return (
-    <Link to={`/restaurant/${restaurant.id}`} className={cn("group flex flex-col h-full bg-white rounded-[2.5rem] shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-2", className)}>
+    <Link to={`/restaurant/${restaurant.id}`} className={cn("group flex flex-col h-full bg-white rounded-lg shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-2", className)}>
       <div className="relative aspect-[4/3] overflow-hidden">
         <img 
           src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} 
