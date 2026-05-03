@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, Clock, X, UtensilsCrossed } from 'lucide-react';
+import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, Clock, X, UtensilsCrossed, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
@@ -15,6 +15,9 @@ export default function HomeLandingView() {
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
+  const [onboardingSubmitted, setOnboardingSubmitted] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -290,7 +293,7 @@ export default function HomeLandingView() {
         </div>
       </section>
 
-      {/* Features / Why BookMyTable */}
+      {/* Features / Why Bookmytable */}
       <section className="bg-slate-50 py-24 md:py-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
@@ -343,7 +346,7 @@ export default function HomeLandingView() {
       </section>
 
       {/* Partner Onboarding Section */}
-      <section className="py-24 md:py-32 bg-vibrant-dark text-white overflow-hidden relative">
+      <section id="onboarding-request" className="py-24 md:py-32 bg-vibrant-dark text-white overflow-hidden relative">
         <div className="max-w-7xl mx-auto px-4 relative z-10">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
             <div>
@@ -353,7 +356,7 @@ export default function HomeLandingView() {
                 viewport={{ once: true }}
               >
                 <h2 className="text-4xl md:text-6xl font-display font-black mb-8 leading-tight">
-                  Grow your business with <span className="text-brand">BookMyTable</span>
+                  Grow your business with <span className="text-brand">Bookmytable</span>
                 </h2>
                 <p className="text-xl text-white/70 mb-12 font-medium leading-relaxed">
                   Join thousands of restaurant owners who are reaching more customers and streamlining their bookings with our platform.
@@ -400,23 +403,76 @@ export default function HomeLandingView() {
             >
                 <div className="bg-gradient-to-br from-brand to-brand-dark p-1 rounded-2xl shadow-2xl">
                    <div className="bg-slate-900 rounded-2xl overflow-hidden p-8 md:p-12">
-                    <div className="space-y-6">
-                       <h3 className="text-2xl font-display font-black text-center mb-8">Onboarding Request</h3>
-                       <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Restaurant Name</label>
-                          <input type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. Spice Garden" />
-                       </div>
-                       <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Contact Number</label>
-                          <div className="flex gap-2">
-                             <span className="bg-white/5 px-4 py-3 rounded-xl font-bold">+91</span>
-                             <input type="tel" className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="9988776655" />
-                          </div>
-                       </div>
-                       <button className="w-full bg-brand py-4 rounded-xl font-black tracking-widest uppercase text-sm mt-4 shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                          Get a call back
-                       </button>
-                    </div>
+                    {onboardingSubmitted ? (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-vibrant-success/20 text-vibrant-success rounded-full flex items-center justify-center mx-auto mb-4">
+                           <CheckCircle className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-2xl font-display font-black mb-2">Request Received!</h3>
+                        <p className="text-white/60 mb-6 font-medium">Our team will get in touch with you shortly.</p>
+                        <button 
+                          onClick={() => setOnboardingSubmitted(false)}
+                          className="text-brand font-bold hover:underline text-sm uppercase tracking-widest"
+                        >
+                          Submit Another
+                        </button>
+                      </div>
+                    ) : (
+                      <form 
+                        className="space-y-6"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          setIsSubmittingOnboarding(true);
+                          try {
+                            const formData = new FormData(e.currentTarget);
+                            const data = Object.fromEntries(formData.entries());
+                            const response = await fetch('/api/contact', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({...data, subject: 'Onboarding Request'}),
+                            });
+                            if (response.ok) setOnboardingSubmitted(true);
+                          } catch (error) {
+                            console.error('Failed to submit', error);
+                          } finally {
+                            setIsSubmittingOnboarding(false);
+                          }
+                        }}
+                      >
+                         <h3 className="text-2xl font-display font-black text-center mb-8">Onboarding Request</h3>
+                         
+                         <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Owner Name</label>
+                            <input required name="name" type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. John Doe" />
+                         </div>
+
+                         <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Email Address</label>
+                            <input required name="email" type="email" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. john@spice-garden.com" />
+                         </div>
+
+                         <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Restaurant Name</label>
+                            <input required name="restaurantName" type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. Spice Garden" />
+                         </div>
+                         
+                         <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Contact Number</label>
+                            <div className="flex gap-2">
+                               <span className="bg-white/5 px-4 py-3 rounded-xl font-bold border border-white/10">+91</span>
+                               <input required name="phone" type="tel" className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="9988776655" />
+                            </div>
+                         </div>
+                         
+                         <button 
+                            type="submit" 
+                            disabled={isSubmittingOnboarding}
+                            className="w-full bg-brand py-4 rounded-xl font-black tracking-widest uppercase text-sm mt-4 shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                         >
+                            {isSubmittingOnboarding ? 'Submitting...' : 'Get a call back'}
+                         </button>
+                      </form>
+                    )}
                  </div>
               </div>
               
@@ -454,7 +510,7 @@ export default function HomeLandingView() {
          <div className="max-w-6xl mx-auto bg-gradient-to-br from-slate-900 to-vibrant-dark rounded-3xl p-10 md:p-20 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12 group shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)]">
             <div className="relative z-10 max-w-xl">
                <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-6 leading-tight">
-                  Download the <span className="text-brand">BookMyTable</span> Mobile App
+                  Download the <span className="text-brand">Bookmytable</span> Mobile App
                </h2>
                <p className="text-xl text-white/60 mb-10 font-medium">
                   Experience seamless dining discovery and instant table reservations right from your fingertips. Available on iOS and Android.

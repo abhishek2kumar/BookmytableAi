@@ -29,7 +29,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 8080;
+  const PORT = 3000;
 
   app.use(express.json());
 
@@ -44,11 +44,27 @@ async function startServer() {
     console.log(`Message: ${message}`);
     console.log('------------------------------------');
 
-    // NOTE: To send a REAL email, you would integrate a service like Resend or SendGrid here.
-    // Example with Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // await resend.emails.send({ ... });
+    const resend = getResend();
+    if (resend) {
+      try {
+        // Send to User
+        await resend.emails.send({
+          from: 'contact@bookmytable.co.in', // Use verified domain in production
+          to: 'contact@bookmytable.co.in',
+          subject: 'Enquiry from customer' + name,
+          html: `
+            <h1>Your have received Enquiry from ${name} regarding  !</h1>
+            <p>Customer's e-mail address: ${email},</p>
+            <p>Customer's message: ${message}</p>
+          `
+        });
 
+      } catch (err) {
+        console.error('Error sending emails:', err);
+      }
+    } else {
+      console.log('NOTICE: RESEND_API_KEY missing. Email skipped but logged.');
+    }
     res.status(200).json({ success: true, message: 'Message received and logged for delivery to bookmytableindia@gmail.com' });
   });
 
@@ -77,7 +93,7 @@ async function startServer() {
       try {
         // Send to User
         await resend.emails.send({
-          from: 'BookMyTable <onboarding@resend.dev>', // Use verified domain in production
+          from: 'BookMyTable <bookings@bookmytable.co.in>', // Use verified domain in production
           to: userEmail,
           subject: 'Reservation Confirmed: ' + restaurantName,
           html: `
@@ -94,7 +110,7 @@ async function startServer() {
         // Send to Owner if email provided
         if (ownerEmail) {
           await resend.emails.send({
-            from: 'BookMyTable <onboarding@resend.dev>',
+            from: 'BookMyTable <bookings@bookmytable.co.in>',
             to: ownerEmail,
             subject: 'New Booking: ' + restaurantName,
             html: `

@@ -21,7 +21,7 @@ export default function TermsView() {
                 </div>
                 <h2 className="text-2xl font-display font-bold m-0">1. Acceptance of Terms</h2>
               </div>
-              <p>By accessing or using the BookMyTable platform, you agree to be bound by these Terms of Service. If you do not agree to all of these terms, do not use our services.</p>
+              <p>By accessing or using the Bookmytable platform, you agree to be bound by these Terms of Service. If you do not agree to all of these terms, do not use our services.</p>
             </section>
 
             <section>
@@ -51,7 +51,7 @@ export default function TermsView() {
                 </div>
                 <h2 className="text-2xl font-display font-bold m-0">4. Limitation of Liability</h2>
               </div>
-              <p>BookMyTable shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service. We do not guarantee the quality of food or service provided by the partner restaurants.</p>
+              <p>Bookmytable shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of or inability to use the service. We do not guarantee the quality of food or service provided by the partner restaurants.</p>
             </section>
 
             <div className="bg-indigo-50 p-8 rounded-[2rem] border border-indigo-100">

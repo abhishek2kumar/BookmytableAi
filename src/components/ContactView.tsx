@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export default function ContactView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,13 +41,13 @@ export default function ContactView() {
     <div className="bg-vibrant-bg min-h-screen pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
-          <motion.h1 
+          <motion.h3 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-display font-black text-vibrant-dark mb-4"
           >
             Get in Touch
-          </motion.h1>
+          </motion.h3>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -65,7 +67,7 @@ export default function ContactView() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Email Us</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">bookmytableindia@gmail.com</p>
+                  <p className="text-lg font-bold text-vibrant-dark">contact@bookmytable.co.in</p>
                 </div>
               </div>
 
@@ -75,7 +77,7 @@ export default function ContactView() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Call Us</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">+91 98765 43210</p>
+                  <p className="text-lg font-bold text-vibrant-dark">+91 8639636729 </p>
                 </div>
               </div>
 
@@ -84,8 +86,8 @@ export default function ContactView() {
                   <MapPin size={24} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Office</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">Mumbai, India</p>
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Head Office</h3>
+                  <p className="text-lg font-bold text-vibrant-dark">Pune, India</p>
                 </div>
               </div>
             </div>
@@ -97,8 +99,13 @@ export default function ContactView() {
                <div className="relative z-10">
                  <h3 className="text-xl font-display font-bold mb-2">Partner with us</h3>
                  <p className="text-white/60 text-sm font-medium mb-6">Want to list your restaurant? Reach out to our sales team.</p>
-                 <button className="bg-brand text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-brand/20 active:scale-95 transition-all">
-                    Register Hospital
+                 <button onClick={() => {
+                   navigate('/');
+                   setTimeout(() => {
+                     document.getElementById('onboarding-request')?.scrollIntoView({ behavior: 'smooth' });
+                   }, 300);
+                 }} className="bg-brand text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-brand/20 active:scale-95 transition-all">
+                    Register Your Restaurant
                  </button>
                </div>
             </div>
@@ -116,7 +123,7 @@ export default function ContactView() {
                     <CheckCircle2 size={48} />
                   </div>
                   <h2 className="text-3xl font-display font-bold text-vibrant-dark mb-2">Message Sent!</h2>
-                  <p className="text-vibrant-gray font-medium">Thank you for reaching out. We'll get back to you shortly at bookmytableindia@gmail.com.</p>
+                  <p className="text-vibrant-gray font-medium">Thank you for reaching out. We'll get back to you shortly!</p>
                   <button 
                     onClick={() => setSubmitted(false)}
                     className="mt-8 text-brand font-bold hover:underline"
@@ -149,15 +156,30 @@ export default function ContactView() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 block">Subject</label>
-                    <input 
-                      required
-                      name="subject"
-                      type="text" 
-                      placeholder="How can we help?"
-                      className="w-full p-5 bg-slate-50 border-none focus:ring-4 focus:ring-brand/10 focus:bg-white rounded-2xl outline-none text-base font-medium transition-all shadow-inner-sm"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 block">Contact Number</label>
+                      <div className="flex gap-2">
+                         <span className="p-5 bg-slate-50 text-slate-400 font-bold rounded-2xl border-none shadow-inner-sm">+91</span>
+                         <input 
+                           required
+                           name="phone"
+                           type="tel" 
+                           placeholder="9988776655"
+                           className="w-full p-5 bg-slate-50 border-none focus:ring-4 focus:ring-brand/10 focus:bg-white rounded-2xl outline-none text-base font-medium transition-all shadow-inner-sm"
+                         />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 block">Subject</label>
+                      <input 
+                        required
+                        name="subject"
+                        type="text" 
+                        placeholder="How can we help?"
+                        className="w-full p-5 bg-slate-50 border-none focus:ring-4 focus:ring-brand/10 focus:bg-white rounded-2xl outline-none text-base font-medium transition-all shadow-inner-sm"
+                      />
+                    </div>
                   </div>
 
                   <div>
