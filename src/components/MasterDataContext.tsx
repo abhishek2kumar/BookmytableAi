@@ -8,6 +8,7 @@ interface City {
   id?: string;
   name: string;
   image: string;
+  bannerImage?: string;
   lat: number;
   lng: number;
   isPopular?: boolean;
@@ -37,7 +38,16 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const unsubCities = onSnapshot(collection(db, 'cities'), (snapshot) => {
-      const cityData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as City[];
+      const cityData = snapshot.docs.map(doc => {
+        const data = doc.data() as City;
+        if (!data.bannerImage) {
+           const popularMatch = POPULAR_CITIES.find(c => c.name === data.name);
+           if (popularMatch?.bannerImage) {
+             data.bannerImage = popularMatch.bannerImage;
+           }
+        }
+        return { id: doc.id, ...data };
+      });
       setCities(cityData);
     });
 

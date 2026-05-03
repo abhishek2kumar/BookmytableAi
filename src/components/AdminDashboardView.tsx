@@ -4,17 +4,20 @@ import { db } from '../lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs } from 'firebase/firestore';
 import { Restaurant, Booking, UserProfile } from '../types';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
-import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, ChefHat } from 'lucide-react';
-import { searchRealRestaurants } from '../services/geminiService';
+import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, ChefHat, Settings, Image } from 'lucide-react';
+import { searchRealRestaurants } from '../services/aiService';
 import { useAuth } from './AuthProvider';
 import { useMasterData } from './MasterDataContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 
+const DEFAULT_BOOKING_SLOTS = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
+
 interface City {
   id?: string;
   name: string;
   image: string;
+  bannerImage?: string;
   lat: number;
   lng: number;
   isPopular?: boolean;
@@ -46,6 +49,7 @@ export default function AdminDashboardView() {
   const [editingCity, setEditingCity] = useState<City | null>(null);
   const [editingCuisine, setEditingCuisine] = useState<Cuisine | null>(null);
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
+  const [activeEditTab, setActiveEditTab] = useState<'general' | 'operational' | 'visuals' | 'menu' | 'reservations' | 'system'>('general');
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
   
@@ -58,6 +62,20 @@ export default function AdminDashboardView() {
   const [cuisineSearchQuery, setCuisineSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'fleet' | 'pulse' | 'inventory'>('fleet');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending'>('all');
+
+  const handleFirestoreError = (error: any, operation: string, path: string) => {
+    const errorInfo = {
+      error: error.message || String(error),
+      operationType: operation,
+      path: path,
+      authInfo: {
+        userId: currentUser?.uid,
+        email: currentUser?.email,
+      }
+    };
+    console.error('Firestore Error:', JSON.stringify(errorInfo));
+    return errorInfo.error;
+  };
 
   useEffect(() => {
     const unsubRes = onSnapshot(collection(db, 'restaurants'), (snapshot) => {
@@ -168,21 +186,35 @@ export default function AdminDashboardView() {
     if (!editingRestaurant || !currentUser) return;
     setIsSavingRestaurant(true);
     try {
-      const { id, ...data } = editingRestaurant;
-      const cleanData = {
-        ...data,
-        lastModifiedBy: currentUser.email || 'admin',
-        lastModifiedByType: 'admin',
-        updatedAt: serverTimestamp()
-      };
-      await updateDoc(doc(db, 'restaurants', id), cleanData);
+      const { id } = editingRestaurant;
+      
+      const allowedKeys = [
+        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'city', 
+        'isOpen', 'rating', 'approved', 'facilities', 'offers', 'menu', 'menuImages', 
+        'secondaryImages', 'dailyTimings', 'isBookingEnabled', 'bookingSlots',
+        'instantBookingLimit', 'blackoutDates', 'slotCategories', 'categorySlots', 'menuCategories'
+      ];
+      
+      const updateData: any = {};
+      allowedKeys.forEach(key => {
+        const val = (editingRestaurant as any)[key];
+        if (val !== undefined) {
+          updateData[key] = val;
+        }
+      });
+
+      updateData.lastModifiedBy = currentUser.email || 'admin';
+      updateData.lastModifiedByType = 'admin';
+      updateData.updatedAt = serverTimestamp();
+      
+      await updateDoc(doc(db, 'restaurants', id), updateData);
       setNotification({ type: 'success', message: 'Restaurant updated successfully!' });
       setTimeout(() => setNotification(null), 3000);
       setEditingRestaurant(null);
-    } catch (err) {
-      console.error(err);
-      setNotification({ type: 'error', message: 'Failed to update restaurant.' });
-      setTimeout(() => setNotification(null), 3000);
+    } catch (err: any) {
+      const errMsg = handleFirestoreError(err, 'update', `restaurants/${(editingRestaurant as any).id}`);
+      setNotification({ type: 'error', message: `Update failed: ${errMsg}` });
+      setTimeout(() => setNotification(null), 5000);
     } finally {
       setIsSavingRestaurant(false);
     }
@@ -344,6 +376,500 @@ export default function AdminDashboardView() {
   const sortedCities = useMemo(() => [...cities].sort((a, b) => a.name.localeCompare(b.name)), [cities]);
   const sortedCuisines = useMemo(() => [...cuisines].sort((a, b) => a.name.localeCompare(b.name)), [cuisines]);
 
+  const renderEditTabs = () => {
+    if (!editingRestaurant) return null;
+    
+    switch (activeEditTab) {
+      case 'general':
+        return (
+          <motion.div 
+            key="general"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-10"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Legal Entity Name</label>
+                <input 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.name}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cuisine Classification</label>
+                <select 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
+                  value={editingRestaurant.cuisine}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, cuisine: e.target.value})}
+                >
+                  {cuisines.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Brand Description / Story</label>
+              <textarea 
+                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[120px]"
+                value={editingRestaurant.description}
+                onChange={e => setEditingRestaurant({...editingRestaurant, description: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Service City</label>
+                <select 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
+                  value={editingRestaurant.city}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, city: e.target.value})}
+                >
+                  {cities.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-4 md:col-span-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Map Location / Address</label>
+                <input 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.location}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, location: e.target.value})}
+                />
+              </div>
+            </div>
+          </motion.div>
+        );
+      case 'operational':
+        return (
+          <motion.div 
+            key="operational"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-10"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Backbone (M)</label>
+                <input 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.contactNumber}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, contactNumber: e.target.value})}
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Avg Ticket Size (₹)</label>
+                <input 
+                  type="number"
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.avgPrice}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, avgPrice: Number(e.target.value)})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+               <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Operational Pulse</span>
+                  <div className="h-px flex-grow bg-slate-100" />
+               </div>
+               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                    <div key={day} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-black text-slate-500 uppercase text-center">{day.substring(0, 3)}</span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const currentTimings = editingRestaurant.dailyTimings || {};
+                          const currentDay = currentTimings[day] || { open: '11:00 AM', close: '11:00 PM', closed: false };
+                          setEditingRestaurant({
+                            ...editingRestaurant,
+                            dailyTimings: { ...currentTimings, [day]: { ...currentDay, closed: !currentDay.closed } }
+                          });
+                        }}
+                        className={cn(
+                           "w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                           editingRestaurant.dailyTimings?.[day]?.closed ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                        )}
+                      >
+                        {editingRestaurant.dailyTimings?.[day]?.closed ? 'OFF' : 'ON'}
+                      </button>
+                      {!(editingRestaurant.dailyTimings?.[day]?.closed) && (
+                        <div className="space-y-2">
+                          <input 
+                            className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
+                            value={editingRestaurant.dailyTimings?.[day]?.open || '11:00 AM'}
+                            onChange={e => {
+                              const next = {...(editingRestaurant.dailyTimings || {})};
+                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), open: e.target.value };
+                              setEditingRestaurant({...editingRestaurant, dailyTimings: next});
+                            }}
+                          />
+                          <input 
+                            className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
+                            value={editingRestaurant.dailyTimings?.[day]?.close || '11:00 PM'}
+                            onChange={e => {
+                              const next = {...(editingRestaurant.dailyTimings || {})};
+                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), close: e.target.value };
+                              setEditingRestaurant({...editingRestaurant, dailyTimings: next});
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </motion.div>
+        );
+      case 'visuals':
+        return (
+          <motion.div 
+            key="visuals"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-12"
+          >
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Primary Display Asset</label>
+              <div className="group relative">
+                <input 
+                  className="w-full pl-6 pr-24 py-5 bg-slate-50 border-2 border-slate- transparency focus:border-brand rounded-[24px] font-bold text-slate-800 outline-none transition-all shadow-inner text-base"
+                  value={editingRestaurant.image}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, image: e.target.value})}
+                  placeholder="https://images.unsplash.com/..."
+                />
+                <div className="absolute right-3 top-3 bottom-3 w-28 rounded-2xl overflow-hidden border-2 border-white shadow-sm bg-slate-100">
+                   <img src={editingRestaurant.image || RESTAURANT_IMAGE_FALLBACK} alt="Hero" className="w-full h-full object-cover" onError={handleImageError} />
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2">* High-resolution 16:9 ratio recommended</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Secondary Intelligence Gallery</label>
+                <button 
+                  type="button"
+                  onClick={() => setEditingRestaurant({...editingRestaurant, secondaryImages: [...(editingRestaurant.secondaryImages || []), '']})}
+                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-2"
+                >
+                  <Plus size={14} /> Add Slot
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                {(editingRestaurant.secondaryImages || []).map((img, i) => (
+                  <div key={i} className="relative group aspect-video rounded-[24px] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm">
+                    <img src={img || RESTAURANT_IMAGE_FALLBACK} alt={`Gallery ${i}`} className="w-full h-full object-cover" onError={handleImageError} />
+                    <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-4">
+                      <input 
+                        className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-3 py-1.5 text-white text-[10px] font-bold outline-none mb-2"
+                        value={img}
+                        onChange={e => {
+                          const next = [...(editingRestaurant.secondaryImages || [])];
+                          next[i] = e.target.value;
+                          setEditingRestaurant({...editingRestaurant, secondaryImages: next});
+                        }}
+                        placeholder="Image URL"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setEditingRestaurant({...editingRestaurant, secondaryImages: editingRestaurant.secondaryImages?.filter((_, idx) => idx !== i)})}
+                        className="bg-red-500 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                      >
+                        Purge
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {(editingRestaurant.secondaryImages || []).length === 0 && (
+                  <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-[32px] bg-slate-50 opacity-40">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">No auxiliary assets uploaded</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Capability Matrix (Facilities)</label>
+              <div className="flex flex-wrap gap-3 p-8 bg-slate-50 rounded-[32px] border border-slate-100">
+                 {['Fine Dine', 'Bar', 'Valet Parking', 'Indoor Seating', 'Outdoor Seating', 'Live Music', 'Vegetarian Only', 'Alcohol Served', 'Rooftop', 'Luxury', 'WiFi', 'Digital Menu'].map(fac => (
+                   <button
+                     key={fac}
+                     type="button"
+                     onClick={() => {
+                       const current = editingRestaurant.facilities || [];
+                       const next = current.includes(fac) ? current.filter(f => f !== fac) : [...current, fac];
+                       setEditingRestaurant({...editingRestaurant, facilities: next});
+                     }}
+                     className={cn(
+                       "px-6 py-4 rounded-[20px] text-[10px] font-black uppercase tracking-widest border transition-all",
+                       editingRestaurant.facilities?.includes(fac) 
+                        ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/20 scale-105" 
+                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm"
+                     )}
+                   >
+                     {fac}
+                   </button>
+                 ))}
+              </div>
+            </div>
+          </motion.div>
+        );
+      case 'menu':
+        return (
+          <motion.div 
+            key="menu"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-12"
+          >
+             <div className="flex items-center justify-between px-1">
+                <div>
+                   <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight">Visual Menu Taxonomy</h3>
+                   <p className="text-slate-400 text-xs font-bold mt-1">Configure multi-category & multi-page digital menu overlays.</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                     const next = [...(editingRestaurant.menuCategories || [])];
+                     next.push({ id: Math.random().toString(36).substr(2, 9), name: 'New Section', images: [] });
+                     setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                  }}
+                  className="px-8 py-4 bg-brand text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-brand/20 hover:scale-105 transition-all"
+                >
+                   Add Section
+                </button>
+             </div>
+
+             <div className="space-y-10">
+                {(editingRestaurant.menuCategories || []).map((cat, catIdx) => (
+                  <div key={cat.id} className="bg-slate-50 rounded-[40px] border border-slate-100 p-10 space-y-8 relative group/cat shadow-inner">
+                     <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-8">
+                       <div className="flex-grow">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">Category Title</label>
+                          <input 
+                              className="bg-transparent border-none text-2xl font-display font-black text-slate-900 w-full focus:ring-0 p-0 placeholder:opacity-20"
+                              value={cat.name}
+                              placeholder="e.g. CULINARY SPECIALS"
+                              onChange={e => {
+                                 const next = [...(editingRestaurant.menuCategories || [])];
+                                 next[catIdx].name = e.target.value;
+                                 setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                              }}
+                          />
+                       </div>
+                       <button 
+                         type="button"
+                         onClick={() => {
+                            if(confirm('Delete entire menu section?')) {
+                              const next = [...(editingRestaurant.menuCategories || [])];
+                              next.splice(catIdx, 1);
+                              setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                            }
+                         }}
+                         className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center justify-center"
+                       >
+                          <Trash2 size={20} />
+                       </button>
+                     </div>
+                     
+                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        {(cat.images || []).map((img, imgIdx) => (
+                          <div key={imgIdx} className="space-y-3">
+                            <div className="relative group/img aspect-[3/4] rounded-[24px] overflow-hidden border-2 border-white shadow-vibrant bg-white">
+                               <img src={img || RESTAURANT_IMAGE_FALLBACK} alt="Menu" className="w-full h-full object-cover" onError={handleImageError} />
+                               <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center p-4">
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                       const next = [...(editingRestaurant.menuCategories || [])];
+                                       next[catIdx].images.splice(imgIdx, 1);
+                                       setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                                    }}
+                                    className="bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl"
+                                  >
+                                     Remove Page
+                                  </button>
+                               </div>
+                            </div>
+                            <input 
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-brand shadow-sm"
+                              value={img}
+                              placeholder="Image URL"
+                              onChange={e => {
+                                const next = [...(editingRestaurant.menuCategories || [])];
+                                next[catIdx].images[imgIdx] = e.target.value;
+                                setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                              }}
+                            />
+                          </div>
+                        ))}
+                        <button 
+                           type="button"
+                           onClick={() => {
+                              const next = [...(editingRestaurant.menuCategories || [])];
+                              next[catIdx].images = [...(next[catIdx].images || []), ''];
+                              setEditingRestaurant({...editingRestaurant, menuCategories: next});
+                           }}
+                           className="aspect-[3/4] border-2 border-dashed border-slate-200 rounded-[24px] flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all gap-3 bg-white/50"
+                        >
+                           <Plus size={32} />
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em]">Add Page</span>
+                        </button>
+                     </div>
+                  </div>
+                ))}
+
+                {(editingRestaurant.menuCategories || []).length === 0 && (
+                  <div className="py-32 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[48px]">
+                     <UtensilsCrossed size={64} className="mx-auto text-slate-100 mb-6" />
+                     <p className="text-slate-400 font-bold text-lg">Your menu ecosystem is currently empty.</p>
+                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2">Initialize your first section above</p>
+                  </div>
+                )}
+             </div>
+          </motion.div>
+        );
+      case 'reservations':
+        return (
+          <motion.div 
+            key="reservations"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-10"
+          >
+             <div className="flex items-center justify-between p-6 bg-slate-900 rounded-3xl text-white">
+                <div className="flex items-center gap-4">
+                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors", editingRestaurant.isBookingEnabled ? "bg-emerald-500" : "bg-red-500")}>
+                      <Calendar size={24} />
+                   </div>
+                   <div>
+                      <p className="text-sm font-black">Reservation Engine</p>
+                      <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{editingRestaurant.isBookingEnabled ? 'Operational' : 'Deactivated'}</p>
+                   </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setEditingRestaurant({...editingRestaurant, isBookingEnabled: !editingRestaurant.isBookingEnabled})}
+                  className={cn("px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", editingRestaurant.isBookingEnabled ? "bg-white/10 hover:bg-white/20 text-white" : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20")}
+                >
+                   {editingRestaurant.isBookingEnabled ? 'Disable' : 'Enable Engine'}
+                </button>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Confirmation Threshold (n)</label>
+                   <input 
+                     type="number"
+                     className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold"
+                     value={editingRestaurant.instantBookingLimit || 10}
+                     onChange={e => setEditingRestaurant({...editingRestaurant, instantBookingLimit: Number(e.target.value)})}
+                   />
+                </div>
+                <div className="space-y-4">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Active Slots (n)</label>
+                   <div className="flex flex-wrap gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl min-h-[100px]">
+                      {(editingRestaurant.bookingSlots || []).map((s, idx) => (
+                        <div key={idx} className="bg-white px-2 py-1 rounded text-[9px] font-bold flex items-center gap-1 border">
+                           {s}
+                           <button type="button" onClick={() => setEditingRestaurant({...editingRestaurant, bookingSlots: editingRestaurant.bookingSlots?.filter((_, i) => i !== idx)})}><X size={10} /></button>
+                        </div>
+                      ))}
+                      <input 
+                         className="w-16 bg-transparent outline-none text-[9px] font-bold"
+                         placeholder="+"
+                         onKeyDown={e => {
+                            if(e.key === 'Enter') {
+                               const val = e.currentTarget.value.trim();
+                               if(val) setEditingRestaurant({...editingRestaurant, bookingSlots: [...(editingRestaurant.bookingSlots || []), val]});
+                               e.currentTarget.value = '';
+                            }
+                         }}
+                      />
+                   </div>
+                </div>
+             </div>
+          </motion.div>
+        );
+      case 'system':
+        return (
+          <motion.div 
+            key="system"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-10"
+          >
+             <div className="p-8 bg-red-50 border border-red-100 rounded-[32px] space-y-6 shadow-inner">
+                <div className="flex items-center gap-4 text-red-600">
+                   <AlertCircle size={32} />
+                   <div>
+                      <h3 className="text-xl font-display font-black">Administrative Master Override</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Proceed with Caution</p>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-white p-6 rounded-2xl border border-red-100 flex items-center justify-between">
+                      <div>
+                         <p className="text-sm font-black text-slate-900">Platform Approval</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Public Visibility Control</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setEditingRestaurant({...editingRestaurant, approved: !editingRestaurant.approved})}
+                        className={cn("px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all", editingRestaurant.approved ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}
+                      >
+                         {editingRestaurant.approved ? 'Approved' : 'Unapproved'}
+                      </button>
+                   </div>
+
+                   <div className="bg-white p-6 rounded-2xl border border-red-100 flex items-center justify-between">
+                      <div>
+                         <p className="text-sm font-black text-slate-900">System Rating</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Rank Bias</p>
+                      </div>
+                      <input 
+                        type="number"
+                        step="0.1"
+                        max="5"
+                        min="0"
+                        className="w-16 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-center font-bold"
+                        value={editingRestaurant.rating}
+                        onChange={e => setEditingRestaurant({...editingRestaurant, rating: Number(e.target.value)})}
+                      />
+                   </div>
+                </div>
+             </div>
+
+             {editingRestaurant.lastModifiedBy && (
+                <div className="p-8 bg-slate-900 rounded-[32px] text-white flex items-center justify-between">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                         <History size={24} />
+                      </div>
+                      <div>
+                         <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Modification Trace</p>
+                         <p className="text-sm font-bold mt-1">Last write by <span className="text-brand">{editingRestaurant.lastModifiedBy} ({editingRestaurant.lastModifiedByType})</span></p>
+                      </div>
+                   </div>
+                </div>
+             )}
+          </motion.div>
+        );
+      default:
+        return null;
+    }
+  };
+
   const stats = [
     { 
       label: 'Total Users', 
@@ -385,14 +911,14 @@ export default function AdminDashboardView() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 pb-32">
+    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-brand selection:text-white">
+      <div className="max-w-7xl mx-auto px-4 py-12 pb-32">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div className="flex items-center gap-4">
-          <AppIcon size={64} className="shadow-xl rotate-3" />
           <div>
-            <h1 className="text-4xl font-display font-black text-vibrant-dark tracking-tight leading-none">Admin Hub</h1>
-            <p className="text-vibrant-gray font-bold text-sm uppercase tracking-widest mt-2 opacity-60">System Core & Control</p>
+            <h1 className="text-4xl font-display font-black text-white tracking-tight leading-none">Admin Hub</h1>
+            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-2 opacity-60">System Core & Control</p>
           </div>
         </div>
 
@@ -448,15 +974,15 @@ export default function AdminDashboardView() {
             whileTap={stat.onClick ? { scale: 0.98 } : {}}
             onClick={stat.onClick}
             className={cn(
-              "bg-white p-8 rounded-3xl border border-gray-100 shadow-vibrant text-left relative overflow-hidden group transition-all",
+              "bg-slate-900 p-8 rounded-3xl border border-white/5 shadow-2xl text-left relative overflow-hidden group transition-all",
               stat.onClick && "cursor-pointer hover:border-brand/30"
             )}
           >
             <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 group-hover:-rotate-3 shadow-sm", stat.bg, stat.color)}>
               <stat.icon size={26} />
             </div>
-            <p className="text-xs font-black text-vibrant-gray uppercase tracking-widest leading-none mb-2 opacity-50">{stat.label}</p>
-            <p className="text-4xl font-display font-black text-vibrant-dark">{stat.value}</p>
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-2 opacity-50">{stat.label}</p>
+            <p className="text-4xl font-display font-black text-white">{stat.value}</p>
             
             {stat.onClick && (
               <div className="absolute top-6 right-6 text-brand opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1131,6 +1657,17 @@ export default function AdminDashboardView() {
                     />
                   </div>
 
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Banner Image URL</label>
+                    <input 
+                      type="url"
+                      className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                      placeholder="https://..."
+                      value={editingCity.bannerImage || ''}
+                      onChange={e => setEditingCity({...editingCity, bannerImage: e.target.value})}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Latitude</label>
@@ -1401,451 +1938,94 @@ export default function AdminDashboardView() {
                </div>
             </motion.div>
           </div>
-        )}
-
-        {editingRestaurant && (
+        )}        {editingRestaurant && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setEditingRestaurant(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" 
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" 
             />
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 30 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white w-full max-w-7xl rounded-[40px] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]"
+              exit={{ scale: 0.95, opacity: 0, y: 30 }}
+              className="bg-white w-full max-w-5xl rounded-[48px] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] border border-white"
             >
-              <div className="p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-brand rounded-2xl flex items-center justify-center text-white shadow-lg">
-                    <ChefHat size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-display font-black text-slate-900 leading-none">Master Edit</h2>
-                    <p className="text-slate-500 font-bold mt-1.5 uppercase text-[10px] tracking-[0.2em]">{editingRestaurant.name}</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setEditingRestaurant(null)} 
-                  className="p-3 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm"
-                >
-                  <X size={24} />
-                </button>
+              <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-white relative">
+                 <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-slate-900 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
+                       <ChefHat size={32} />
+                    </div>
+                    <div>
+                       <h2 className="text-3xl font-display font-black text-slate-900 leading-tight">Master Configuration</h2>
+                       <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                          System ID: {editingRestaurant.id.substring(0, 8)} | {editingRestaurant.name}
+                       </p>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={() => setEditingRestaurant(null)} 
+                   className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all font-black"
+                 >
+                   <X size={24} />
+                 </button>
               </div>
 
-              <div className="flex-grow overflow-y-auto p-12 custom-scrollbar">
-                <form id="master-edit-form" onSubmit={handleSaveRestaurant} className="space-y-12">
-                   {/* Section: Basic Details */}
-                   <div className="space-y-8">
-                     <div className="flex items-center gap-3 border-l-4 border-brand pl-4">
-                       <span className="text-xs font-black text-brand uppercase tracking-widest">Base Details</span>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Restaurant Name</label>
-                         <input 
-                           type="text"
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 transition-all"
-                           value={editingRestaurant.name}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, name: e.target.value})}
-                           required
-                         />
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Number</label>
-                         <input 
-                           type="text"
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 transition-all"
-                           value={editingRestaurant.contactNumber || ''}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, contactNumber: e.target.value})}
-                         />
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cuisine Type</label>
-                         <select 
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xlmns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22none%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m2%205%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_1.5rem_center] bg-no-repeat"
-                           value={editingRestaurant.cuisine}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, cuisine: e.target.value})}
-                         >
-                           <option value="">Select Cuisine</option>
-                           {sortedCuisines.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                         </select>
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">City</label>
-                         <select 
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xlmns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22none%22%20stroke%3D%22%23cbd5e1%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m2%205%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px_16px] bg-[right_1.5rem_center] bg-no-repeat"
-                           value={editingRestaurant.city}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, city: e.target.value})}
-                         >
-                           <option value="">Select City</option>
-                           {sortedCities.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                         </select>
-                       </div>
-                     </div>
-
-                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Location Address</label>
-                       <textarea 
-                         rows={2}
-                         className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 transition-all resize-none"
-                         value={editingRestaurant.location}
-                         onChange={e => setEditingRestaurant({...editingRestaurant, location: e.target.value})}
-                       />
-                     </div>
-
-                     <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                       <textarea 
-                         rows={4}
-                         className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-brand/10 transition-all"
-                         value={editingRestaurant.description}
-                         onChange={e => setEditingRestaurant({...editingRestaurant, description: e.target.value})}
-                       />
-                     </div>
-                   </div>
-
-                   {/* Section: Pricing & Rating */}
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-slate-50">
-                     <div className="space-y-6">
-                       <div className="flex items-center gap-3 border-l-4 border-amber-500 pl-4">
-                         <span className="text-xs font-black text-amber-500 uppercase tracking-widest">Market Context</span>
-                       </div>
-                       <div className="grid grid-cols-2 gap-6">
-                         <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Avg Price (₹)</label>
-                           <input 
-                             type="number"
-                             className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-amber-500/10"
-                             value={editingRestaurant.avgPrice}
-                             onChange={e => setEditingRestaurant({...editingRestaurant, avgPrice: parseInt(e.target.value)})}
-                           />
-                         </div>
-                         <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rating</label>
-                           <input 
-                             type="number"
-                             step="0.1"
-                             min="1"
-                             max="5"
-                             className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-amber-500/10"
-                             value={editingRestaurant.rating}
-                             onChange={e => setEditingRestaurant({...editingRestaurant, rating: parseFloat(e.target.value)})}
-                           />
-                         </div>
-                       </div>
-                     </div>
-
-                     <div className="space-y-6">
-                        <div className="flex items-center gap-3 border-l-4 border-emerald-500 pl-4">
-                          <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">Operational Status</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                           <label className="flex items-center justify-between p-6 bg-slate-50 rounded-[24px] cursor-pointer group hover:bg-emerald-50 transition-colors">
-                              <span className="text-xs font-black text-slate-600 uppercase tracking-widest group-hover:text-emerald-600">Open Now</span>
-                              <input 
-                                type="checkbox"
-                                className="w-6 h-6 accent-emerald-500"
-                                checked={editingRestaurant.isOpen}
-                                onChange={e => setEditingRestaurant({...editingRestaurant, isOpen: e.target.checked})}
-                              />
-                           </label>
-                           <label className="flex items-center justify-between p-6 bg-slate-50 rounded-[24px] cursor-pointer group hover:bg-emerald-50 transition-colors">
-                              <span className="text-xs font-black text-slate-600 uppercase tracking-widest group-hover:text-emerald-600">Approved</span>
-                              <input 
-                                type="checkbox"
-                                className="w-6 h-6 accent-emerald-500"
-                                checked={editingRestaurant.approved}
-                                onChange={e => setEditingRestaurant({...editingRestaurant, approved: e.target.checked})}
-                              />
-                           </label>
-                        </div>
-                     </div>
-                   </div>
-
-        {/* Section: Images & Visual Assets */}
-                   <div className="space-y-8 pt-8 border-t border-slate-50">
-                     <div className="flex items-center gap-3 border-l-4 border-blue-500 pl-4">
-                       <span className="text-xs font-black text-blue-500 uppercase tracking-widest">Visual Assets Gallery</span>
-                     </div>
-                     
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                       <div className="space-y-4">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Primary Poster Image URL</label>
-                         <input 
-                           type="url"
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all shadow-inner"
-                           value={editingRestaurant.image}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, image: e.target.value})}
-                         />
-                         {editingRestaurant.image && (
-                           <div className="w-full h-48 rounded-[24px] overflow-hidden border-4 border-slate-50">
-                             <img src={editingRestaurant.image} className="w-full h-full object-cover" alt="Preview" />
-                           </div>
-                         )}
-                       </div>
-
-                       <div className="space-y-4">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secondary Gallery Images (URLs, one per line)</label>
-                         <textarea 
-                           rows={8}
-                           className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-mono text-xs shadow-inner"
-                           placeholder="https://example.com/img1.jpg&#10;https://example.com/img2.jpg"
-                           value={(editingRestaurant.secondaryImages || []).join('\n')}
-                           onChange={e => setEditingRestaurant({...editingRestaurant, secondaryImages: e.target.value.split('\n').filter(l => l.trim())})}
-                         />
-                       </div>
-                     </div>
-
-                     <div className="space-y-4">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Menu Card Images (URLs, one per line)</label>
-                       <textarea 
-                         rows={4}
-                         className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-mono text-xs shadow-inner"
-                         placeholder="https://example.com/menu1.jpg&#10;https://example.com/menu2.jpg"
-                         value={(editingRestaurant.menuImages || []).join('\n')}
-                         onChange={e => setEditingRestaurant({...editingRestaurant, menuImages: e.target.value.split('\n').filter(l => l.trim())})}
-                       />
-                     </div>
-                   </div>
-
-                   {/* Section: Exclusive Offers & Amenities */}
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-slate-50">
-                     <div className="space-y-6">
-                       <div className="flex items-center gap-3 border-l-4 border-rose-500 pl-4">
-                         <span className="text-xs font-black text-rose-500 uppercase tracking-widest">Exclusive Offers</span>
-                       </div>
-                       <div className="space-y-4">
-                          <textarea 
-                            rows={5}
-                            className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] font-bold outline-none focus:ring-4 focus:ring-rose-500/10 transition-all shadow-inner"
-                            placeholder="20% OFF on bill payment&#10;1+1 on Drinks"
-                            value={(editingRestaurant.offers || []).join('\n')}
-                            onChange={e => setEditingRestaurant({...editingRestaurant, offers: e.target.value.split('\n').filter(l => l.trim())})}
-                          />
-                          <p className="text-[10px] font-bold text-slate-400 ml-2 italic">Enter each offer on a new line</p>
-                       </div>
-                     </div>
-
-                     <div className="space-y-6">
-                       <div className="flex items-center gap-3 border-l-4 border-indigo-500 pl-4">
-                         <span className="text-xs font-black text-indigo-500 uppercase tracking-widest">Amenities & Facilities</span>
-                       </div>
-                       <div className="flex flex-wrap gap-2">
-                          {['WiFi', 'Parking', 'AC', 'Outdoor Seating', 'Live Music', 'Bar', 'Valet', 'Family Friendly', 'Kids Play Area', 'TV'].map(facility => (
-                            <button
-                              key={facility}
-                              type="button"
-                              onClick={() => {
-                                const current = editingRestaurant.facilities || [];
-                                const next = current.includes(facility) 
-                                  ? current.filter(f => f !== facility)
-                                  : [...current, facility];
-                                setEditingRestaurant({...editingRestaurant, facilities: next});
-                              }}
-                              className={cn(
-                                "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight border transition-all",
-                                (editingRestaurant.facilities || []).includes(facility)
-                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md scale-105"
-                                  : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
-                              )}
-                            >
-                              {facility}
-                            </button>
-                          ))}
-                       </div>
-                     </div>
-                   </div>
-
-                   {/* Section: Menu Management */}
-                   <div className="space-y-8 pt-8 border-t border-slate-50">
-                     <div className="flex items-center justify-between border-l-4 border-brand pl-4">
-                       <span className="text-xs font-black text-brand uppercase tracking-widest">Popular Dishes & Digital Menu</span>
-                       <button 
-                         type="button"
-                         onClick={() => {
-                           const current = editingRestaurant.menu || [];
-                           setEditingRestaurant({
-                             ...editingRestaurant, 
-                             menu: [...current, { name: '', price: 0, description: '' }]
-                           });
-                         }}
-                         className="bg-brand/10 text-brand px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-brand hover:text-white transition-all flex items-center gap-2"
-                       >
-                         <Plus size={14} /> Add Item
-                       </button>
-                     </div>
-                     
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {(editingRestaurant.menu || []).map((item, idx) => (
-                         <div key={idx} className="p-6 bg-slate-50 rounded-[32px] border border-slate-100 relative group animate-in fade-in slide-in-from-bottom-2 shadow-inner">
-                           <button 
-                             type="button"
-                             onClick={() => {
-                               const next = [...(editingRestaurant.menu || [])];
-                               next.splice(idx, 1);
-                               setEditingRestaurant({...editingRestaurant, menu: next});
-                             }}
-                             className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-slate-100 text-slate-400 hover:text-rose-500 rounded-full flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100"
-                           >
-                             <X size={14} />
-                           </button>
-                           <div className="space-y-4">
-                              <input 
-                                placeholder="Item Name"
-                                className="w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm outline-none"
-                                value={item.name}
-                                onChange={e => {
-                                  const next = [...(editingRestaurant.menu || [])];
-                                  next[idx].name = e.target.value;
-                                  setEditingRestaurant({...editingRestaurant, menu: next});
-                                }}
-                              />
-                              <input 
-                                type="number"
-                                placeholder="Price"
-                                className="w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl font-bold text-sm outline-none"
-                                value={item.price}
-                                onChange={e => {
-                                  const next = [...(editingRestaurant.menu || [])];
-                                  next[idx].price = parseInt(e.target.value) || 0;
-                                  setEditingRestaurant({...editingRestaurant, menu: next});
-                                }}
-                              />
-                              <textarea 
-                                placeholder="Short description..."
-                                rows={2}
-                                className="w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl font-medium text-[11px] outline-none resize-none"
-                                value={item.description}
-                                onChange={e => {
-                                  const next = [...(editingRestaurant.menu || [])];
-                                  next[idx].description = e.target.value;
-                                  setEditingRestaurant({...editingRestaurant, menu: next});
-                                }}
-                              />
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-
-                   {/* Section: Opening Hours Detailed */}
-                   <div className="space-y-8 pt-8 border-t border-slate-50">
-                      <div className="flex items-center gap-3 border-l-4 border-amber-500 pl-4">
-                       <span className="text-xs font-black text-amber-500 uppercase tracking-widest">Detailed Operating Hours</span>
-                     </div>
-                     
-                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                          <div key={day} className="flex flex-col gap-3 p-4 bg-slate-50 rounded-[32px] border border-slate-100 shadow-inner">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{day.substring(0, 3)}</span>
-                              <button 
-                                type="button"
-                                onClick={() => {
-                                  const currentTimings = editingRestaurant.dailyTimings || {};
-                                  const currentDay = currentTimings[day] || { open: '11:00 AM', close: '11:00 PM', closed: false };
-                                  setEditingRestaurant({
-                                    ...editingRestaurant,
-                                    dailyTimings: {
-                                      ...currentTimings,
-                                      [day]: { ...currentDay, closed: !currentDay.closed }
-                                    }
-                                  });
-                                }}
-                                className={cn(
-                                  "w-full py-2 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all",
-                                  (editingRestaurant.dailyTimings?.[day]?.closed) 
-                                    ? "bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-200" 
-                                    : "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-100"
-                                )}
-                              >
-                                {(editingRestaurant.dailyTimings?.[day]?.closed) ? 'Closed' : 'Open'}
-                              </button>
-                            </div>
-
-                            {!(editingRestaurant.dailyTimings?.[day]?.closed) && (
-                              <div className="space-y-2 pt-1 border-t border-slate-200/50">
-                                <input 
-                                  className="w-full bg-white border border-slate-100 rounded-lg py-1 px-1 text-[10px] font-black text-center text-slate-800 outline-none"
-                                  value={editingRestaurant.dailyTimings?.[day]?.open || '11:00 AM'}
-                                  onChange={e => {
-                                    const current = editingRestaurant.dailyTimings || {};
-                                    setEditingRestaurant({
-                                      ...editingRestaurant,
-                                      dailyTimings: {
-                                        ...current,
-                                        [day]: { ...(current[day] || {open: '', close: '', closed: false}), open: e.target.value }
-                                      }
-                                    });
-                                  }}
-                                />
-                                <div className="text-[8px] font-black text-slate-300 text-center uppercase tracking-widest leading-none">To</div>
-                                <input 
-                                  className="w-full bg-white border border-slate-100 rounded-lg py-1 px-1 text-[10px] font-black text-center text-slate-800 outline-none"
-                                  value={editingRestaurant.dailyTimings?.[day]?.close || '11:00 PM'}
-                                  onChange={e => {
-                                    const current = editingRestaurant.dailyTimings || {};
-                                    setEditingRestaurant({
-                                      ...editingRestaurant,
-                                      dailyTimings: {
-                                        ...current,
-                                        [day]: { ...(current[day] || {open: '', close: '', closed: false}), close: e.target.value }
-                                      }
-                                    });
-                                  }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                     </div>
-                   </div>
-
-                   {/* Modification Trace */}
-                   {editingRestaurant.lastModifiedBy && (
-                     <div className="p-8 bg-slate-900 rounded-[32px] text-slate-400 flex items-center justify-between shadow-2xl">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white">
-                              <History size={24} />
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Trace Logs</p>
-                              <p className="text-sm font-bold text-slate-200 mt-1">
-                                Last modification performed by <span className="text-brand">{editingRestaurant.lastModifiedBy} ({editingRestaurant.lastModifiedByType})</span>
-                              </p>
-                           </div>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Timestamp</p>
-                           <p className="text-sm font-bold text-slate-200 mt-1">
-                             {editingRestaurant.updatedAt?.toDate ? formatDate(editingRestaurant.updatedAt) : 'Initial Upload'}
-                           </p>
-                        </div>
-                     </div>
-                   )}
-                </form>
+              <div className="flex bg-slate-50 border-b border-slate-100 px-10 gap-8 overflow-x-auto no-scrollbar">
+                 {[
+                   { id: 'general', label: 'Brand', icon: Globe },
+                   { id: 'operational', label: 'Logistics', icon: Clock },
+                   { id: 'visuals', label: 'Portfolio', icon: Image },
+                   { id: 'menu', label: 'Menu', icon: Soup },
+                   { id: 'reservations', label: 'Reservations', icon: Calendar },
+                   { id: 'system', label: 'Control', icon: Settings }
+                 ].map(tab => (
+                   <button
+                     key={tab.id}
+                     onClick={() => setActiveEditTab(tab.id as any)}
+                     className={cn(
+                        "py-6 px-2 text-[10px] font-black uppercase tracking-[0.2em] relative transition-all flex items-center gap-2 outline-none whitespace-nowrap",
+                        activeEditTab === tab.id ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
+                     )}
+                   >
+                     <tab.icon size={14} />
+                     {tab.label}
+                     {activeEditTab === tab.id && (
+                       <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-t-full" />
+                     )}
+                   </button>
+                 ))}
               </div>
 
-              <div className="p-6 md:p-8 border-t border-slate-100 bg-slate-50/50 flex gap-4">
-                <button 
-                  type="submit" 
-                  form="master-edit-form"
-                  disabled={isSavingRestaurant}
-                  className="flex-grow bg-vibrant-dark text-white py-4 rounded-[20px] font-black shadow-xl shadow-vibrant-dark/20 flex items-center justify-center gap-3 active:scale-95 transition-all text-base disabled:opacity-50"
-                >
-                  {isSavingRestaurant ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                  <span>Commit All Changes</span>
-                </button>
-                <button 
-                  onClick={() => setEditingRestaurant(null)}
-                  className="px-10 bg-white border border-slate-200 text-slate-600 py-4 rounded-[20px] font-black shadow-sm hover:bg-slate-100 transition-all font-display text-base"
-                >
-                  Discard
-                </button>
+              <div className="flex-grow overflow-y-auto p-12 custom-scrollbar bg-white">
+                 <form id="master-edit-form" onSubmit={handleSaveRestaurant}>
+                    <AnimatePresence mode="wait">
+                       {renderEditTabs()}
+                    </AnimatePresence>
+                 </form>
+              </div>
+
+              <div className="p-8 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+                 <button 
+                   type="submit" 
+                   form="master-edit-form"
+                   disabled={isSavingRestaurant}
+                   className="flex-grow bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all text-base disabled:opacity-50 group overflow-hidden relative"
+                 >
+                   <div className="absolute inset-0 bg-brand translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out -z-10" />
+                   {isSavingRestaurant ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                   <span className="uppercase tracking-widest text-sm">Commit All Changes</span>
+                 </button>
+                 <button 
+                   type="button"
+                   onClick={() => setEditingRestaurant(null)}
+                   className="px-12 bg-white border border-slate-200 text-slate-500 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all font-display"
+                 >
+                   Cancel
+                 </button>
               </div>
             </motion.div>
           </div>
@@ -1868,6 +2048,7 @@ export default function AdminDashboardView() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

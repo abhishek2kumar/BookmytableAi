@@ -53,6 +53,17 @@ service cloud.firestore {
         && (!('menuImages' in data) || data.menuImages is list)
         && (!('secondaryImages' in data) || data.secondaryImages is list)
         && (!('openingHours' in data) || data.openingHours is map)
+        && (!('dailyTimings' in data) || data.dailyTimings is map)
+        && (!('isBookingEnabled' in data) || data.isBookingEnabled is bool)
+        && (!('bookingSlots' in data) || data.bookingSlots is list)
+        && (!('instantBookingLimit' in data) || data.instantBookingLimit is number)
+        && (!('blackoutDates' in data) || data.blackoutDates is list)
+        && (!('slotCategories' in data) || data.slotCategories is list)
+        && (!('menuCategories' in data) || data.menuCategories is list)
+        && (!('city' in data) || data.city is string)
+        && (!('contactNumber' in data) || data.contactNumber is string)
+        && (!('lastModifiedBy' in data) || data.lastModifiedBy is string)
+        && (!('lastModifiedByType' in data) || data.lastModifiedByType is string)
         && (!('aiSummary' in data) || data.aiSummary is string)
         && (!('aiSummaryUpdatedAt' in data) || data.aiSummaryUpdatedAt is timestamp || data.aiSummaryUpdatedAt == null)
         && (!('updatedAt' in data) || data.updatedAt is timestamp);
@@ -75,9 +86,11 @@ service cloud.firestore {
         (isOwner(existing().ownerId) && (
           // Strictly control which keys can be modified by the owner
           incoming().diff(existing()).affectedKeys().hasOnly([
-            'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 
+            'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 'contactNumber',
             'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
-            'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt'
+            'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt',
+            'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'instantBookingLimit', 
+            'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories'
           ]) &&
           isValidRestaurant(incoming()) &&
           incoming().ownerId == existing().ownerId &&

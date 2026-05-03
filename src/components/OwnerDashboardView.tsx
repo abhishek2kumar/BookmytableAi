@@ -1,1472 +1,900 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useAuth } from './AuthProvider';
-import { useMasterData } from './MasterDataContext';
-import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { Restaurant, Booking } from '../types';
-import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
-import { 
-  Store, 
-  Calendar, 
-  Clock, 
-  Users, 
-  CheckCircle, 
-  XCircle, 
-  Plus, 
-  Settings,
-  Star,
-  Image as ImageIcon,
-  ChefHat,
-  MapPin,
-  Trash2,
-  Save,
-  X,
-  AlertCircle,
-  CheckCircle2,
-  Info,
-  Tag,
-  LayoutDashboard,
-  UtensilsCrossed,
-  ImagePlus,
-  ArrowRight,
-  MessageSquare,
-  Volume2,
-  Navigation
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Users, Calendar, Clock, ChevronRight, 
+  Settings, Save, AlertCircle, CheckCircle2,
+  Trash2, Plus, Image as ImageIcon, Search,
+  ChefHat, MapPin, Tag, Menu, LayoutDashboard,
+  UtensilsCrossed, Star, X, Soup, Wine, IceCream, 
+  Car, Wifi, Music, Tv, Baby, Coffee, Info,
+  History, Eye, LogOut, Loader2, Globe, Shield,
+  ArrowRight, Heart, Share2, MoreVertical, Snowflake, Sun
+} from 'lucide-react';
+import { db, auth } from '../lib/firebase';
+import { 
+  collection, query, where, getDocs, 
+  doc, updateDoc, onSnapshot, orderBy,
+  limit, serverTimestamp, getDoc
+} from 'firebase/firestore';
+import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
 
-const BANGALORE_COORDS = { lat: 12.9716, lng: 77.5946 };
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const DEFAULT_BOOKING_SLOTS = ['12:00', '12:30', '13:00', '13:30', '14:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
+interface OwnerDashboardViewProps {
+  ownerId?: string;
+}
 
-type TabType = 'overview' | 'info' | 'menu' | 'gallery' | 'promotions' | 'bookings';
+const DEFAULT_BOOKING_SLOTS = [
+  "12:00", "12:30", "13:00", "13:30", 
+  "19:00", "19:30", "20:00", "20:30"
+];
 
-export default function OwnerDashboardView() {
-  const { user } = useAuth();
-  const { cities, cuisines } = useMasterData();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddingRestaurant, setIsAddingRestaurant] = useState(false);
+const MEAL_CATEGORIES = [
+  { id: 'breakfast', name: 'Breakfast', icon: Coffee },
+  { id: 'lunch', name: 'Lunch', icon: UtensilsCrossed },
+  { id: 'dinner', name: 'Dinner', icon: Soup },
+  { id: 'brunch', name: 'Brunch', icon: Wine }
+];
+
+export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashboardViewProps) {
+  const currentUserId = auth.currentUser?.uid;
+  const ownerId = propOwnerId || currentUserId;
   
-  const activeTab = (searchParams.get('tab') as TabType) || 'overview';
-  const setActiveTab = (tab: TabType) => {
-    setSearchParams({ tab });
-  };
-
-  const [editForm, setEditForm] = useState<Partial<Restaurant>>({});
-  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [alertsEnabled, setAlertsEnabled] = useState(false);
-  const prevPendingCount = useRef<number>(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    // Initialize audio
-    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-  }, []);
-
-  const toggleAlerts = () => {
-    if (!alertsEnabled) {
-      // Play a silent sound to "unlock" the audio context
-      audioRef.current?.play().catch(() => {});
-    }
-    setAlertsEnabled(!alertsEnabled);
-  };
-
-  const showNotification = (type: 'success' | 'error', message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 5000);
-  };
-
-  useEffect(() => {
-    if (restaurant) {
-      setEditForm({ ...restaurant });
-    }
-  }, [restaurant]);
-
-  const handleUpdateDetails = async () => {
-    if (!restaurant) return;
-    setIsSaving(true);
-    try {
-      const allowedKeys = [
-        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'city', 
-        'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
-        'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages',
-        'dailyTimings', 'isBookingEnabled', 'bookingSlots'
-      ];
-      
-      const updateData: any = {};
-      allowedKeys.forEach(key => {
-        if (editForm[key as keyof Restaurant] !== undefined) {
-          let value = editForm[key as keyof Restaurant];
-          
-          if ((key === 'facilities' || key === 'offers') && Array.isArray(value)) {
-            value = value.filter(s => s && s.trim().length > 0);
-          }
-          
-          updateData[key] = value;
-        }
-      });
-      
-      if (updateData.openingHours) {
-        updateData.openingHours = {
-          open: updateData.openingHours.open || '11:00 AM',
-          close: updateData.openingHours.close || '11:00 PM',
-          days: updateData.openingHours.days || 'Mon-Sun'
-        };
-      }
-      
-      updateData.updatedAt = serverTimestamp();
-      updateData.lastModifiedBy = user.email || user.displayName || user.uid;
-      updateData.lastModifiedByType = 'owner';
-
-      await updateDoc(doc(db, 'restaurants', restaurant.id), updateData);
-      showNotification('success', 'Changes saved successfully!');
-    } catch (err) {
-      console.error(err);
-      showNotification('error', 'Failed to save changes. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const [newRes, setNewRes] = useState({
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'management' | 'menu'>('overview');
+  const [activeMgmtTab, setActiveMgmtTab] = useState<'general' | 'operational' | 'visuals' | 'reservations'>('general');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
+  // Edit Form State
+  const [editForm, setEditForm] = useState<any>({
     name: '',
-    description: '',
-    cuisine: 'North Indian',
-    avgPrice: 500,
-    contactNumber: '',
-    image: '',
+    cuisine: '',
     location: '',
-    city: 'Bangalore',
-    lat: BANGALORE_COORDS.lat,
-    lng: BANGALORE_COORDS.lng
+    avgPrice: 0,
+    image: '',
+    secondaryImages: [],
+    description: '',
+    isBookingEnabled: true,
+    bookingSlots: [],
+    instantBookingLimit: 4,
+    blackoutDates: [],
+    slotCategories: [
+      { id: 'breakfast', name: 'Breakfast', slots: [] },
+      { id: 'lunch', name: 'Lunch', slots: [] },
+      { id: 'dinner', name: 'Dinner', slots: [] },
+      { id: 'brunch', name: 'Brunch', slots: [] }
+    ],
+    menuCategories: []
   });
 
-  const handleGeocodeAddress = async (target: 'new' | 'edit') => {
-    const dataToUse = target === 'new' ? newRes : editForm;
-    const address = dataToUse.location;
-    const name = dataToUse.name;
-
-    if (!address || address.length < 5) return;
-    
-    try {
-      // Search with both name and address for maximum accuracy
-      const query = name ? `${name}, ${address}` : address;
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-      const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const coords = {
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon)
-        };
-        
-        if (target === 'new') {
-          setNewRes(prev => ({ ...prev, ...coords }));
-        } else {
-          setEditForm(prev => ({ ...prev, ...coords }));
-        }
-      } else if (name) {
-        // Fallback to just address if name+address fails
-        const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-        const fallbackData = await fallbackResponse.json();
-        if (fallbackData && fallbackData.length > 0) {
-          const coords = {
-            lat: parseFloat(fallbackData[0].lat),
-            lng: parseFloat(fallbackData[0].lon)
-          };
-          if (target === 'new') {
-            setNewRes(prev => ({ ...prev, ...coords }));
-          } else {
-            setEditForm(prev => ({ ...prev, ...coords }));
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Geocoding error:', err);
-    }
-  };
-
   useEffect(() => {
-    if (!user) return;
+    if (!ownerId) return;
 
-    const qRes = query(collection(db, 'restaurants'), where('ownerId', '==', user.uid));
-    const unsubRes = onSnapshot(qRes, (snapshot) => {
+    // Fetch Restaurant
+    const qRest = query(collection(db, 'restaurants'), where('ownerId', '==', ownerId), limit(1));
+    const unsubscribeRest = onSnapshot(qRest, (snapshot) => {
       if (!snapshot.empty) {
-        setRestaurant({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Restaurant);
-      } else {
-        setRestaurant(null);
+        const data = snapshot.docs[0].data();
+        const fullData = { id: snapshot.docs[0].id, ...data } as any;
+        setRestaurant(fullData);
+        setEditForm({
+          ...fullData,
+          slotCategories: fullData.slotCategories || [
+            { id: 'breakfast', name: 'Breakfast', slots: [] },
+            { id: 'lunch', name: 'Lunch', slots: [] },
+            { id: 'dinner', name: 'Dinner', slots: [] },
+            { id: 'brunch', name: 'Brunch', slots: [] }
+          ],
+          menuCategories: fullData.menuCategories || []
+        });
       }
-    });
-
-    const qBookings = query(collection(db, 'bookings'), where('restaurantOwnerId', '==', user.uid));
-    const unsubBookings = onSnapshot(qBookings, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Booking[];
-      
-      // Sort by status (pending first) and then by time (newest first)
-      const sortedBookings = docs.sort((a, b) => {
-        if (a.status === 'pending' && b.status !== 'pending') return -1;
-        if (a.status !== 'pending' && b.status === 'pending') return 1;
-        return b.dateTime.toMillis() - a.dateTime.toMillis();
-      });
-      
-      // Play sound for new pending bookings ONLY if alerts are enabled
-      const currentPendingCount = docs.filter(b => b.status === 'pending').length;
-      if (currentPendingCount > prevPendingCount.current && alertsEnabled) {
-        audioRef.current?.play().catch(e => console.log('Audio play failed:', e));
-      }
-      prevPendingCount.current = currentPendingCount;
-      
-      setBookings(sortedBookings);
       setLoading(false);
     });
 
+    // Fetch Bookings
+    const qBook = query(
+      collection(db, 'bookings'), 
+      where('restaurantOwnerId', '==', ownerId),
+      orderBy('dateTime', 'desc'),
+      limit(50)
+    );
+    const unsubscribeBook = onSnapshot(qBook, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBookings(data);
+    });
+
     return () => {
-      unsubRes();
-      unsubBookings();
+      unsubscribeRest();
+      unsubscribeBook();
     };
-  }, [user]);
+  }, [ownerId]);
 
-  const updateBookingStatus = async (bookingId: string, status: 'confirmed' | 'cancelled') => {
-    try {
-      await updateDoc(doc(db, 'bookings', bookingId), { 
-        status,
-        updatedAt: serverTimestamp()
-      });
-      showNotification('success', `Booking ${status} successfully.`);
-    } catch (err) {
-      showNotification('error', 'Failed to update booking status.');
-    }
-  };
+  const handleSave = async () => {
+    if (!restaurant?.id) return;
+    setSaving(true);
+    setSaveStatus('idle');
 
-  const handleAddRestaurant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+    const allowedKeys = [
+      'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'contactNumber',
+      'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'bookingSlots', 
+      'instantBookingLimit', 'blackoutDates'
+    ];
 
-    try {
-      // Duplicate Check: Name + Location (Trimmed)
-      const duplicateQuery = query(
-        collection(db, 'restaurants'), 
-        where('name', '==', newRes.name.trim()),
-        where('location', '==', newRes.location.trim())
-      );
-      
-      const duplicateSnap = await getDocs(duplicateQuery);
-      if (!duplicateSnap.empty) {
-        showNotification('error', 'A restaurant with this name and location already exists!');
-        return;
+    const updateData: any = {};
+    allowedKeys.forEach(key => {
+      if (editForm[key] !== undefined) {
+        if (key === 'secondaryImages' || key === 'menuImages') {
+          updateData[key] = (editForm[key] || []).filter((url: string) => url.trim() !== '');
+        } else {
+          updateData[key] = editForm[key];
+        }
       }
+    });
 
-      await addDoc(collection(db, 'restaurants'), {
-        ...newRes,
-        name: newRes.name.trim(),
-        location: newRes.location.trim(),
-        ownerId: user.uid,
-        isOpen: true,
-        approved: false,
-        rating: 4.0, // Default base rating
-        lastModifiedBy: user.email || user.displayName || user.uid,
-        lastModifiedByType: 'owner',
-        createdAt: serverTimestamp(),
+    try {
+      await updateDoc(doc(db, 'restaurants', restaurant.id), {
+        ...updateData,
         updatedAt: serverTimestamp()
       });
-      setIsAddingRestaurant(false);
-      showNotification('success', 'Restaurant registered! Waiting for approval.');
-    } catch (err) {
-      showNotification('error', 'Failed to register restaurant.');
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error("Save error:", error);
+      setSaveStatus('error');
+    } finally {
+      setSaving(false);
     }
   };
-
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand"></div>
-    </div>
-  );
 
   const stats = [
-    { label: 'Total Bookings', value: bookings.length, icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Pending Requests', value: bookings.filter(b => b.status === 'pending').length, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Confirmed Guests', value: bookings.filter(b => b.status === 'confirmed').reduce((acc, b) => acc + b.guests, 0), icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { label: 'Total Bookings', value: bookings.length, icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Today\'s Expected', value: bookings.filter(b => formatDate(b.dateTime) === formatDate(new Date())).length, icon: Users, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Active Slots', value: editForm.bookingSlots?.length || 0, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' }
   ];
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Notifications */}
-        <AnimatePresence>
-          {notification && (
-            <motion.div
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              className={cn(
-                "fixed top-24 right-6 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-md",
-                notification.type === 'success' 
-                  ? "bg-emerald-500/90 border-emerald-500/20 text-white" 
-                  : "bg-red-500/90 border-red-500/20 text-white"
-              )}
-            >
-              {notification.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-              <p className="font-bold text-sm">{notification.message}</p>
-              <button onClick={() => setNotification(null)} className="ml-4 opacity-50 hover:opacity-100">
-                <X size={16} />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="mb-10">
-          <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Manage Your Restaurant</h1>
-          <p className="text-slate-500 font-medium mt-2">Control your outlet presence and bookings in real-time.</p>
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Navigation */}
-          <div className="w-full lg:w-72 space-y-2">
-            <div className="p-4 mb-4">
-               <h1 className="text-2xl font-display font-black text-slate-900 tracking-tight">
-                 {restaurant ? restaurant.name : 'Owner Central'}
-               </h1>
-               <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-                 {restaurant ? (
-                   <>
-                     <MapPin size={14} className="text-brand" />
-                     {restaurant.location || restaurant.city}
-                   </>
-                 ) : (
-                   "Powering your culinary dream."
-                 )}
-               </p>
+  const renderOverviewTab = () => (
+    <motion.div
+      key="overview"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="space-y-8"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {stats.map((stat, i) => (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            key={stat.label}
+            className="bg-white rounded-[2.5rem] p-10 border border-slate-50 shadow-vibrant hover:shadow-2xl transition-all group overflow-hidden relative"
+          >
+            <div className={cn("inline-flex p-4 rounded-2xl mb-8 transition-transform group-hover:scale-110 duration-500 relative z-10", stat.bg, stat.color)}>
+              <stat.icon size={28} />
             </div>
+            <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-2 relative z-10">{stat.label}</p>
+            <h3 className="text-5xl font-display font-black text-slate-900 relative z-10 tracking-tight">{stat.value}</h3>
+            <div className={cn("absolute -bottom-4 -right-4 w-32 h-32 rounded-full blur-3xl opacity-20", stat.bg)} />
+          </motion.div>
+        ))}
+      </div>
 
-            <nav className="space-y-1">
-              {[
-                { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-                { id: 'bookings', label: 'Bookings', icon: Calendar, badge: bookings.filter(b => b.status === 'pending').length },
-                { id: 'divider' },
-                { id: 'info', label: 'Restaurant Info', icon: Info },
-                { id: 'menu', label: 'Menu Builder', icon: UtensilsCrossed },
-                { id: 'gallery', label: 'Photo Gallery', icon: ImageIcon },
-                { id: 'promotions', label: 'Promotions', icon: Tag },
-              ].map((item, idx) => (
-                item.id === 'divider' ? <div key={idx} className="h-px bg-slate-200 my-4 mx-4" /> : (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id as TabType)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all group",
-                      activeTab === item.id 
-                        ? "bg-brand text-white shadow-lg shadow-brand/20" 
-                        : "text-slate-600 hover:bg-slate-100 active:scale-95"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.icon && <item.icon size={20} className={cn(activeTab === item.id ? "text-white" : "text-slate-400 group-hover:text-brand")} />}
-                      <span className="text-sm">{item.label}</span>
-                    </div>
-                    {item.badge ? (
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-black",
-                        activeTab === item.id ? "bg-white text-brand" : "bg-brand text-white"
-                      )}>
-                        {item.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              ))}
-            </nav>
+      <div className="bg-white rounded-[3.5rem] p-12 border border-slate-50 shadow-vibrant relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Recent Activity</h2>
+              <p className="text-slate-400 font-bold mt-1">Incoming reservations status</p>
+            </div>
+            <button onClick={() => setActiveTab('bookings')} className="p-4 bg-orange-50/50 hover:bg-orange-100/50 rounded-2xl text-orange-600 transition-all flex items-center gap-3 font-bold group">
+              View All <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
 
-            {restaurant && (
-              <div className="space-y-4 mt-8">
-                {/* Booking Controls */}
-                <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      editForm.isBookingEnabled ? "bg-indigo-500 animate-pulse" : "bg-slate-300"
-                    )} />
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-500">
-                      Booking Status
-                    </span>
+          <div className="space-y-4">
+            {bookings.length > 0 ? bookings.slice(0, 5).map((booking, i) => (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                key={booking.id}
+                className="flex items-center justify-between p-6 bg-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-orange-200/20 border border-transparent hover:border-orange-100 rounded-3xl transition-all group"
+              >
+                <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-orange-600 text-lg">
+                    {booking.userName?.charAt(0) || 'G'}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-900">Table Reservations</span>
-                    <div 
-                      onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
-                      className={cn(
-                        "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300",
-                        editForm.isBookingEnabled ? "bg-indigo-500" : "bg-slate-300"
-                      )}
-                    >
-                      <motion.div 
-                        animate={{ x: editForm.isBookingEnabled ? 24 : 0 }}
-                        className="w-4 h-4 bg-white rounded-full shadow-sm"
-                      />
-                    </div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-lg leading-none">{booking.userName}</h4>
+                    <p className="text-slate-400 text-sm font-bold mt-2 flex items-center gap-4">
+                      <span className="flex items-center gap-1.5"><Users size={14} className="text-slate-300" /> {booking.guests} Guests</span>
+                      <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-300" /> {booking.time}</span>
+                    </p>
                   </div>
                 </div>
-
-                {/* Online Order Controls */}
-                <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      restaurant.approved ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                    )} />
-                    <span className="text-xs font-bold tracking-wider text-slate-500">
-                      {restaurant.approved ? 'Online Order' : 'Pending Review'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-900">Ordering App</span>
-                    <div 
-                      onClick={() => setEditForm({...editForm, isOpen: !editForm.isOpen})}
-                      className={cn(
-                        "w-12 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300",
-                        editForm.isOpen ? "bg-emerald-500" : "bg-slate-300"
-                      )}
-                    >
-                      <motion.div 
-                        animate={{ x: editForm.isOpen ? 24 : 0 }}
-                        className="w-4 h-4 bg-white rounded-full shadow-sm"
-                      />
-                    </div>
-                  </div>
+                <div className="text-right">
+                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{formatDate(booking.dateTime)}</div>
+                   <div className={cn(
+                     "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm",
+                     booking.status === 'confirmed' ? "bg-emerald-100 text-emerald-600" :
+                     booking.status === 'cancelled' ? "bg-red-100 text-red-600" :
+                     "bg-orange-100 text-orange-600"
+                   )}>
+                     {booking.status || 'pending'}
+                   </div>
                 </div>
+              </motion.div>
+            )) : (
+              <div className="py-24 text-center">
+                <Calendar size={32} className="mx-auto text-slate-200 mb-6" />
+                <p className="text-slate-400 font-bold italic">No reservations yet.</p>
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </motion.div>
+  );
 
-          {/* Main Content Area */}
-          <div className="flex-grow">
-            {!restaurant && !isAddingRestaurant ? (
-              <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-slate-200">
-                <div className="w-20 h-20 bg-brand-light rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Store className="text-brand" size={40} />
-                </div>
-                <h3 className="text-2xl font-display font-bold text-slate-900 mb-3">Welcome to Zayka Partners</h3>
-                <p className="text-slate-500 max-w-sm mx-auto mb-8">Ready to grow your restaurant business? Register now to reach thousands of diners.</p>
-                <button 
-                  onClick={() => setIsAddingRestaurant(true)}
-                  className="bg-brand text-white px-8 py-4 rounded-2xl font-bold shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all"
-                >
-                  Register My Restaurant
-                </button>
-              </div>
-            ) : isAddingRestaurant ? (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-3xl p-10 border border-slate-200 shadow-xl max-w-2xl"
-              >
-                <h2 className="text-3xl font-display font-bold mb-8 text-slate-900">Partner Registration</h2>
-                <form onSubmit={handleAddRestaurant} className="space-y-6">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Restaurant Name</label>
-                      <input 
-                        required
-                        type="text" 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
-                        value={newRes.name}
-                        onChange={e => setNewRes({...newRes, name: e.target.value})}
-                        onBlur={() => handleGeocodeAddress('new')}
-                      />
+  const renderBookingsTab = () => (
+    <motion.div
+      key="bookings"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-[3.5rem] shadow-vibrant border border-slate-50 overflow-hidden"
+    >
+      <div className="p-10 md:p-12 border-b border-slate-50 bg-orange-50/20">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div>
+            <h2 className="text-4xl font-display font-black text-slate-900 tracking-tight">Reservations</h2>
+            <p className="text-slate-400 font-bold mt-2">Historical view of your guest activity.</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white border border-slate-200 rounded-[24px] flex items-center px-6 py-3 shadow-sm focus-within:border-orange-400 transition-all">
+              <Search size={18} className="text-slate-300" />
+              <input type="text" placeholder="Search guests..." className="bg-transparent border-none outline-none pl-4 font-bold text-sm" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-8 overflow-x-auto">
+        <table className="w-full text-left border-separate border-spacing-y-4">
+          <thead>
+            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-8">
+              <th className="px-8 pb-4">Guest</th>
+              <th className="px-8 pb-4">Size</th>
+              <th className="px-8 pb-4">Schedule</th>
+              <th className="px-8 pb-4 text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((booking) => (
+              <tr key={booking.id} className="group">
+                <td className="bg-slate-50/50 group-hover:bg-orange-50/50 first:rounded-l-[2rem] px-8 py-6 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-orange-600">
+                      {booking.userName?.charAt(0) || 'G'}
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Contact Number</label>
-                      <input 
-                        type="text" 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
-                        placeholder="e.g. +91 98765 43210"
-                        value={newRes.contactNumber}
-                        onChange={e => setNewRes({...newRes, contactNumber: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Cuisine Type</label>
-                      <select 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
-                        value={newRes.cuisine}
-                        onChange={e => setNewRes({...newRes, cuisine: e.target.value})}
-                      >
-                        {cuisines.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                        {cuisines.length === 0 && <option value="North Indian">North Indian</option>}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">City</label>
-                      <select 
-                        required
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
-                        value={newRes.city}
-                        onChange={e => setNewRes({...newRes, city: e.target.value})}
-                      >
-                        {cities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                        {cities.length === 0 && <option value="Bangalore">Bangalore</option>}
-                      </select>
+                      <div className="font-black text-slate-900 leading-none mb-1.5">{booking.userName}</div>
+                      <div className="text-[10px] font-bold text-slate-400">{booking.userEmail}</div>
                     </div>
                   </div>
-
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="text-xs font-bold text-slate-500 tracking-widest">Restaurant Location</label>
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
-                          <Navigation size={10} />
-                          Auto-detects coordinates
-                        </div>
-                      </div>
-                      <textarea 
-                        required
-                        placeholder="Enter full physical address..."
-                        rows={3}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none"
-                        value={newRes.location}
-                        onChange={e => {
-                          setNewRes({...newRes, location: e.target.value});
-                          // Geocode after short delay or on change if needed, but onBlur is cleaner
-                        }}
-                        onBlur={() => handleGeocodeAddress('new')}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1 block px-1">Latitude</label>
-                        <input 
-                          type="number"
-                          step="any"
-                          className="w-full px-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
-                          value={newRes.lat}
-                          onChange={e => setNewRes({...newRes, lat: parseFloat(e.target.value)})}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1 block px-1">Longitude</label>
-                        <input 
-                          type="number"
-                          step="any"
-                          className="w-full px-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
-                          value={newRes.lng}
-                          onChange={e => setNewRes({...newRes, lng: parseFloat(e.target.value)})}
-                        />
-                      </div>
-                    </div>
+                </td>
+                <td className="bg-slate-50/50 group-hover:bg-orange-50/50 px-8 py-6 transition-all">
+                  <div className="inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-slate-100 text-xs font-black text-slate-700 shadow-sm">
+                    <Users size={14} className="text-slate-300" /> {booking.guests}
                   </div>
+                </td>
+                <td className="bg-slate-50/50 group-hover:bg-orange-50/50 px-8 py-6 transition-all">
+                  <div className="font-bold text-slate-900 text-sm">{formatDate(booking.dateTime)}</div>
+                  <div className="text-[10px] font-black text-orange-600 uppercase tracking-widest mt-1">{booking.time}</div>
+                </td>
+                <td className="bg-slate-50/50 group-hover:bg-orange-50/50 last:rounded-r-[2rem] px-8 py-6 text-right transition-all">
+                   <div className={cn(
+                     "inline-flex px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm",
+                     booking.status === 'confirmed' ? "bg-emerald-500 text-white" :
+                     booking.status === 'cancelled' ? "bg-red-500 text-white" :
+                     "bg-orange-500 text-white"
+                   )}>
+                     {booking.status || 'pending'}
+                   </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {bookings.length === 0 && (
+          <div className="py-24 text-center">
+             <Calendar size={48} className="mx-auto text-slate-200 mb-6" />
+             <p className="text-slate-400 font-bold">Your reservation list is currently empty.</p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Primary Image URL</label>
+  const renderMenuTab = () => (
+    <motion.div
+      key="menu"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-[3.5rem] shadow-vibrant border border-slate-50 overflow-hidden relative"
+    >
+      <div className="h-40 bg-orange-50 absolute top-0 inset-x-0 -z-0" />
+      <div className="p-12 pt-16 relative z-10">
+        <div className="flex flex-col md:flex-row gap-12">
+          <div className="md:w-1/3">
+            <h3 className="text-3xl font-display font-black text-slate-900 tracking-tight leading-none mb-4">Visual Menu</h3>
+            <p className="text-slate-400 font-bold leading-relaxed mb-8">Organize your digital presence into categories.</p>
+            <button 
+              onClick={() => setEditForm({...editForm, menuCategories: [...(editForm.menuCategories || []), { id: Date.now().toString(), name: '', images: [] }]})}
+              className="w-full flex items-center justify-center gap-3 bg-orange-500 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              <Plus size={20} /> Add Category
+            </button>
+          </div>
+          <div className="flex-1 space-y-10">
+            {editForm.menuCategories?.map((cat: any, catIdx: number) => (
+              <motion.div layout key={cat.id} className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-8">
+                <div className="flex items-center justify-between gap-6">
+                  <div className="flex-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">Category Name</label>
                     <input 
-                      type="url" 
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all"
-                      value={newRes.image}
-                      onChange={e => setNewRes({...newRes, image: e.target.value})}
+                      type="text"
+                      value={cat.name}
+                      placeholder="e.g. Starters"
+                      onChange={e => {
+                        const next = [...editForm.menuCategories];
+                        next[catIdx] = { ...next[catIdx], name: e.target.value };
+                        setEditForm({...editForm, menuCategories: next});
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 font-bold outline-none focus:border-orange-400 shadow-sm"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 tracking-widest mb-2 block">Full Address</label>
-                    <textarea 
-                      required
-                      rows={3}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none"
-                      value={newRes.location}
-                      onChange={e => setNewRes({...newRes, location: e.target.value})}
-                    />
-                  </div>
-                  <div className="flex gap-4 pt-4">
-                    <button 
-                      type="submit"
-                      className="flex-grow bg-brand text-white py-5 rounded-2xl font-bold shadow-xl shadow-brand/20 active:scale-95 transition-all text-lg"
-                    >
-                      Start Partnership
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setIsAddingRestaurant(false)}
-                      className="px-8 bg-slate-100 text-slate-600 py-5 rounded-2xl font-bold hover:bg-slate-200 transition-all font-display"
-                    >
-                      Back
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            ) : (
-              <div className="space-y-8">
-                {/* Save Changes Floating Status */}
-                {JSON.stringify(restaurant) !== JSON.stringify(editForm) && (
-                   <motion.div 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className="sticky top-4 z-40 bg-slate-900 text-white rounded-2xl p-4 flex items-center justify-between shadow-2xl border border-white/10 mx-[-8px]"
+                  <button 
+                    onClick={() => setEditForm({...editForm, menuCategories: editForm.menuCategories.filter((_:any, i:any) => i !== catIdx)})}
+                    className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
                   >
-                    <div className="flex items-center gap-3 ml-2">
-                       <div className="w-2 h-2 bg-brand rounded-full animate-pulse" />
-                       <span className="text-sm font-bold">You have unsaved changes</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setEditForm({...restaurant!})}
-                        className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white transition-colors"
-                      >
-                        Discard
-                      </button>
-                      <button 
-                        onClick={handleUpdateDetails}
-                        disabled={isSaving}
-                        className="bg-brand px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50"
-                      >
-                        {isSaving ? <span className="animate-spin">●</span> : <Save size={16} />}
-                        Save Changes
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                <AnimatePresence mode="wait">
-                  {activeTab === 'overview' && (
-                    <motion.div 
-                      key="overview"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="space-y-8"
-                    >
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {stats.map((stat, idx) => (
-                          <div key={idx} className="bg-white p-8 rounded-lg border border-slate-200 shadow-sm group hover:shadow-md transition-all">
-                             <div className={cn("w-14 h-14 rounded-lg flex items-center justify-center mb-6 transition-transform group-hover:scale-110", stat.bg)}>
-                                <stat.icon className={stat.color} size={28} />
-                             </div>
-                             <p className="text-sm font-bold text-slate-500 mb-1">{stat.label}</p>
-                             <p className="text-4xl font-display font-black text-slate-900">{stat.value}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Welcome Card */}
-                      <div className="bg-brand rounded-xl p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
-                         <div className="relative z-10">
-                            <h2 className="text-3xl font-display font-bold mb-3">Hello, {restaurant?.name}!</h2>
-                            <p className="text-white/80 max-w-md font-medium leading-relaxed">
-                              Your restaurant is currently {restaurant?.isOpen ? 'online and taking orders' : 'closed'}. Keep your menu and photos updated to attract more customers.
-                            </p>
-                            <button 
-                              onClick={() => setActiveTab('bookings')}
-                              className="mt-6 bg-white text-brand px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-sm"
-                            >
-                              Check Recent Bookings <ArrowRight size={18} />
-                            </button>
-                         </div>
-                         <div className="relative z-10 w-full md:w-64 aspect-video rounded-lg overflow-hidden shadow-2xl border-4 border-white/20">
-                            <img 
-                              src={restaurant?.image || RESTAURANT_IMAGE_FALLBACK} 
-                              className="w-full h-full object-cover" 
-                              alt="Storefront"
-                              referrerPolicy="no-referrer"
-                            />
-                         </div>
-                         {/* Abstract shapes */}
-                         <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-white/10 rounded-full blur-3xl p-20" />
-                         <div className="absolute bottom-[-10%] left-[-5%] w-64 h-64 bg-black/10 rounded-full blur-2xl" />
-                      </div>
-                    </motion.div>
-                  )}                   {activeTab === 'bookings' && (
-                    <motion.div 
-                      key="bookings"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm"
-                    >
-                      <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                         <h2 className="text-2xl font-display font-bold text-slate-900">Manage Bookings</h2>
-                         <div className="flex items-center gap-3">
-                            <button 
-                              onClick={toggleAlerts}
-                              className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
-                                alertsEnabled ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-slate-100 text-slate-500"
-                              )}
-                            >
-                              {alertsEnabled ? <Volume2 size={16} /> : <div className="relative"><Volume2 size={16} /><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-0.5 bg-slate-500 rotate-45" /></div>}
-                              {alertsEnabled ? "Alerts On" : "Enable Alerts"}
-                            </button>
-                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-wider">{bookings.filter(b => b.status === 'pending').length} Action required</span>
-                         </div>
-                      </div>
-                      
-                      {bookings.length > 0 ? (
-                        <div className="divide-y divide-slate-50">
-                          {/* Pending Bookings Section */}
-                          {bookings.some(b => b.status === 'pending') && (
-                            <div className="bg-slate-50/50 px-6 py-2 border-b border-slate-100">
-                               <span className="text-[10px] font-black text-slate-400 tracking-widest">Pending approval</span>
-                            </div>
-                          )}
-                          {bookings.filter(b => b.status === 'pending').map((booking) => (
-                            <div key={booking.id} className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:bg-slate-50/50 transition-colors">
-                               <div className="flex items-center gap-4">
-                                  <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-slate-100 shadow-sm">
-                                     <img 
-                                      src={`https://ui-avatars.com/api/?name=${booking.userName}&background=random&bold=true`} 
-                                      alt="User" 
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  </div>
-                                  <div>
-                                     <h4 className="font-bold text-slate-900 text-lg">{booking.userName}</h4>
-                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Users size={14} className="text-slate-400" /> {booking.guests} Guests
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Calendar size={14} className="text-slate-400" /> {formatDate(booking.dateTime)}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Clock size={14} className="text-slate-400" /> {formatTime(booking.dateTime)}
-                                        </div>
-                                     </div>
-                                  </div>
-                               </div>
-
-                               <div className="flex items-center gap-3 w-full md:w-auto">
-                                   <button 
-                                      title="Send WhatsApp Confirmation"
-                                      onClick={() => {
-                                        const text = encodeURIComponent(`Hello ${booking.userName}, this is ${restaurant?.name}. We have received your booking for ${booking.guests} guests on ${formatDate(booking.dateTime)} at ${formatTime(booking.dateTime)}. Would you like to confirm this?`);
-                                        window.open(`https://wa.me/${booking.userPhone?.replace(/\D/g, '')}?text=${text}`, '_blank');
-                                      }}
-                                      className="p-3 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-all border border-emerald-100"
-                                   >
-                                      <MessageSquare size={18} />
-                                   </button>
-                                   <button 
-                                      onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                                      className="flex-grow md:flex-none px-6 py-3 bg-brand text-white rounded-lg font-bold text-sm shadow-lg shadow-brand/10 hover:scale-105 active:scale-95 transition-all"
-                                   >
-                                      Accept
-                                   </button>
-                                   <button 
-                                      onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                                      className="flex-grow md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
-                                   >
-                                      Decline
-                                   </button>
-                               </div>
-                            </div>
-                          ))}
-
-                          {/* Historical Bookings Section */}
-                          {bookings.some(b => b.status !== 'pending') && (
-                            <div className="bg-slate-50/50 px-6 py-2 border-b border-t border-slate-100">
-                               <span className="text-[10px] font-black text-slate-400 tracking-widest">Historical bookings</span>
-                            </div>
-                          )}
-                          {bookings.filter(b => b.status !== 'pending').map((booking) => (
-                            <div key={booking.id} className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:bg-slate-50/50 transition-colors opacity-70">
-                               <div className="flex items-center gap-4">
-                                  <div className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-sm grayscale">
-                                     <img 
-                                      src={`https://ui-avatars.com/api/?name=${booking.userName}&background=random&bold=true`} 
-                                      alt="User" 
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  </div>
-                                  <div>
-                                     <h4 className="font-bold text-slate-900 text-lg">{booking.userName}</h4>
-                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Users size={14} className="text-slate-400" /> {booking.guests} Guests
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Calendar size={14} className="text-slate-400" /> {formatDate(booking.dateTime)}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
-                                           <Clock size={14} className="text-slate-400" /> {formatTime(booking.dateTime)}
-                                        </div>
-                                     </div>
-                                  </div>
-                               </div>
-
-                               <div className="flex items-center gap-3 w-full md:w-auto">
-                                  <div className={cn(
-                                    "px-6 py-2.5 rounded-xl text-xs font-black tracking-widest border-2",
-                                    booking.status === 'confirmed' ? "border-emerald-100 text-emerald-600 bg-emerald-50" : "border-red-100 text-red-600 bg-red-50"
-                                  )}>
-                                    {booking.status}
-                                  </div>
-                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-20 text-center">
-                           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 opacity-50">
-                              <Calendar className="text-slate-400" />
-                           </div>
-                           <p className="text-slate-500 font-medium">No bookings have been made yet.</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'info' && (
-                    <motion.div 
-                      key="info"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-lg border border-slate-200 shadow-sm p-10 space-y-8"
-                    >
-                      <div className="space-y-6">
-                        <h2 className="text-2xl font-display font-bold text-slate-900 border-b border-slate-100 pb-6 uppercase tracking-tight">Basic Information</h2>
-                        
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                           <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Restaurant Name</label>
-                              <input 
-                                type="text"
-                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
-                                value={editForm.name || ''}
-                                onChange={e => setEditForm({...editForm, name: e.target.value})}
-                                onBlur={() => handleGeocodeAddress('edit')}
-                              />
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Contact Number</label>
-                              <input 
-                                type="text"
-                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
-                                placeholder="e.g. +91 98765 43210"
-                                value={editForm.contactNumber || ''}
-                                onChange={e => setEditForm({...editForm, contactNumber: e.target.value})}
-                              />
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">City</label>
-                              <select 
-                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all appearance-none"
-                                value={editForm.city || ''}
-                                onChange={e => setEditForm({...editForm, city: e.target.value})}
-                              >
-                                {cities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                {cities.length === 0 && <option value="Bangalore">Bangalore</option>}
-                              </select>
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Signature Cuisine</label>
-                              <select 
-                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all appearance-none"
-                                value={editForm.cuisine || ''}
-                                onChange={e => setEditForm({...editForm, cuisine: e.target.value})}
-                              >
-                                {cuisines.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                {cuisines.length === 0 && <option value="North Indian">North Indian</option>}
-                              </select>
-                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <div className="space-y-2">
-                              <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Description</label>
-                              <textarea 
-                                rows={4}
-                                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-medium text-slate-700 transition-all resize-none leading-relaxed"
-                                value={editForm.description || ''}
-                                onChange={e => setEditForm({...editForm, description: e.target.value})}
-                                placeholder="Describe your restaurant experience..."
-                              />
-                           </div>
-                           <div className="space-y-6">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <label className="text-xs font-black text-slate-400 px-1 uppercase tracking-widest">Average Cost</label>
-                                  <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
-                                    <input 
-                                      type="number"
-                                      className="w-full pl-8 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-bold text-slate-800 transition-all"
-                                      value={editForm.avgPrice || ''}
-                                      onChange={e => setEditForm({...editForm, avgPrice: Number(e.target.value)})}
-                                    />
-                                  </div>
-                                </div>
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase tracking-widest">General Opening hours</label>
-                                  <span className="text-[10px] text-slate-300 font-bold italic">Overrides daily if daily is empty</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                   <input placeholder="Open (e.g. 11:00 AM)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.open || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', close: ''}), open: e.target.value}})} />
-                                   <input placeholder="Close (e.g. 11:00 PM)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.close || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {days: 'Mon-Sun', open: ''}), close: e.target.value}})} />
-                                   <input placeholder="Days (e.g. Mon-Sun)" className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-center outline-none focus:border-brand transition-colors" value={editForm.openingHours?.days || ''} onChange={e => setEditForm({...editForm, openingHours: {...(editForm.openingHours || {open: '', close: ''}), days: e.target.value}})} />
-                                </div>
-                              </div>
-                           </div>
-                        </div>
-
-                      </div>
-
-                        {/* Daily Timings Section */}
-                        <div className="space-y-6 pt-6 border-t border-slate-100">
-                           <div className="flex items-center justify-between">
-                              <h3 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Operational Hours (Daily)</h3>
-                              <div className="flex items-center gap-2">
-                                <button 
-                                  type="button"
-                                  onClick={() => {
-                                    const timings: any = {};
-                                    DAYS_OF_WEEK.forEach(day => {
-                                      timings[day] = { open: '11:00 AM', close: '11:00 PM', closed: false };
-                                    });
-                                    setEditForm({...editForm, dailyTimings: timings});
-                                  }}
-                                  className="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"
-                                >
-                                  Apply Defaults
-                                </button>
-                              </div>
-                           </div>
-                           
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {DAYS_OF_WEEK.map(day => {
-                                const timing = editForm.dailyTimings?.[day] || { open: '', close: '', closed: false };
-                                return (
-                                  <div key={day} className={cn(
-                                    "p-5 rounded-[2rem] border transition-all flex items-center justify-between gap-4",
-                                    timing.closed ? "bg-slate-50 border-slate-200 opacity-60" : "bg-white border-slate-100 shadow-sm"
-                                  )}>
-                                     <div className="flex items-center gap-4">
-                                        <div 
-                                          onClick={() => {
-                                            const next = { ...timing, closed: !timing.closed };
-                                            setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
-                                          }}
-                                          className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all",
-                                            timing.closed ? "bg-slate-200 text-slate-500" : "bg-brand/10 text-brand"
-                                          )}
-                                        >
-                                          <Clock size={18} />
-                                        </div>
-                                        <div>
-                                          <p className="text-sm font-black text-slate-900">{day}</p>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{timing.closed ? 'Closed' : 'Operational'}</p>
-                                        </div>
-                                     </div>
-
-                                     {!timing.closed && (
-                                       <div className="flex items-center gap-2">
-                                          <input 
-                                            className="w-20 px-2 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-center outline-none focus:border-brand"
-                                            placeholder="11:00 AM"
-                                            value={timing.open}
-                                            onChange={e => {
-                                              const next = { ...timing, open: e.target.value };
-                                              setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
-                                            }}
-                                          />
-                                          <span className="text-slate-300 font-bold">-</span>
-                                          <input 
-                                            className="w-20 px-2 py-2 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black text-center outline-none focus:border-brand"
-                                            placeholder="11:00 PM"
-                                            value={timing.close}
-                                            onChange={e => {
-                                              const next = { ...timing, close: e.target.value };
-                                              setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
-                                            }}
-                                          />
-                                       </div>
-                                     )}
-                                     
-                                     {timing.closed && (
-                                       <button 
-                                          onClick={() => {
-                                            const next = { ...timing, closed: false };
-                                            setEditForm({...editForm, dailyTimings: { ...(editForm.dailyTimings || {}), [day]: next }});
-                                          }}
-                                          className="text-[10px] font-black text-brand uppercase tracking-widest"
-                                       >
-                                          Open
-                                       </button>
-                                     )}
-                                  </div>
-                                );
-                              })}
-                           </div>
-                        </div>
-
-                        {/* Booking Controls */}
-                        <div className="space-y-6 pt-6 border-t border-slate-100">
-                           <div className="flex items-center justify-between px-1">
-                              <div>
-                                <h3 className="text-xl font-display font-bold text-slate-900 uppercase tracking-tight">Booking Controls</h3>
-                                <p className="text-slate-500 text-xs font-medium">Control table reservation availability and slots.</p>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                 <span className="text-xs font-bold text-slate-500">{editForm.isBookingEnabled ? 'Reservations Active' : 'Reservations Disabled'}</span>
-                                 <div 
-                                    onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
-                                    className={cn(
-                                      "w-14 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300",
-                                      editForm.isBookingEnabled ? "bg-emerald-500" : "bg-slate-300"
-                                    )}
-                                  >
-                                    <motion.div 
-                                      animate={{ x: editForm.isBookingEnabled ? 28 : 0 }}
-                                      className="w-5 h-5 bg-white rounded-full shadow-lg"
-                                    />
-                                  </div>
-                              </div>
-                           </div>
-
-                           {editForm.isBookingEnabled && (
-                             <motion.div 
-                               initial={{ opacity: 0, y: 10 }}
-                               animate={{ opacity: 1, y: 0 }}
-                               className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 space-y-6"
-                             >
-                                <div className="flex items-center justify-between">
-                                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Available Booking Slots</label>
-                                   <button 
-                                      onClick={() => setEditForm({...editForm, bookingSlots: DEFAULT_BOOKING_SLOTS})}
-                                      className="text-[10px] font-black text-brand uppercase tracking-widest hover:underline"
-                                   >
-                                      Use Standard Slots
-                                   </button>
-                                </div>
-                                
-                                <div className="flex flex-wrap gap-2">
-                                   {(editForm.bookingSlots || []).map((slot, idx) => (
-                                      <div key={idx} className="bg-white border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-3 shadow-sm group">
-                                         <span className="text-xs font-black text-slate-700">{slot}</span>
-                                         <button 
-                                            onClick={() => setEditForm({...editForm, bookingSlots: editForm.bookingSlots?.filter((_, i) => i !== idx)})}
-                                            className="text-slate-300 hover:text-red-500 transition-colors"
-                                          >
-                                            <X size={14} />
-                                         </button>
-                                      </div>
-                                   ))}
-                                   
-                                   <div className="flex items-center gap-2">
-                                      <input 
-                                        type="text"
-                                        placeholder="Add Slot (e.g. 15:30)"
-                                        className="w-32 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-brand"
-                                        onKeyDown={e => {
-                                          if (e.key === 'Enter') {
-                                            const val = e.currentTarget.value.trim();
-                                            if (val) {
-                                               setEditForm({...editForm, bookingSlots: [...(editForm.bookingSlots || []), val]});
-                                               e.currentTarget.value = '';
-                                            }
-                                          }
-                                        }}
-                                      />
-                                      <div className="text-[10px] text-slate-400 font-bold italic">Press Enter</div>
-                                   </div>
-                                </div>
-                             </motion.div>
-                           )}
-                        </div>
-
-                        <div className="space-y-4 pt-2">
-                           <div className="flex items-center justify-between px-1">
-                              <label className="text-xs font-black text-slate-400">Location / Address</label>
-                              <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-300 uppercase tracking-[0.1em]">
-                                <Navigation size={10} />
-                                Syncs to Map
-                              </div>
-                           </div>
-                           <div className="relative">
-                              <MapPin className="absolute left-6 top-5 text-slate-400" size={20} />
-                              <textarea 
-                                 rows={2}
-                                 className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-medium text-slate-700 transition-all resize-none"
-                                 value={editForm.location || ''}
-                                 onChange={e => setEditForm({...editForm, location: e.target.value})}
-                                 onBlur={() => handleGeocodeAddress('edit')}
-                                 placeholder="Enter full physical address..."
-                              />
-                           </div>
-                           
-                           <div className="grid grid-cols-2 gap-6">
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
-                                 <input 
-                                    type="number"
-                                    step="any"
-                                    placeholder="e.g. 18.5204"
-                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-mono text-xs font-bold text-slate-600 transition-all"
-                                    value={editForm.lat || ''}
-                                    onChange={e => setEditForm({...editForm, lat: parseFloat(e.target.value)})}
-                                 />
-                              </div>
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
-                                 <input 
-                                    type="number"
-                                    step="any"
-                                    placeholder="e.g. 73.8567"
-                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-brand/5 focus:border-brand outline-none font-mono text-xs font-bold text-slate-600 transition-all"
-                                    value={editForm.lng || ''}
-                                    onChange={e => setEditForm({...editForm, lng: parseFloat(e.target.value)})}
-                                 />
-                              </div>
-                           </div>
-                        </div>
-
-                        <div className="space-y-2 pt-4">
-                           <label className="text-xs font-black text-slate-400 px-1 mb-4 block">Facilities & amenities</label>
-                           <div className="flex flex-wrap gap-3">
-                              {['WiFi', 'Parking', 'AC', 'Outdoor Seating', 'Live Music', 'Bar', 'Valet', 'Family Friendly', 'Kids Play Area'].map(fac => (
-                                <button
-                                  key={fac}
-                                  type="button"
-                                  onClick={() => {
-                                    const current = editForm.facilities || [];
-                                    const next = current.includes(fac) ? current.filter(f => f !== fac) : [...current, fac];
-                                    setEditForm({...editForm, facilities: next});
-                                  }}
-                                  className={cn(
-                                    "px-5 py-2.5 rounded-xl text-sm font-bold border transition-all",
-                                    editForm.facilities?.includes(fac) 
-                                      ? "bg-brand/10 border-brand text-brand ring-4 ring-brand/5" 
-                                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-                                  )}
-                                >
-                                  {fac}
-                                </button>
-                              ))}
-                           </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'menu' && (
-                    <motion.div 
-                      key="menu"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h2 className="text-2xl font-display font-bold text-slate-900">Culinary Offerings</h2>
-                          <p className="text-slate-500 text-sm mt-1 font-medium">Build your digital menu for customers.</p>
-                        </div>
-                        <button 
-                          onClick={() => setEditForm({...editForm, menu: [...(editForm.menu || []), {name: '', price: 0, description: ''}]})}
-                          className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-sm shadow-xl shadow-slate-900/10"
-                        >
-                          <Plus size={18} /> Add Dish
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4">
-                        <AnimatePresence initial={false}>
-                          {(editForm.menu || []).map((item, i) => (
-                            <motion.div 
-                              key={i}
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className="group p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex flex-col sm:flex-row items-center gap-6 hover:shadow-lg hover:bg-white transition-all hover:border-slate-200"
-                            >
-                              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shrink-0 border border-slate-100 text-slate-300 group-hover:text-brand transition-colors">
-                                <ChefHat size={32} />
-                              </div>
-                              <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <input 
-                                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-900 placeholder:text-slate-300"
-                                    placeholder="Name of your creation..."
-                                    value={item.name}
-                                    onChange={e => {
-                                      const newMenu = [...(editForm.menu || [])];
-                                      newMenu[i].name = e.target.value;
-                                      setEditForm({...editForm, menu: newMenu});
-                                    }}
-                                  />
-                                  <input 
-                                    className="w-full bg-transparent border-none p-0 focus:ring-0 text-xs text-slate-400 placeholder:text-slate-300 italic"
-                                    placeholder="Brief description of flavors..."
-                                    value={item.description}
-                                    onChange={e => {
-                                      const newMenu = [...(editForm.menu || [])];
-                                      newMenu[i].description = e.target.value;
-                                      setEditForm({...editForm, menu: newMenu});
-                                    }}
-                                  />
-                                </div>
-                                <div className="flex items-center gap-4">
-                                   <div className="relative">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
-                                      <input 
-                                        type="number"
-                                        className="w-24 pl-5 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-sm font-black outline-none focus:border-brand transition-colors"
-                                        value={item.price}
-                                        onChange={e => {
-                                          const newMenu = [...(editForm.menu || [])];
-                                          newMenu[i].price = Number(e.target.value);
-                                          setEditForm({...editForm, menu: newMenu});
-                                        }}
-                                      />
-                                   </div>
-                                   <button 
-                                      onClick={() => setEditForm({...editForm, menu: editForm.menu?.filter((_, idx) => idx !== i)})}
-                                      className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                    >
-                                      <Trash2 size={20} />
-                                    </button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-
-                        {(editForm.menu || []).length === 0 && (
-                          <div className="p-16 text-center border-4 border-dashed border-slate-50 rounded-[3rem]">
-                             <UtensilsCrossed size={48} className="mx-auto text-slate-200 mb-4" />
-                             <p className="text-slate-400 font-bold">Start adding delicious items to your menu.</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="pt-8 border-t border-slate-100">
-                        <div className="flex items-center justify-between mb-6">
-                          <div>
-                            <h3 className="text-xl font-display font-bold text-slate-900">Visual Menu (Images)</h3>
-                            <p className="text-slate-500 text-sm mt-1 font-medium">Upload photos of your physical menu for diners to browse.</p>
-                          </div>
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {(cat.images || []).map((img: string, imgIdx: number) => (
+                    <div key={imgIdx} className="space-y-3">
+                      <div className="aspect-[3/4] bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-sm group">
+                        <img src={img || RESTAURANT_IMAGE_FALLBACK} className="w-full h-full object-cover" onError={handleImageError} />
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <button 
-                            onClick={() => setEditForm({...editForm, menuImages: [...(editForm.menuImages || []), '']})}
-                            className="text-brand font-bold text-sm flex items-center gap-1 hover:underline"
+                            onClick={() => {
+                              const next = [...editForm.menuCategories];
+                              next[catIdx].images = next[catIdx].images.filter((_:any, i:any) => i !== imgIdx);
+                              setEditForm({...editForm, menuCategories: next});
+                            }}
+                            className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"
                           >
-                            <Plus size={16} /> Add Image
+                            Delete
                           </button>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {(editForm.menuImages || []).map((img, idx) => (
-                            <motion.div 
-                              layout
-                              key={idx} 
-                              className="group relative aspect-[3/4] bg-slate-50 rounded-3xl border border-slate-100 overflow-hidden shadow-sm"
-                            >
-                               {img ? (
-                                  <img src={img} className="w-full h-full object-cover" alt={`Menu Image ${idx}`} referrerPolicy="no-referrer" onError={handleImageError} />
-                               ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                                     <ImageIcon className="text-slate-300 mb-2" size={32} />
-                                     <p className="text-[10px] font-bold text-slate-400">Empty View</p>
-                                  </div>
-                               )}
-                               <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-all p-4 flex flex-col justify-end backdrop-blur-sm">
-                                  <input 
-                                    className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-[10px] text-white outline-none mb-2 placeholder:text-white/50"
-                                    placeholder="Menu Image URL..."
-                                    value={img}
-                                    onChange={e => {
-                                      const next = [...(editForm.menuImages || [])];
-                                      next[idx] = e.target.value;
-                                      setEditForm({...editForm, menuImages: next});
-                                    }}
-                                  />
-                                  <button 
-                                    onClick={() => setEditForm({...editForm, menuImages: editForm.menuImages?.filter((_, i) => i !== idx)})}
-                                    className="w-full py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-500/20"
-                                  >
-                                    Remove
-                                  </button>
-                               </div>
-                            </motion.div>
-                          ))}
-
-                          {(editForm.menuImages || []).length === 0 && (
-                            <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                              <ImagePlus className="mx-auto text-slate-200 mb-2" size={32} />
-                              <p className="text-slate-400 text-xs font-bold">Upload menu photos to help customers plan their visit.</p>
-                            </div>
-                          )}
-                        </div>
                       </div>
-                    </motion.div>
-                  )}
-
-                  {activeTab === 'gallery' && (
-                   <motion.div 
-                    key="gallery"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8"
-                   >
-                      <div className="space-y-2">
-                        <h2 className="text-2xl font-display font-bold text-slate-900 font-display">Visual Presentation</h2>
-                        <p className="text-slate-500 text-sm font-medium">Quality visuals increase bookings by up to 65%.</p>
-                      </div>
-
-                      <div className="space-y-6">
-                        <div className="space-y-3">
-                          <label className="text-xs font-black text-slate-400 uppercase tracking-widest block">Main Showpiece Image</label>
-                          <div className="relative h-[400px] rounded-[2.5rem] overflow-hidden border border-slate-100 group shadow-inner-sm">
-                             <img 
-                                src={editForm.image || RESTAURANT_IMAGE_FALLBACK} 
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                                alt="Main"
-                                referrerPolicy="no-referrer"
-                                onError={handleImageError}
-                             />
-                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                <div className="w-[80%] max-w-sm">
-                                   <input 
-                                      className="w-full px-6 py-4 bg-white/90 border border-white/20 rounded-2xl outline-none shadow-2xl text-sm font-bold text-slate-900"
-                                      placeholder="Paste new Image URL here..."
-                                      value={editForm.image || ''}
-                                      onChange={e => setEditForm({...editForm, image: e.target.value})}
-                                   />
-                                </div>
-                             </div>
-                             <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur px-4 py-2 rounded-xl text-xs font-bold text-slate-900 shadow-lg">
-                                Cover Photo
-                             </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4 pt-4">
-                           <div className="flex items-center justify-between">
-                              <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Secondary Gallery</label>
-                              <button 
-                                onClick={() => setEditForm({...editForm, secondaryImages: [...(editForm.secondaryImages || []), '']})}
-                                className="text-brand font-bold text-xs flex items-center gap-1 hover:underline"
-                              >
-                                <Plus size={14} /> Add View
-                              </button>
-                           </div>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {(editForm.secondaryImages || []).map((img, idx) => (
-                                <motion.div 
-                                  layout
-                                  key={idx} 
-                                  className="group relative h-48 bg-slate-50 rounded-3xl border border-slate-100 overflow-hidden shadow-sm"
-                                >
-                                   {img ? (
-                                      <img src={img} className="w-full h-full object-cover" alt={`Gallery ${idx}`} referrerPolicy="no-referrer" onError={handleImageError} />
-                                   ) : (
-                                      <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
-                                         <ImagePlus className="text-slate-300 mb-2" size={32} />
-                                         <p className="text-[10px] font-bold text-slate-400">Empty View</p>
-                                      </div>
-                                   )}
-                                   <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-all p-4 flex flex-col justify-end backdrop-blur-sm">
-                                      <input 
-                                        className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-xl text-[10px] text-white outline-none mb-2 placeholder:text-white/50"
-                                        placeholder="Image URL..."
-                                        value={img}
-                                        onChange={e => {
-                                          const next = [...(editForm.secondaryImages || [])];
-                                          next[idx] = e.target.value;
-                                          setEditForm({...editForm, secondaryImages: next});
-                                        }}
-                                      />
-                                      <button 
-                                        onClick={() => setEditForm({...editForm, secondaryImages: editForm.secondaryImages?.filter((_, i) => i !== idx)})}
-                                        className="w-full py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-500/20"
-                                      >
-                                        Remove
-                                      </button>
-                                   </div>
-                                </motion.div>
-                              ))}
-
-                              {(editForm.secondaryImages || []).length === 0 && (
-                                <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                                  <ImageIcon className="mx-auto text-slate-200 mb-2" size={32} />
-                                  <p className="text-slate-400 text-xs font-bold">Showcase your ambiance through more photos.</p>
-                                </div>
-                              )}
-                           </div>
-                        </div>
-                      </div>
-                   </motion.div>
-                  )}
-
-                  {activeTab === 'promotions' && (
-                    <motion.div 
-                      key="promotions"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h2 className="text-2xl font-display font-bold text-slate-900">Campaigns & Offers</h2>
-                          <p className="text-slate-500 text-sm mt-1 font-medium">Drive more traffic with enticing discounts.</p>
-                        </div>
-                        <button 
-                          onClick={() => setEditForm({...editForm, offers: [...(editForm.offers || []), '']})}
-                          className="bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all text-sm shadow-xl shadow-emerald-500/10"
-                        >
-                          <Plus size={18} /> New Campaign
-                        </button>
-                      </div>
-
-                      <div className="space-y-4">
-                        {(editForm.offers || []).map((offer, i) => (
-                           <motion.div 
-                            layout
-                            key={i} 
-                            className="flex gap-4 p-6 bg-emerald-50/50 border border-emerald-100 rounded-[2rem] items-center group relative overflow-hidden"
-                          >
-                             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shrink-0 border border-emerald-100 text-emerald-500 shadow-sm z-10">
-                                <Tag size={24} />
-                             </div>
-                             <input 
-                                className="flex-grow bg-transparent border-none p-0 focus:ring-0 font-bold text-slate-800 placeholder:text-emerald-200 z-10"
-                                placeholder="E.g. Flat 20% off on all main courses..."
-                                value={offer}
-                                onChange={e => {
-                                  const next = [...(editForm.offers || [])];
-                                  next[i] = e.target.value;
-                                  setEditForm({...editForm, offers: next});
-                                }}
-                             />
-                             <button 
-                                onClick={() => setEditForm({...editForm, offers: editForm.offers?.filter((_, idx) => idx !== i)})}
-                                className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all z-10"
-                              >
-                                <Trash2 size={20} />
-                              </button>
-                              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/30 rounded-full blur-2xl translate-x-12 translate-y-[-12]" />
-                           </motion.div>
-                        ))}
-
-                        {(editForm.offers || []).length === 0 && (
-                          <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100">
-                             <Tag size={48} className="mx-auto text-slate-200 mb-4" />
-                             <p className="text-slate-400 font-bold max-w-xs mx-auto">Customers love a good deal. Add your first promotion today!</p>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                   )}
-                </AnimatePresence>
+                      <input 
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-bold outline-none focus:border-orange-400"
+                        value={img}
+                        onChange={e => {
+                          const next = [...editForm.menuCategories];
+                          next[catIdx].images[imgIdx] = e.target.value;
+                          setEditForm({...editForm, menuCategories: next});
+                        }}
+                        placeholder="Image URL"
+                      />
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => {
+                      const next = [...editForm.menuCategories];
+                      next[catIdx].images = [...(next[catIdx].images || []), ''];
+                      setEditForm({...editForm, menuCategories: next});
+                    }}
+                    className="aspect-[3/4] border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:border-orange-400 hover:text-orange-400 transition-all bg-white/50"
+                  >
+                    <Plus size={32} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Add Page</span>
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+            {(!editForm.menuCategories || editForm.menuCategories.length === 0) && (
+              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100">
+                 <Menu size={64} className="mx-auto text-slate-200 mb-6" />
+                 <p className="text-slate-400 font-bold">Start adding menu items.</p>
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderManagementTabs = () => {
+    switch(activeMgmtTab) {
+      case 'general':
+        return (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="flex items-center gap-4 border-l-4 border-orange-500 pl-6 mb-8">
+               <div>
+                  <h4 className="text-2xl font-display font-black text-slate-900">Branding & Identity</h4>
+                  <p className="text-slate-400 font-bold text-xs">Configure how {restaurant?.name || 'your restaurant'} appears to diners.</p>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Official Name</label>
+                <input 
+                  type="text"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.name}
+                  onChange={e => setEditForm({...editForm, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cuisine Specialty</label>
+                <input 
+                  type="text"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.cuisine}
+                  onChange={e => setEditForm({...editForm, cuisine: e.target.value})}
+                  placeholder="e.g. Contemporary Indian"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Street Address</label>
+                <input 
+                  type="text"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.location}
+                  onChange={e => setEditForm({...editForm, location: e.target.value})}
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Avg Price for Two (₹)</label>
+                <input 
+                  type="number"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.avgPrice || ''}
+                  onChange={e => setEditForm({...editForm, avgPrice: parseInt(e.target.value) || 0})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Our Culinary Philosophy</label>
+              <textarea 
+                rows={6}
+                className="w-full px-8 py-6 bg-white border-2 border-slate-100 rounded-[32px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all resize-none text-base shadow-sm"
+                value={editForm.description}
+                onChange={e => setEditForm({...editForm, description: e.target.value})}
+                placeholder="Describe your atmosphere, signature dishes, and story..."
+              />
+            </div>
+          </motion.div>
+        );
+      case 'operational':
+        return (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="flex items-center gap-4 border-l-4 border-emerald-500 pl-6 mb-8">
+               <div>
+                  <h4 className="text-2xl font-display font-black text-slate-900">Operations & Logistics</h4>
+                  <p className="text-slate-400 font-bold text-xs">Manage your availability and guest services.</p>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+               <div className="space-y-3">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Direct Contact Line</label>
+                  <input 
+                    type="text"
+                    className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-emerald-500 focus:ring-8 focus:ring-emerald-500/5 transition-all text-lg shadow-sm"
+                    value={editForm.contactNumber || ''}
+                    onChange={e => setEditForm({...editForm, contactNumber: e.target.value})}
+                    placeholder="+91 98765 43210"
+                  />
+               </div>
+               <div className="space-y-3">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Live Status Control</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({...editForm, isOpen: !editForm.isOpen})}
+                    className={cn(
+                      "w-full py-5 rounded-[28px] font-black text-xs uppercase tracking-[0.2em] transition-all border-2 flex items-center justify-center gap-3 shadow-md",
+                      editForm.isOpen 
+                        ? "bg-emerald-500 border-emerald-500 text-white shadow-emerald-500/20" 
+                        : "bg-white border-red-100 text-red-500"
+                    )}
+                  >
+                    <div className={cn("w-3 h-3 rounded-full", editForm.isOpen ? "bg-white animate-pulse" : "bg-red-500")} />
+                    {editForm.isOpen ? 'Restaurant Is Open' : 'Restaurant Is Closed'}
+                  </button>
+               </div>
+            </div>
+
+            <div className="space-y-8">
+               <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+                 <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Guest Amenities & Facilities</span>
+               </div>
+               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[
+                    { id: 'WiFi', icon: Wifi },
+                    { id: 'Parking', icon: Car },
+                    { id: 'AC', icon: Snowflake },
+                    { id: 'Outdoor', icon: Sun },
+                    { id: 'Live Music', icon: Music },
+                    { id: 'Bar', icon: Wine },
+                    { id: 'Family', icon: Baby },
+                    { id: 'Digital Menu', icon: Menu }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        const current = editForm.facilities || [];
+                        const next = current.includes(f.id) ? current.filter((i:any) => i !== f.id) : [...current, f.id];
+                        setEditForm({...editForm, facilities: next});
+                      }}
+                      className={cn(
+                        "p-6 rounded-[24px] transition-all flex flex-col items-center justify-center gap-3 border-2",
+                        (editForm.facilities || []).includes(f.id)
+                          ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10 scale-[1.02]"
+                          : "bg-white border-slate-50 text-slate-400 hover:border-emerald-200"
+                      )}
+                    >
+                      {f.icon ? <f.icon size={24} /> : <Info size={24} />}
+                      <span className="text-[10px] font-black uppercase tracking-widest">{f.id}</span>
+                    </button>
+                  ))}
+               </div>
+            </div>
+          </motion.div>
+        );
+      case 'visuals':
+        return (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="flex items-center gap-4 border-l-4 border-blue-500 pl-6 mb-8">
+               <div>
+                  <h4 className="text-2xl font-display font-black text-slate-900">Global Gallery</h4>
+                  <p className="text-slate-400 font-bold text-xs">High-quality visuals for your profile page.</p>
+               </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Primary Face (Cover URL)</label>
+              <div className="relative group">
+                <input 
+                  type="url"
+                  className="w-full pl-16 pr-8 py-6 bg-white border-2 border-slate-100 rounded-[32px] font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all text-base shadow-sm"
+                  value={editForm.image}
+                  onChange={e => setEditForm({...editForm, image: e.target.value})}
+                  placeholder="https://images.unsplash.com/..."
+                />
+                <ImageIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-400" size={24} />
+              </div>
+              {editForm.image && (
+                <div className="w-full h-96 rounded-[48px] overflow-hidden border-8 border-white shadow-vibrant mt-6">
+                  <img src={editForm.image} className="w-full h-full object-cover" alt="Preview" onError={handleImageError} />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Atmosphere & Food Gallery (One URL per line)</label>
+              <textarea 
+                rows={10}
+                className="w-full px-8 py-8 bg-white border-2 border-slate-100 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
+                placeholder="https://images.unsplash.com/photo-1..."
+                value={(editForm.secondaryImages || []).join('\n')}
+                onChange={e => setEditForm({...editForm, secondaryImages: e.target.value.split('\n')})}
+              />
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-4 leading-relaxed">
+                Add multiple high-resolution images to showcase your space and signature dishes.
+              </p>
+            </div>
+          </motion.div>
+        );
+      case 'reservations':
+        return (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <div className="flex items-center gap-4 border-l-4 border-brand pl-6 mb-8">
+               <div>
+                  <h4 className="text-2xl font-display font-black text-slate-900">Reservation Control Hub</h4>
+                  <p className="text-slate-400 font-bold text-xs">Configure how bookings are accepted and confirmed.</p>
+               </div>
+            </div>
+
+            <div className="flex items-center justify-between p-10 bg-brand/5 rounded-[40px] border border-brand/10">
+               <div className="flex items-center gap-6">
+                  <div className={cn("w-14 h-14 rounded-[20px] flex items-center justify-center transition-all", editForm.isBookingEnabled ? "bg-brand text-white shadow-lg" : "bg-white text-slate-300")}>
+                    <Calendar size={28} />
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-display font-black text-slate-900 leading-tight">Live Booking Engine</h4>
+                    <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Status: {editForm.isBookingEnabled ? 'ON & Live' : 'OFF & Hidden'}</p>
+                  </div>
+               </div>
+               <button
+                 type="button"
+                 onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
+                 className={cn(
+                   "px-10 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95",
+                   editForm.isBookingEnabled ? "bg-brand text-white shadow-brand/30" : "bg-white border-2 border-slate-100 text-slate-400 hover:border-brand hover:text-brand"
+                 )}
+               >
+                 {editForm.isBookingEnabled ? 'Engine Active' : 'Activate Engine'}
+               </button>
+            </div>
+
+            <div className={cn("space-y-8 transition-all duration-700", !editForm.isBookingEnabled && "opacity-30 pointer-events-none grayscale scale-[0.98] blur-[2px]")}>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Instant Confirmation Cap (pax)</label>
+                    <input 
+                      type="number"
+                      className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-brand transition-all text-lg shadow-sm"
+                      value={editForm.instantBookingLimit || 1}
+                      onChange={e => setEditForm({...editForm, instantBookingLimit: parseInt(e.target.value) || 0})}
+                    />
+                    <p className="text-[10px] text-slate-400 font-bold px-2 italic">Bookings up to this size are auto-confirmed.</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Blackout Dates (Closed for bookings)</label>
+                    <div className="flex gap-3">
+                       <input 
+                         type="date"
+                         id="owner-blackout-input"
+                         className="flex-grow px-6 py-4 bg-white border-2 border-slate-100 rounded-[24px] font-bold outline-none focus:border-brand"
+                       />
+                       <button
+                         type="button"
+                         onClick={() => {
+                           const el = document.getElementById('owner-blackout-input') as HTMLInputElement;
+                           if (el?.value) {
+                             if (!editForm.blackoutDates?.includes(el.value)) {
+                               setEditForm({...editForm, blackoutDates: [...(editForm.blackoutDates || []), el.value]});
+                             }
+                             el.value = '';
+                           }
+                         }}
+                         className="bg-vibrant-dark text-white px-8 rounded-[24px] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all"
+                       >
+                         Block
+                       </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-4 min-h-[44px]">
+                       {(editForm.blackoutDates || []).map((date: string) => (
+                         <div key={date} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl border border-red-100 text-[10px] font-black flex items-center gap-2 group shadow-sm transition-all hover:pr-2">
+                           {date}
+                           <button type="button" onClick={() => setEditForm({...editForm, blackoutDates: editForm.blackoutDates.filter((d:any) => d !== date)})} className="opacity-40 hover:opacity-100"><X size={14} /></button>
+                         </div>
+                       ))}
+                       {(editForm.blackoutDates || []).length === 0 && <p className="text-[10px] text-slate-300 font-bold flex items-center px-2">No dates blocked.</p>}
+                    </div>
+                  </div>
+               </div>
+
+               <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Operational Time Slots</label>
+                    <span className="text-[10px] font-black text-brand uppercase tracking-widest">{editForm.bookingSlots?.length || 0} Slots Active</span>
+                  </div>
+                  <div className="bg-slate-50/50 p-10 rounded-[40px] border-2 border-slate-100/50 flex flex-wrap gap-4 shadow-inner">
+                     {(editForm.bookingSlots || []).map((slot: string, idx: number) => (
+                       <div key={idx} className="bg-white border-2 border-slate-100 px-6 py-4 rounded-[20px] text-base font-black flex items-center gap-4 shadow-sm hover:border-brand hover:text-brand transition-all group">
+                         {slot}
+                         <button type="button" onClick={() => setEditForm({...editForm, bookingSlots: editForm.bookingSlots.filter((_:any, i:any) => i !== idx)})} className="text-slate-300 hover:text-red-500 transition-colors"><X size={18} /></button>
+                       </div>
+                     ))}
+                     <input 
+                       className="w-40 bg-white border-2 border-slate-100 hover:border-brand transition-all rounded-[20px] px-6 py-4 text-base font-black outline-none focus:border-brand shadow-sm text-center"
+                       placeholder="HH:MM"
+                       onKeyDown={e => {
+                         if (e.key === 'Enter') {
+                           const val = (e.currentTarget as HTMLInputElement).value.trim();
+                           if (val && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
+                             setEditForm({...editForm, bookingSlots: [...(editForm.bookingSlots || []), val].sort()});
+                             (e.currentTarget as HTMLInputElement).value = '';
+                           }
+                         }
+                       }}
+                     />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold px-4">Press ENTER after typing a time (e.g. 19:30) to add a new slot.</p>
+               </div>
+            </div>
+          </motion.div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[600px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-12 pb-32">
+      <div className="flex flex-col lg:flex-row gap-12">
+        {/* Sidebar Controls */}
+        <div className="lg:w-80 shrink-0">
+          <div className="sticky top-32 space-y-8">
+            <div className="bg-white rounded-[3rem] p-8 shadow-vibrant border border-slate-100 overflow-hidden relative">
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-3xl bg-brand/10 flex items-center justify-center text-brand shrink-0">
+                    <LayoutDashboard size={32} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-display font-black text-slate-900 leading-tight truncate" title={restaurant?.name}>{restaurant?.name || 'Owner Dashboard'}</h2>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 truncate" title={restaurant?.location}>{restaurant?.location || 'Management Hub'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+                    { id: 'bookings', label: 'Bookings List', icon: Calendar },
+                    { id: 'management', label: 'Restaurant Setup', icon: Settings },
+                    { id: 'menu', label: 'Visual Menu', icon: Menu }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 font-bold text-sm",
+                        activeTab === tab.id 
+                          ? "bg-brand text-white shadow-lg shadow-brand/20 scale-[1.02]" 
+                          : "text-slate-500 hover:bg-slate-50 hover:text-brand"
+                      )}
+                    >
+                      <tab.icon size={20} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Quick Toggles */}
+                <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Table Bookings</span>
+                  <button
+                    onClick={async () => {
+                        const newVal = !editForm.isBookingEnabled;
+                        setEditForm({...editForm, isBookingEnabled: newVal});
+                        
+                        if (restaurant?.id) {
+                          try {
+                            await updateDoc(doc(db, 'restaurants', restaurant.id), {
+                              isBookingEnabled: newVal,
+                              updatedAt: serverTimestamp()
+                            });
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                    }}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-all relative shrink-0",
+                      editForm.isBookingEnabled ? "bg-emerald-500" : "bg-slate-200"
+                    )}
+                  >
+                     <div className={cn(
+                       "absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all shadow-sm",
+                       editForm.isBookingEnabled ? "left-7" : "left-1"
+                     )} />
+                  </button>
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-full blur-3xl -translate-x-4 translate-y-4" />
+            </div>
+
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={handleSave}
+              disabled={saving}
+              className={cn(
+                "w-full py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95 group",
+                saveStatus === 'success' ? "bg-emerald-500 text-white shadow-emerald-500/20" :
+                saveStatus === 'error' ? "bg-red-500 text-white shadow-red-500/20" :
+                "bg-vibrant-dark text-white hover:bg-black shadow-slate-900/20"
+              )}
+            >
+              {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 
+               saveStatus === 'success' ? <CheckCircle2 size={24} /> :
+               saveStatus === 'error' ? <AlertCircle size={24} /> :
+               <Save size={24} className="group-hover:rotate-12 transition-transform" />}
+              {saving ? 'Synchronizing...' : 
+               saveStatus === 'success' ? 'Changes Saved!' :
+               saveStatus === 'error' ? 'Failed to Save' :
+               'Push Changes Live'}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 min-w-0">
+          <AnimatePresence mode="wait">
+            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'bookings' && renderBookingsTab()}
+            {activeTab === 'menu' && renderMenuTab()}
+            {activeTab === 'management' && (
+              <motion.div
+                key="management"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
+              >
+                {/* Management Tabs Switcher */}
+                <div className="flex flex-wrap gap-4 mb-8">
+                  {[
+                    { id: 'general', label: 'General', icon: Info },
+                    { id: 'operational', label: 'Operations', icon: Settings },
+                    { id: 'visuals', label: 'Visuals', icon: ImageIcon },
+                    { id: 'reservations', label: 'Bookings', icon: Calendar }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveMgmtTab(tab.id as any)}
+                      className={cn(
+                        "flex items-center gap-3 px-8 py-4 rounded-[20px] font-black text-[10px] uppercase tracking-widest transition-all",
+                        activeMgmtTab === tab.id 
+                          ? "bg-vibrant-dark text-white shadow-xl shadow-slate-900/20" 
+                          : "bg-white text-slate-400 hover:text-brand hover:bg-slate-50"
+                      )}
+                    >
+                      <tab.icon size={16} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="bg-white rounded-[3.5rem] shadow-vibrant border border-slate-50 p-12 overflow-hidden relative">
+                   <div className="h-40 bg-orange-50/20 absolute top-0 inset-x-0 -z-0" />
+                   <div className="relative z-10">
+                      {renderManagementTabs()}
+                   </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

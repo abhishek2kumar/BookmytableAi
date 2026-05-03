@@ -188,6 +188,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
+            {/* Portal target for page-specific search (like CityView) */}
+            <div id="navbar-search-portal" className="hidden md:flex flex-1 mx-4 max-w-2xl transition-all"></div>
+
             {/* Nav Links */}
             <nav className="hidden md:flex items-center gap-8">
               {navItems.map((item) => (

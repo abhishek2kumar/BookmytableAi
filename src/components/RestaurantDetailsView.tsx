@@ -7,11 +7,11 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useLocationContext } from './LocationContext';
 import { RestaurantCard } from './RestaurantCard';
 import { Restaurant, Booking, Review } from '../types';
-import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2 } from 'lucide-react';
+import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday } from 'date-fns';
 import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance } from '../lib/utils';
-import { summarizeGoogleReviews } from '../services/geminiService';
+import { summarizeGoogleReviews } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import { useMemo } from 'react';
 
@@ -44,6 +44,7 @@ export default function RestaurantDetailsView() {
   const [scrolled, setScrolled] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
+  const [isMobileBookingOpen, setIsMobileBookingOpen] = useState(false);
 
   // Load bookmark status
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function RestaurantDetailsView() {
 
   // Menu Carousel & Popup State
   const [menuSlideIndex, setMenuSlideIndex] = useState(0);
+  const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [isTimingsOpen, setIsTimingsOpen] = useState(false);
@@ -96,10 +98,12 @@ export default function RestaurantDetailsView() {
   const [restaurantOwnerEmail, setRestaurantOwnerEmail] = useState<string | null>(null);
   const allPhotos = useMemo(() => {
     if (!restaurant) return [];
+    const menuCatImages = (restaurant.menuCategories || []).flatMap((c: any) => c.images || []);
     return [
       restaurant.image,
       ...(restaurant.secondaryImages || []),
-      ...(restaurant.menuImages || [])
+      ...(restaurant.menuImages || []),
+      ...menuCatImages
     ].filter(Boolean);
   }, [restaurant]);
 
@@ -319,7 +323,7 @@ export default function RestaurantDetailsView() {
         dateTime: bookingDateTime,
         guests,
         userPhone,
-        status: 'pending',
+        status: guests <= (restaurant.instantBookingLimit || 10) ? 'confirmed' : 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -493,13 +497,84 @@ export default function RestaurantDetailsView() {
   }, [bannerImages.length]);
 
   const status = isCurrentlyOpen();
-  const dates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
-  const times = restaurant?.bookingSlots && restaurant.bookingSlots.length > 0 
-    ? restaurant.bookingSlots 
-    : [
-        '12:00', '12:30', '13:00', '13:30', '14:00', 
-        '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'
-      ];
+  const dates = useMemo(() => {
+    const allDates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
+    if (!restaurant?.blackoutDates || restaurant.blackoutDates.length === 0) return allDates;
+    
+    return allDates.filter(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      return !restaurant.blackoutDates?.includes(dateStr);
+    });
+  }, [restaurant?.blackoutDates]);
+
+  const slotData = useMemo(() => {
+    if (restaurant?.slotCategories && restaurant.slotCategories.length > 0) {
+      return {
+        categorized: true,
+        categories: restaurant.slotCategories
+      };
+    }
+
+    const manualSlots = restaurant?.bookingSlots || [];
+    if (manualSlots.length > 0) {
+      return { categorized: false, slots: manualSlots };
+    }
+
+    // Fallback slots if not detailed: Generate 30min intervals based on current day timings
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const selectedDayName = dayNames[selectedDate.getDay()];
+    const getTimingsForDay = (day: string) => {
+      const daily = restaurant?.dailyTimings?.[day];
+      let openStr = restaurant?.openingHours?.open || '11:00 AM';
+      let closeStr = restaurant?.openingHours?.close || '11:00 PM';
+      let isClosed = false;
+
+      if (daily) {
+        if (daily.closed) isClosed = true;
+        else {
+          openStr = daily.open;
+          closeStr = daily.close;
+        }
+      }
+      return { openStr, closeStr, isClosed };
+    };
+
+    const timings = getTimingsForDay(selectedDayName);
+    if (timings.isClosed) return { categorized: false, slots: [] };
+
+    const parseTime = (timeStr: string) => {
+      const parts = timeStr.trim().split(' ');
+      const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
+      const time = parts[0].replace(/AM|PM/i, '');
+      let [h, m] = time.split(':').map(Number);
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      return h * 60 + (m || 0);
+    };
+
+    const openMin = parseTime(timings.openStr);
+    const closeMin = parseTime(timings.closeStr);
+    const slots = [];
+    
+    // Adjust end time for midnight/overnight
+    let endMin = closeMin;
+    if (closeMin <= openMin) endMin = closeMin + (24 * 60);
+
+    for (let m = openMin; m < endMin; m += 30) {
+      const hour = Math.floor((m % (24 * 60)) / 60);
+      const min = m % 60;
+      slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+    }
+
+    return { categorized: false, slots };
+  }, [restaurant, selectedDate]);
+
+  const times = useMemo(() => {
+    if (slotData.categorized) {
+      return slotData.categories.flatMap(c => c.slots);
+    }
+    return slotData.slots;
+  }, [slotData]);
 
   const recommendations = useMemo(() => {
     if (!restaurant || !allRestaurants.length) return { similar: [], nearby: [], youMayLike: [] };
@@ -957,71 +1032,177 @@ export default function RestaurantDetailsView() {
             </div>
           </div>
 
-          {/* Visual Menu Images Carousel */}
-          {restaurant.menuImages && restaurant.menuImages.length > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Utensils className="text-brand" size={24} />
-                  <h2 className="text-2xl font-display font-bold text-vibrant-dark">Visual Menu</h2>
+          {/* Visual Menu Section (Modern Categorized) */}
+          {((restaurant.menuCategories && restaurant.menuCategories.length > 0) || (restaurant.menuImages && restaurant.menuImages.length > 0)) && (
+            <div className="space-y-8 bg-white border border-gray-100 p-8 rounded-[2.5rem] shadow-vibrant overflow-hidden relative group/menu">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-brand/10 rounded-2xl flex items-center justify-center text-brand">
+                    <Menu size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight">Visual Menu</h2>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Explore our offerings</p>
+                  </div>
                 </div>
-                
-                {restaurant.menuImages.length > 3 && (
-                  <div className="hidden md:flex gap-2">
-                    <button 
-                      onClick={() => setMenuSlideIndex(prev => Math.max(0, prev - 1))}
-                      disabled={menuSlideIndex === 0}
-                      className="p-2 rounded-full bg-white border border-gray-200 text-vibrant-dark disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
-                    <button 
-                      onClick={() => setMenuSlideIndex(prev => {
-                        const maxIndex = restaurant.menuImages!.length - (window.innerWidth >= 768 ? 3 : 2);
-                        return Math.min(maxIndex, prev + 1);
-                      })}
-                      disabled={menuSlideIndex >= (restaurant.menuImages.length - (window.innerWidth >= 768 ? 3 : 2))}
-                      className="p-2 rounded-full bg-white border border-gray-200 text-vibrant-dark disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-sm"
-                    >
-                      <ChevronRight size={20} />
-                    </button>
+
+                {/* Category Selector Tabs */}
+                {restaurant.menuCategories && restaurant.menuCategories.length > 0 && (
+                  <div className="flex bg-slate-50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
+                    {restaurant.menuCategories.map((cat: any) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          setActiveMenuCategory(cat.id);
+                          setMenuSlideIndex(0);
+                        }}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap uppercase tracking-widest",
+                          (activeMenuCategory === cat.id || (!activeMenuCategory && restaurant.menuCategories[0].id === cat.id))
+                            ? "bg-white text-brand shadow-sm" 
+                            : "text-slate-400 hover:text-slate-600"
+                        )}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                    {restaurant.menuImages && restaurant.menuImages.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setActiveMenuCategory('legacy');
+                          setMenuSlideIndex(0);
+                        }}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap uppercase tracking-widest",
+                          activeMenuCategory === 'legacy' ? "bg-white text-brand shadow-sm" : "text-slate-400 hover:text-slate-600"
+                        )}
+                      >
+                        Other
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
+              {/* Multi-Page Visual for Selected Category */}
               <div className="relative">
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide md:overflow-visible md:pb-0">
-                  <motion.div 
-                    className="flex gap-4 shrink-0"
-                    animate={typeof window !== 'undefined' && window.innerWidth >= 768 ? { x: `calc(-${menuSlideIndex * (100 / (window.innerWidth >= 768 ? 3 : 2))}% - ${menuSlideIndex * 16}px)` } : {}}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeMenuCategory || (restaurant.menuCategories?.[0]?.id) || 'legacy'}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="relative"
                   >
-                    {restaurant.menuImages.map((img, i) => (
-                      <motion.div 
-                        key={i}
-                        layout
-                        className="shrink-0 w-[70vw] md:w-[calc(33.333%-11px)] aspect-[3/4] rounded-lg overflow-hidden shadow-md border border-gray-100 cursor-zoom-in group relative"
-                        onClick={() => openPhotoViewer(img)}
-                      >
-                      <img 
-                        src={img} 
-                        alt={`Menu page ${i + 1}`} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
-                        referrerPolicy="no-referrer"
-                        onError={handleImageError}
-                      />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg text-brand">
-                          <Maximize2 size={20} />
+                    {(() => {
+                      const currentCat = activeMenuCategory === 'legacy' 
+                        ? { images: restaurant.menuImages } 
+                        : (restaurant.menuCategories?.find((c: any) => c.id === activeMenuCategory) || restaurant.menuCategories?.[0] || { images: restaurant.menuImages });
+                      
+                      const images = currentCat?.images || [];
+                      
+                      if (images.length === 0) return (
+                        <div className="py-20 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-100 italic text-slate-400 font-bold">
+                          No images found for this category
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
+                      );
+
+                      return (
+                        <div className="space-y-6">
+                          <div className="relative group/slides overflow-hidden rounded-3xl">
+                            <div className="flex gap-6 overflow-x-auto pb-6 md:pb-0 md:overflow-visible no-scrollbar">
+                              <motion.div 
+                                className="flex gap-6 shrink-0"
+                                animate={{ x: `calc(-${menuSlideIndex * (100 / (window.innerWidth >= 768 ? 2 : 1.2))}% - ${menuSlideIndex * 24}px)` }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                              >
+                                {images.map((img: string, i: number) => (
+                                  <motion.div 
+                                    key={i}
+                                    whileHover={{ y: -5 }}
+                                    className="shrink-0 w-[80vw] md:w-[calc(50%-12px)] aspect-[3/4.2] rounded-[2rem] overflow-hidden shadow-2xl border border-white/50 cursor-zoom-in relative group/img bg-slate-100"
+                                    onClick={() => openPhotoViewer(img)}
+                                  >
+                                    <img 
+                                      src={img} 
+                                      alt={`Menu page ${i + 1}`} 
+                                      className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" 
+                                      referrerPolicy="no-referrer"
+                                      onError={handleImageError}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity flex flex-col justify-end p-8">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-white text-xs font-black uppercase tracking-widest">Page {i + 1} of {images.length}</span>
+                                        <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20">
+                                          <Maximize2 size={20} />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Page Number Badge */}
+                                    <div className="absolute top-6 left-6 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-white text-[10px] font-black uppercase tracking-widest z-10 transition-transform group-hover/img:scale-110">
+                                      {i + 1} / {images.length}
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </motion.div>
+                            </div>
+
+                            {/* Custom Controls */}
+                            {images.length > (window.innerWidth >= 768 ? 2 : 1.2) && (
+                              <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 inset-x-4 justify-between pointer-events-none">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuSlideIndex(prev => Math.max(0, prev - 1));
+                                  }}
+                                  disabled={menuSlideIndex === 0}
+                                  className={cn(
+                                    "w-12 h-12 rounded-full border border-white/20 text-white flex items-center justify-center pointer-events-auto transition-all translate-x-[-100%] group-hover/slides:translate-x-0 opacity-0 group-hover/slides:opacity-100 bg-black/20 backdrop-blur-md hover:bg-brand hover:scale-110",
+                                    menuSlideIndex === 0 && "invisible"
+                                  )}
+                                >
+                                  <ChevronLeft size={24} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const maxItems = window.innerWidth >= 768 ? 2 : 1;
+                                    setMenuSlideIndex(prev => Math.min(images.length - maxItems, prev + 1));
+                                  }}
+                                  disabled={menuSlideIndex >= images.length - (window.innerWidth >= 768 ? 2 : 1)}
+                                  className={cn(
+                                    "w-12 h-12 rounded-full border border-white/20 text-white flex items-center justify-center pointer-events-auto transition-all translate-x-[100%] group-hover/slides:translate-x-0 opacity-0 group-hover/slides:opacity-100 bg-black/20 backdrop-blur-md hover:bg-brand hover:scale-110",
+                                    menuSlideIndex >= images.length - (window.innerWidth >= 768 ? 2 : 1) && "invisible"
+                                  )}
+                                >
+                                  <ChevronRight size={24} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Progress Dots */}
+                          <div className="flex justify-center gap-2 pb-4">
+                             {Array.from({ length: Math.ceil(images.length - (window.innerWidth >= 768 ? 1 : 0)) }).map((_, idx) => (
+                               <div 
+                                 key={idx} 
+                                 className={cn(
+                                   "h-1.5 rounded-full transition-all duration-300",
+                                   menuSlideIndex === idx ? "w-8 bg-brand" : "w-1.5 bg-slate-200"
+                                 )}
+                               />
+                             ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </motion.div>
+                </AnimatePresence>
+                <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-brand/5 rounded-full blur-3xl -z-10 group-hover/menu:scale-150 transition-transform duration-1000" />
               </div>
             </div>
-          </div>
-        )}
+          )}
 
           {/* Amenities / Facilities Section (Minimalistic) */}
           <div className="bg-white border border-gray-100 p-6 rounded-xl shadow-vibrant">
@@ -1060,7 +1241,7 @@ export default function RestaurantDetailsView() {
         <div className="lg:col-span-1">
           <div className="sticky top-28 space-y-6">
             {/* Booking Form in Sidebar */}
-            <div id="table-booking-card" className="bg-white rounded-3xl border border-gray-100 shadow-vibrant overflow-hidden scroll-mt-24">
+            <div id="table-booking-card" className="hidden md:block bg-white rounded-3xl border border-gray-100 shadow-vibrant overflow-hidden scroll-mt-24">
               <div className="bg-vibrant-dark p-6 text-white flex flex-col justify-center min-h-[80px]">
                 <h2 className="text-xl font-display font-bold text-white tracking-tight">Table Booking</h2>
               </div>
@@ -1102,6 +1283,9 @@ export default function RestaurantDetailsView() {
                       <label className="flex items-center gap-2 text-[10px] font-bold text-vibrant-gray tracking-widest mb-3 opacity-60">
                         <CalendarIcon size={14} />
                         Select Date
+                        {restaurant?.blackoutDates?.length ? (
+                          <span className="ml-auto text-[8px] text-brand">Exclusive days filtered</span>
+                        ) : null}
                       </label>
                       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                         {dates.map((date) => (
@@ -1128,27 +1312,58 @@ export default function RestaurantDetailsView() {
                         <Clock size={14} />
                         Select Time
                       </label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {times.map((time) => {
-                          const past = isTimeInPast(time);
-                          return (
-                            <button
-                              key={time}
-                              disabled={past}
-                              onClick={() => setSelectedTime(time)}
-                              className={cn(
-                                "py-2 rounded-lg border text-[11px] font-bold transition-all",
-                                selectedTime === time
-                                  ? "bg-brand text-white border-brand shadow-sm"
-                                  : "bg-white border-gray-100 text-vibrant-gray hover:border-brand whitespace-nowrap",
-                                past && "opacity-20 cursor-not-allowed bg-slate-100 border-transparent text-slate-400"
-                              )}
-                            >
-                              {time}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {slotData.categorized ? (
+                        <div className="grid grid-cols-1 gap-4">
+                          {slotData.categories.map((cat) => (
+                            <div key={cat.id} className="space-y-2">
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{cat.name}</p>
+                               <div className="grid grid-cols-4 gap-2">
+                                  {cat.slots.map((time) => {
+                                    const past = isTimeInPast(time);
+                                    return (
+                                      <button
+                                        key={time}
+                                        disabled={past}
+                                        onClick={() => setSelectedTime(time)}
+                                        className={cn(
+                                          "py-2 rounded-lg border text-[11px] font-bold transition-all",
+                                          selectedTime === time
+                                            ? "bg-brand text-white border-brand shadow-sm"
+                                            : "bg-white border-gray-100 text-vibrant-gray hover:border-brand whitespace-nowrap",
+                                          past && "opacity-20 cursor-not-allowed bg-slate-100 border-transparent text-slate-400"
+                                        )}
+                                      >
+                                        {time}
+                                      </button>
+                                    );
+                                  })}
+                               </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-2">
+                          {slotData.slots.map((time) => {
+                            const past = isTimeInPast(time);
+                            return (
+                              <button
+                                key={time}
+                                disabled={past}
+                                onClick={() => setSelectedTime(time)}
+                                className={cn(
+                                  "py-2 rounded-lg border text-[11px] font-bold transition-all",
+                                  selectedTime === time
+                                    ? "bg-brand text-white border-brand shadow-sm"
+                                    : "bg-white border-gray-100 text-vibrant-gray hover:border-brand whitespace-nowrap",
+                                  past && "opacity-20 cursor-not-allowed bg-slate-100 border-transparent text-slate-400"
+                                )}
+                              >
+                                {time}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* Guests */}
@@ -1158,7 +1373,7 @@ export default function RestaurantDetailsView() {
                         Guests
                       </label>
                       <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none snap-x">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((num) => (
                           <button
                             key={num}
                             onClick={() => setGuests(num)}
@@ -1184,10 +1399,13 @@ export default function RestaurantDetailsView() {
                       <input 
                         type="tel"
                         required
-                        placeholder="e.g. +91 9876543210"
+                        placeholder="10 digit mobile number"
                         value={userPhone}
-                        onChange={(e) => setUserPhone(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-vibrant-dark outline-none focus:border-brand transition-all"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setUserPhone(val);
+                        }}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-base font-bold text-vibrant-dark outline-none focus:border-brand transition-all"
                       />
                     </div>
 
@@ -1195,7 +1413,7 @@ export default function RestaurantDetailsView() {
                     <button
                       id="booking-form"
                       onClick={handleBooking}
-                      disabled={isSubmitting || !userPhone || !selectedTime || isTimeInPast(selectedTime)}
+                      disabled={isSubmitting || userPhone.length !== 10 || !selectedTime || isTimeInPast(selectedTime)}
                       className="w-full bg-brand text-white py-4 rounded-2xl font-bold text-sm tracking-wide hover:bg-brand-dark transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-brand/20"
                     >
                       {isSubmitting ? 'Processing...' : user ? `Confirm Booking` : 'Sign In to Book'}
@@ -1229,7 +1447,7 @@ export default function RestaurantDetailsView() {
                {isAiLoading ? (
                  <div className="flex items-center gap-3">
                    <Loader2 size={16} className="animate-spin" />
-                   <p className="text-xs font-medium animate-pulse">Gemini is summarizing reviews...</p>
+                   <p className="text-xs font-medium animate-pulse">OpenAI is summarizing reviews...</p>
                  </div>
                ) : aiSummary ? (
                  <div className="prose prose-invert max-w-none text-white/90 font-medium text-xs leading-relaxed line-clamp-[8]">
@@ -1586,23 +1804,246 @@ export default function RestaurantDetailsView() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Sticky Bottom Actions (Mobile) - "App Style" */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-xl border-t border-slate-100 px-6 py-4 pb-10 flex gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
-        <button 
-          onClick={() => {
-            const el = document.getElementById('table-booking-card');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }}
-          className="flex-1 bg-slate-50 text-slate-800 border border-slate-200 py-4 rounded-2xl font-black text-xs uppercase tracking-tighter active:scale-95 transition-all shadow-sm"
-        >
-          Book a table
-        </button>
-        <button 
-          className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-xs uppercase tracking-tighter shadow-xl shadow-brand/30 active:scale-95 transition-all"
-        >
-          Pay bill now
-        </button>
-      </div>
+      {/* Mobile Floating Action Bar */}
+      <AnimatePresence>
+        {!isMobileBookingOpen && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-4 pb-8 bg-white/95 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]"
+          >
+            <div className="flex items-center gap-4">
+               {/* Small Price/Info */}
+               <div className="shrink-0 flex flex-col gap-0.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Avg Price</span>
+                  <span className="text-sm font-black text-slate-900 tracking-tighter">₹{restaurant.avgPrice} <span className="text-[10px] font-bold text-slate-400">/ 2 people</span></span>
+               </div>
+               
+               <button 
+                onClick={() => setIsMobileBookingOpen(true)}
+                className="flex-1 bg-brand text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                 {restaurant.isBookingEnabled !== false ? (
+                   <>
+                    <CalendarIcon size={18} />
+                    Book a Table
+                   </>
+                 ) : (
+                   'Booking Unavailable'
+                 )}
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Booking Drawer (Full Screen) */}
+      <AnimatePresence>
+        {isMobileBookingOpen && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 bg-white z-[200] flex flex-col md:hidden"
+          >
+            {/* Drawer Header */}
+            <div className="p-6 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <div>
+                <h3 className="text-xl font-display font-black text-slate-900 leading-tight">Book a Table</h3>
+                <p className="text-xs font-bold text-slate-500">{restaurant.name}</p>
+              </div>
+              <button 
+                onClick={() => setIsMobileBookingOpen(false)}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-800"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+               {bookingSuccess ? (
+                <div className="py-20 text-center">
+                  <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 size={40} />
+                  </div>
+                  <h3 className="text-2xl font-display font-black text-slate-900 mb-2">
+                    {guests <= (restaurant.instantBookingLimit || 10) ? 'Booking Confirmed!' : 'Booking Requested!'}
+                  </h3>
+                  <p className="text-slate-500 font-medium whitespace-pre-wrap">
+                    {guests <= (restaurant.instantBookingLimit || 10) 
+                      ? `Pack your bags! Your table for ${guests} on ${format(selectedDate, 'MMM d')} at ${selectedTime} is confirmed.`
+                      : "We'll let you know once the restaurant confirms your reservation."}
+                  </p>
+                </div>
+               ) : (
+                 <div className="space-y-10">
+                    {/* Date */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Select Date</h4>
+                        <span className="text-[10px] font-black text-brand bg-brand/5 px-2 py-0.5 rounded-full uppercase truncate max-w-[150px]">
+                          {format(selectedDate, 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-none -mx-2 px-2">
+                        {dates.map((date) => (
+                          <button
+                            key={date.toString()}
+                            onClick={() => setSelectedDate(date)}
+                            className={cn(
+                              "flex flex-col items-center min-w-[64px] py-4 rounded-2xl border-2 transition-all font-black",
+                              format(selectedDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+                                ? "bg-brand/10 border-brand text-brand shadow-sm"
+                                : "bg-white border-slate-100 text-slate-400 hover:border-brand"
+                            )}
+                          >
+                            <span className="text-[10px] uppercase opacity-60 mb-1">{format(date, 'EEE')}</span>
+                            <span className="text-lg">{format(date, 'd')}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Time */}
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Select Time</h4>
+                      {slotData.categorized ? (
+                        <div className="space-y-6">
+                           {slotData.categories.map((cat) => (
+                             <div key={cat.id}>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-3">{cat.name}</p>
+                                <div className="grid grid-cols-4 gap-3">
+                                  {cat.slots.map((time) => {
+                                    const past = isTimeInPast(time);
+                                    return (
+                                      <button
+                                        key={time}
+                                        disabled={past}
+                                        onClick={() => setSelectedTime(time)}
+                                        className={cn(
+                                          "py-3 rounded-xl border-2 text-xs font-black transition-all",
+                                          selectedTime === time
+                                            ? "bg-brand/10 border-brand text-brand"
+                                            : "bg-white border-slate-100 text-slate-600 hover:border-brand",
+                                          past && "opacity-20 bg-slate-50 border-transparent text-slate-300"
+                                        )}
+                                      >
+                                        {time}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                          {slotData.slots.map((time) => {
+                            const past = isTimeInPast(time);
+                            return (
+                              <button
+                                key={time}
+                                disabled={past}
+                                onClick={() => setSelectedTime(time)}
+                                className={cn(
+                                  "py-3 rounded-xl border-2 text-xs font-black transition-all",
+                                  selectedTime === time
+                                    ? "bg-brand/10 border-brand text-brand"
+                                    : "bg-white border-slate-100 text-slate-600 hover:border-brand",
+                                  past && "opacity-20 bg-slate-50 border-transparent text-slate-300"
+                                )}
+                              >
+                                {time}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Guests */}
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Number of Guests</h4>
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <Users size={18} className="text-brand" />
+                          <span className="text-sm font-black text-slate-900">{guests} People</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <button 
+                            onClick={() => setGuests(Math.max(1, guests - 1))}
+                            className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 active:scale-95 transition-all"
+                           >
+                            -
+                           </button>
+                           <button 
+                            onClick={() => setGuests(guests + 1)}
+                            disabled={guests >= 20}
+                            className={cn(
+                              "w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all",
+                              guests >= 20 ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white"
+                            )}
+                           >
+                            +
+                           </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contact */}
+                    <div>
+                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Contact Details</h4>
+                       <div className="relative group">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand transition-colors" size={18} />
+                          <input 
+                            type="tel" 
+                            placeholder="10 digit mobile number"
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-4 font-bold text-base focus:border-brand focus:ring-0 transition-all"
+                            value={userPhone}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                              setUserPhone(val);
+                            }}
+                          />
+                       </div>
+                       <p className="mt-2 text-[10px] font-bold text-slate-400 bg-slate-50 p-3 rounded-xl">
+                         By continuing, you agree that {restaurant.name} may contact you regarding your reservation.
+                       </p>
+                    </div>
+                 </div>
+               )}
+            </div>
+
+            {/* Drawer Footer */}
+            {!bookingSuccess && (
+              <div className="p-6 border-t bg-slate-50">
+                <button
+                  disabled={!selectedTime || userPhone.length !== 10 || isSubmitting}
+                  onClick={handleBooking}
+                  className={cn(
+                    "w-full py-5 rounded-2xl font-black text-sm shadow-xl transition-all flex items-center justify-center gap-2",
+                    (!selectedTime || userPhone.length !== 10 || isSubmitting)
+                      ? "bg-slate-300 text-white cursor-not-allowed"
+                      : "bg-slate-900 text-white hover:-translate-y-1 active:translate-y-0"
+                  )}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      SECURELY BOOKING...
+                    </>
+                  ) : (
+                    'CONFIRM RESERVATION'
+                  )}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

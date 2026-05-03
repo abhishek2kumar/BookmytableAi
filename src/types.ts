@@ -16,6 +16,18 @@ export interface DailyTiming {
   closed: boolean;
 }
 
+export interface SlotCategory {
+  id: string;
+  name: string;
+  slots: string[];
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  images: string[];
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -40,6 +52,9 @@ export interface Restaurant {
     [key: string]: DailyTiming;
   };
   isBookingEnabled?: boolean;
+  instantBookingLimit?: number;
+  blackoutDates?: string[];
+  slotCategories?: SlotCategory[];
   bookingSlots?: string[];
   facilities?: string[];
   offers?: string[];
@@ -50,6 +65,7 @@ export interface Restaurant {
   }[];
   menuImages?: string[];
   secondaryImages?: string[];
+  menuCategories?: MenuCategory[];
   contactNumber?: string;
   aiSummary?: string;
   aiSummaryUpdatedAt?: any;

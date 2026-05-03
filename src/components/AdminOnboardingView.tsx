@@ -118,6 +118,12 @@ export default function AdminOnboardingView() {
         menu: [],
         secondaryImages: [],
         isBookingEnabled: true,
+        instantBookingLimit: 10,
+        slotCategories: [
+          { id: 'breakfast', name: 'Breakfast', slots: ['08:00', '08:30', '09:00', '09:30'] },
+          { id: 'lunch', name: 'Lunch', slots: ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30'] },
+          { id: 'dinner', name: 'Dinner', slots: ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'] }
+        ],
         bookingSlots: ['12:00', '13:00', '14:00', '19:00', '20:00', '21:00']
       };
 

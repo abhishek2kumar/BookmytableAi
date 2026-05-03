@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
 import { cn } from '../lib/utils';
+import { useRestaurants } from '../hooks/useFirebase';
 
 export default function HomeLandingView() {
   const navigate = useNavigate();
   const { cities } = useMasterData();
   const { setCity, setCoords, detectLocation, isDetecting } = useLocationContext();
+  const { restaurants } = useRestaurants(true);
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -52,11 +54,87 @@ export default function HomeLandingView() {
     setShowSuggestions(false);
   };
 
-  const suggestions = searchValue.trim() 
-    ? [...cities]
-        .filter(c => c.name.toLowerCase().includes(searchValue.toLowerCase()) && c.lat !== 0)
+  const handleSuggestionSelect = (suggestion: any) => {
+    if (suggestion.type === 'city') {
+      const cityData = cities.find(c => c.name === suggestion.name);
+      if (cityData) {
+        setCity(cityData.name);
+        setCoords({ lat: cityData.lat, lng: cityData.lng });
+        navigate(`/city/${cityData.name.toLowerCase()}`);
+      }
+    } else if (suggestion.type === 'restaurant') {
+      // If we select a restaurant, we usually need the city context if there's any state relying on it,
+      // but navigating to restaurant directly should work independently.
+      navigate(`/restaurant/${suggestion.restaurantId}`);
+    }
+    setShowSuggestions(false);
+  };
+
+  const handleSearchSubmit = () => {
+    const trimmedInput = searchValue.trim();
+    if (!trimmedInput) return;
+
+    // First try finding an exact match
+    const exactCity = cities.find(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
+    if (exactCity) {
+      handleSuggestionSelect({ type: 'city', name: exactCity.name });
+      return;
+    }
+
+    const exactRestaurant = restaurants.find(r => r.name.toLowerCase() === trimmedInput.toLowerCase());
+    if (exactRestaurant) {
+      handleSuggestionSelect({ type: 'restaurant', restaurantId: exactRestaurant.id });
+      return;
+    }
+
+    // Since we didn't find an exact match, check for partial matches and redirect to the first suggestion
+    const firstSuggestion = suggestions[0];
+    if (firstSuggestion) {
+       handleSuggestionSelect(firstSuggestion);
+       return;
+    }
+
+    // If nothing matches completely, do the default unsupported/invalid check for City
+    const isKnown = cities.some(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
+    if (isKnown) {
+      navigate(`/error?city=${encodeURIComponent(trimmedInput)}&type=unsupported`);
+    } else {
+      navigate(`/error?city=${encodeURIComponent(trimmedInput)}&type=invalid`);
+    }
+    setShowSuggestions(false);
+  };
+
+  const normalizedSearch = searchValue.trim().toLowerCase();
+  
+  const citySuggestions = normalizedSearch 
+    ? cities
+        .filter(c => c.name.toLowerCase().includes(normalizedSearch) && c.lat !== 0)
         .sort((a, b) => a.name.localeCompare(b.name))
+        .map(c => ({ 
+           type: 'city', 
+           id: `city-${c.name}`, 
+           name: c.name, 
+           image: c.image, 
+           subtitle: 'City' 
+        }))
     : [];
+
+  const restaurantSuggestions = normalizedSearch
+    ? restaurants
+        .filter(r => r.name.toLowerCase().includes(normalizedSearch))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(r => ({ 
+           type: 'restaurant', 
+           id: `res-${r.id}`, 
+           name: r.name, 
+           image: r.image || '', 
+           city: r.city || r.location, 
+           restaurantId: r.id, 
+           subtitle: 'Restaurant' 
+        }))
+    : [];
+
+  const suggestions = [...citySuggestions, ...restaurantSuggestions].slice(0, 10);
 
   const handleDetectLocation = async () => {
     await detectLocation();
@@ -99,7 +177,7 @@ export default function HomeLandingView() {
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-focus-within:text-brand transition-colors" size={20} />
                 <input 
                   type="text" 
-                  placeholder="Enter your city (e.g. Pune, Bangalore)"
+                  placeholder="Search cities or restaurants..."
                   className="w-full pl-12 pr-4 py-4 md:py-5 bg-white border-2 border-transparent focus:border-brand rounded-2xl text-lg font-bold outline-none shadow-elevation transition-all placeholder:text-slate-300"
                   value={searchValue}
                   onChange={(e) => {
@@ -109,7 +187,7 @@ export default function HomeLandingView() {
                   onFocus={() => setShowSuggestions(true)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                       handleCitySelect(searchValue);
+                       handleSearchSubmit();
                     }
                   }}
                 />
@@ -121,20 +199,27 @@ export default function HomeLandingView() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100"
+                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100 max-h-72 overflow-y-auto"
                     >
-                      {suggestions.map((city) => (
+                      {suggestions.map((item: any) => (
                         <button
-                          key={city.name}
-                          onClick={() => handleCitySelect(city.name, city.lat, city.lng)}
+                          key={item.id}
+                          onClick={() => handleSuggestionSelect(item)}
                           className="w-full px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors text-left group/item"
                         >
-                          <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100">
-                             <img src={city.image} alt={city.name} className="w-full h-full object-cover" />
+                          <div className="w-10 h-10 shrink-0 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
+                             {item.image ? (
+                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                             ) : (
+                               <MapPin className="text-slate-400" size={20} />
+                             )}
                           </div>
-                          <div>
-                            <p className="font-black text-slate-900 group-hover/item:text-brand transition-colors">{city.name}</p>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Supported City</p>
+                          <div className="min-w-0">
+                            <p className="font-black text-slate-900 group-hover/item:text-brand transition-colors truncate">
+                                {item.name}
+                                {item.type === 'restaurant' && item.city && <span className="font-bold text-slate-400 ml-2">({item.city})</span>}
+                            </p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest truncate">{item.subtitle}</p>
                           </div>
                         </button>
                       ))}
@@ -143,8 +228,8 @@ export default function HomeLandingView() {
                 </AnimatePresence>
               </div>
               <button 
-                onClick={() => handleCitySelect(searchValue)}
-                className="bg-brand text-white px-10 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-brand-dark transition-all transform active:scale-95 shadow-lg shadow-brand/40"
+                onClick={handleSearchSubmit}
+                className="w-full md:w-auto bg-brand text-white px-10 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-brand-dark transition-all transform active:scale-95 shadow-lg shadow-brand/40"
               >
                 Search
               </button>
