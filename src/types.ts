@@ -36,7 +36,8 @@ export interface Restaurant {
   rating: number;
   avgPrice: number;
   image: string;
-  location: string;
+  location: string; // Area Name
+  address?: string; // Full Address
   city: string;
   lat?: number;
   lng?: number;

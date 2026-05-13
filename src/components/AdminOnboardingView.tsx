@@ -42,6 +42,7 @@ export default function AdminOnboardingView() {
     contactNumber: '',
     image: '',
     location: '',
+    address: '',
     city: 'Bangalore',
     lat: BANGALORE_COORDS.lat,
     lng: BANGALORE_COORDS.lng,
@@ -66,11 +67,12 @@ export default function AdminOnboardingView() {
   };
 
   const handleGeocodeAddress = async () => {
-    const { name, location } = form;
-    if (!location || location.length < 5) return;
+    const { name, address, location, city } = form;
+    const queryTerm = address || location;
+    if (!queryTerm || queryTerm.length < 5) return;
     
     try {
-      const queryStr = name ? `${name}, ${location}` : location;
+      const queryStr = name ? `${name}, ${queryTerm}, ${city}` : `${queryTerm}, ${city}`;
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1`);
       const data = await response.json();
       
@@ -307,16 +309,28 @@ export default function AdminOnboardingView() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Full Address</label>
-              <textarea 
-                required
-                rows={3}
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none font-medium"
-                value={form.location}
-                onChange={e => setForm({...form, location: e.target.value})}
-                onBlur={handleGeocodeAddress}
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Area Name (e.g. Viman Nagar)</label>
+                <input 
+                  type="text"
+                  required
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                  value={form.location}
+                  onChange={e => setForm({...form, location: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Complete Address</label>
+                <textarea 
+                  required
+                  rows={2}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none font-medium"
+                  value={form.address}
+                  onChange={e => setForm({...form, address: e.target.value})}
+                  onBlur={handleGeocodeAddress}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

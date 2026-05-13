@@ -134,7 +134,8 @@ export default function CityView() {
       const matchesSearch = 
         res.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         res.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        res.location.toLowerCase().includes(searchQuery.toLowerCase());
+        res.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (res.address && res.address.toLowerCase().includes(searchQuery.toLowerCase()));
       
       if (!matchesSearch && searchQuery.length > 0) return false;
 

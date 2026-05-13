@@ -51,6 +51,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     name: '',
     cuisine: '',
     location: '',
+    address: '',
     avgPrice: 0,
     image: '',
     secondaryImages: [],
@@ -116,7 +117,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     setSaveStatus('idle');
 
     const allowedKeys = [
-      'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'contactNumber',
+      'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
       'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'bookingSlots', 
       'instantBookingLimit', 'blackoutDates'
     ];
@@ -460,12 +461,13 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-3">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Street Address</label>
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Area Name</label>
                 <input 
                   type="text"
                   className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.location}
                   onChange={e => setEditForm({...editForm, location: e.target.value})}
+                  placeholder="e.g. Viman Nagar"
                 />
               </div>
               <div className="space-y-3">
@@ -477,6 +479,17 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   onChange={e => setEditForm({...editForm, avgPrice: parseInt(e.target.value) || 0})}
                 />
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Complete Address</label>
+              <textarea 
+                rows={2}
+                className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm resize-none"
+                value={editForm.address || ''}
+                onChange={e => setEditForm({...editForm, address: e.target.value})}
+                placeholder="Full street address..."
+              />
             </div>
 
             <div className="space-y-3">

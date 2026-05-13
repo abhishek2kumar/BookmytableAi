@@ -248,7 +248,7 @@ export default function RestaurantDetailsView() {
     
     setIsAiLoading(true);
     try {
-      const summary = await summarizeGoogleReviews(restaurant.name, restaurant.location);
+      const summary = await summarizeGoogleReviews(restaurant.name, restaurant.address || restaurant.location);
       setAiSummary(summary);
       
       // Save to Firestore for caching
@@ -339,7 +339,7 @@ export default function RestaurantDetailsView() {
             userEmail: user.email,
             userName: profile?.displayName || user.displayName || 'Guest',
             restaurantName: restaurant.name,
-            restaurantLocation: restaurant.location,
+            restaurantLocation: restaurant.address || restaurant.location,
             ownerEmail: restaurantOwnerEmail,
             dateTime: bookingDateTime.toISOString(),
             guests,
@@ -760,7 +760,7 @@ export default function RestaurantDetailsView() {
                 <div className="space-y-3 pt-4">
                   <div className="flex gap-2 text-xl items-baseline">
                     <span className="text-slate-500 font-bold shrink-0">Location</span>
-                    <span className="text-slate-800 font-medium line-clamp-1">{restaurant.location}</span>
+                    <span className="text-slate-800 font-medium line-clamp-2 leading-snug">{restaurant.address || restaurant.location}</span>
                   </div>
 
                   <div className="flex items-center gap-2 text-xl">
@@ -802,7 +802,7 @@ export default function RestaurantDetailsView() {
                   <div className="h-8 w-px bg-slate-200" />
                   
                   <a 
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.address || restaurant.location}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 text-brand font-black text-xl group"
@@ -871,7 +871,7 @@ export default function RestaurantDetailsView() {
                        
                        <div className="flex gap-3 ml-auto">
                           <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.location}`)}`}
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.address || restaurant.location}`)}`}
                             className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100"
                           >
                             <Compass size={20} />

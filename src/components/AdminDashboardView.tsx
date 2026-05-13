@@ -45,7 +45,10 @@ export default function AdminDashboardView() {
   const [importCity, setImportCity] = useState('Bangalore');
   
   // Modal states
-  const [activeModal, setActiveModal] = useState<'users' | 'cities' | 'cuisines' | 'addCity' | 'addCuisine' | null>(null);
+  const [activeModal, setActiveModal] = useState<'users' | 'cities' | 'cuisines' | 'addCity' | 'addCuisine' | 'restaurantsMaster' | null>(null);
+  const [selectedCityForRestaurants, setSelectedCityForRestaurants] = useState<string | null>(null);
+  const [selectedAreaForRestaurants, setSelectedAreaForRestaurants] = useState<string | null>(null);
+  const [restaurantMasterSearch, setRestaurantMasterSearch] = useState('');
   const [editingCity, setEditingCity] = useState<City | null>(null);
   const [editingCuisine, setEditingCuisine] = useState<Cuisine | null>(null);
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
@@ -135,6 +138,16 @@ export default function AdminDashboardView() {
     return Object.entries(stats).sort((a, b) => b[1] - a[1]);
   }, [restaurants]);
 
+  const areaStats = useMemo(() => {
+    if (!selectedCityForRestaurants) return [];
+    const stats: Record<string, number> = {};
+    restaurants.filter(r => (r.city || 'Unknown') === selectedCityForRestaurants).forEach(r => {
+      const area = r.location || 'Unknown';
+      stats[area] = (stats[area] || 0) + 1;
+    });
+    return Object.entries(stats).sort((a, b) => b[1] - a[1]);
+  }, [restaurants, selectedCityForRestaurants]);
+
   const filteredUsers = useMemo(() => {
     if (!userSearchQuery) return users;
     return users.filter(u => 
@@ -157,6 +170,7 @@ export default function AdminDashboardView() {
         (r.city?.toLowerCase() || '').includes(query) ||
         (r.cuisine?.toLowerCase() || '').includes(query) ||
         (r.location?.toLowerCase() || '').includes(query) ||
+        (r.address?.toLowerCase() || '').includes(query) ||
         (r.lastModifiedBy?.toLowerCase() || '').includes(query)
       );
     }
@@ -189,7 +203,7 @@ export default function AdminDashboardView() {
       const { id } = editingRestaurant;
       
       const allowedKeys = [
-        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'city', 
+        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'address', 'city', 
         'isOpen', 'rating', 'approved', 'facilities', 'offers', 'menu', 'menuImages', 
         'secondaryImages', 'dailyTimings', 'isBookingEnabled', 'bookingSlots',
         'instantBookingLimit', 'blackoutDates', 'slotCategories', 'categorySlots', 'menuCategories'
@@ -431,12 +445,23 @@ export default function AdminDashboardView() {
                   {cities.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
-              <div className="space-y-4 md:col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Map Location / Address</label>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Area Name</label>
                 <input 
                   className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
-                  value={editingRestaurant.location}
+                  value={editingRestaurant.location || ''}
                   onChange={e => setEditingRestaurant({...editingRestaurant, location: e.target.value})}
+                  placeholder="e.g. Viman Nagar"
+                />
+              </div>
+              <div className="space-y-4 md:col-span-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Complete Address</label>
+                <textarea 
+                  rows={2}
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm resize-none"
+                  value={editingRestaurant.address || ''}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, address: e.target.value})}
+                  placeholder="Full street address"
                 />
               </div>
             </div>
@@ -871,6 +896,14 @@ export default function AdminDashboardView() {
   };
 
   const stats = [
+    { 
+      label: 'Total Added Restaurants', 
+      value: restaurants.length, 
+      icon: Store, 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-50',
+      onClick: () => setActiveModal('restaurantsMaster')
+    },
     { 
       label: 'Total Users', 
       value: users.length, 
@@ -1414,6 +1447,160 @@ export default function AdminDashboardView() {
 
       {/* --- MODALS --- */}
       <AnimatePresence>
+        {activeModal === 'restaurantsMaster' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => { setActiveModal(null); setSelectedCityForRestaurants(null); }}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col relative z-10"
+            >
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-4">
+                  {selectedAreaForRestaurants ? (
+                    <button 
+                      onClick={() => setSelectedAreaForRestaurants(null)}
+                      className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-white transition-all shadow-sm"
+                    >
+                      <ChevronRight className="rotate-180" size={20} />
+                    </button>
+                  ) : selectedCityForRestaurants ? (
+                    <button 
+                      onClick={() => setSelectedCityForRestaurants(null)}
+                      className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-white transition-all shadow-sm"
+                    >
+                      <ChevronRight className="rotate-180" size={20} />
+                    </button>
+                  ) : null}
+                  <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
+                    <Store size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-display font-black text-slate-900">
+                      {selectedAreaForRestaurants ? `Restaurants in ${selectedAreaForRestaurants}` : selectedCityForRestaurants ? `Areas in ${selectedCityForRestaurants}` : 'Restaurants Directory'}
+                    </h2>
+                    <p className="text-vibrant-gray font-bold text-[10px] uppercase tracking-widest mt-1">
+                      {selectedAreaForRestaurants ? 'Filtered List' : selectedCityForRestaurants ? `Area-wise distribution` : `City-wise distribution`}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setActiveModal(null); setSelectedCityForRestaurants(null); setSelectedAreaForRestaurants(null); setRestaurantMasterSearch(''); }}
+                  className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-8 overflow-y-auto flex-grow bg-slate-50/30">
+                 {!selectedCityForRestaurants ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                       {cityStats.map(([city, count]) => (
+                         <button 
+                           key={city}
+                           onClick={() => setSelectedCityForRestaurants(city)}
+                           className="bg-white border border-gray-100 rounded-2xl p-6 text-left hover:border-brand hover:shadow-lg transition-all group flex items-center justify-between"
+                         >
+                           <div className="min-w-0 pr-4">
+                              <p className="font-display font-bold text-slate-900 text-lg group-hover:text-brand truncate">{city}</p>
+                              <p className="text-xs text-vibrant-gray font-medium mt-1">View areas</p>
+                           </div>
+                           <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-black text-brand text-lg">
+                              {count}
+                           </div>
+                         </button>
+                       ))}
+                       {cityStats.length === 0 && (
+                          <div className="col-span-full py-12 text-center">
+                             <p className="text-slate-400 font-bold">No restaurants found in any city.</p>
+                          </div>
+                       )}
+                    </div>
+                 ) : !selectedAreaForRestaurants ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                       {areaStats.map(([area, count]) => (
+                         <button 
+                           key={area}
+                           onClick={() => setSelectedAreaForRestaurants(area)}
+                           className="bg-white border border-gray-100 rounded-2xl p-6 text-left hover:border-brand hover:shadow-lg transition-all group flex items-center justify-between"
+                         >
+                           <div className="min-w-0 pr-4">
+                              <p className="font-display font-bold text-slate-900 text-lg group-hover:text-brand truncate">{area}</p>
+                              <p className="text-xs text-vibrant-gray font-medium mt-1">View restaurants</p>
+                           </div>
+                           <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-black text-brand text-lg shrink-0">
+                              {count}
+                           </div>
+                         </button>
+                       ))}
+                       {areaStats.length === 0 && (
+                          <div className="col-span-full py-12 text-center">
+                             <p className="text-slate-400 font-bold">No restaurants found in this city.</p>
+                          </div>
+                       )}
+                    </div>
+                 ) : (
+                    <div className="space-y-6">
+                       <div className="relative">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray opacity-50" size={20} />
+                          <input 
+                            type="text"
+                            placeholder="Filter restaurants by name or cuisine..."
+                            className="w-full bg-white border border-gray-200 rounded-xl pl-12 pr-4 py-3 outline-none focus:border-brand transition-colors font-bold"
+                            value={restaurantMasterSearch}
+                            onChange={(e) => setRestaurantMasterSearch(e.target.value)}
+                          />
+                       </div>
+                       <div className="space-y-4">
+                         {restaurants
+                           .filter(r => (r.city || 'Unknown') === selectedCityForRestaurants)
+                           .filter(r => (r.location || 'Unknown') === selectedAreaForRestaurants)
+                           .filter(r => restaurantMasterSearch ? (r.name.toLowerCase().includes(restaurantMasterSearch.toLowerCase()) || r.cuisine.toLowerCase().includes(restaurantMasterSearch.toLowerCase())) : true)
+                           .map(res => (
+                           <div key={res.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
+                             <div className="flex items-center gap-6">
+                                <img src={res.image || RESTAURANT_IMAGE_FALLBACK} alt={res.name} className="w-20 h-20 rounded-xl object-cover" />
+                                <div>
+                                   <h3 className="font-display font-black text-slate-900 text-lg">{res.name}</h3>
+                                   <div className="flex items-center gap-3 mt-2 text-xs font-bold">
+                                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{res.cuisine}</span>
+                                      <span className="text-slate-400">{res.location}</span>
+                                   </div>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                   <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">Status</p>
+                                   {res.approved ? (
+                                      <span className="flex items-center gap-1 text-emerald-600 font-bold text-sm"><CheckCircle size={14}/> Approved</span>
+                                   ) : (
+                                      <span className="flex items-center gap-1 text-amber-600 font-bold text-sm"><AlertCircle size={14}/> Pending</span>
+                                   )}
+                                </div>
+                                <button 
+                                  onClick={() => { setActiveModal(null); setEditingRestaurant(res); setActiveEditTab('general'); }}
+                                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                                >
+                                  Edit
+                                </button>
+                             </div>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {activeModal === 'users' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <motion.div 
