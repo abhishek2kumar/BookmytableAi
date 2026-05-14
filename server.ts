@@ -3,6 +3,8 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { Resend } from 'resend';
 import { GoogleGenAI } from '@google/genai';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from './src/lib/firebase';
 
 dotenv.config();
 
@@ -202,10 +204,10 @@ Allow: /
 Sitemap: https://bookmytable.co.in/sitemap.xml`);
   });
 
-  // SEO: basic sitemap.xml
-  app.get('/sitemap.xml', (req, res) => {
-    res.type('application/xml');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+  // SEO: dynamic sitemap.xml
+  app.get('/sitemap.xml', async (req, res) => {
+    try {
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://bookmytable.co.in/</loc>
@@ -226,8 +228,53 @@ Sitemap: https://bookmytable.co.in/sitemap.xml`);
     <loc>https://bookmytable.co.in/onboarding-request</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+  </url>`;
+
+      // Fetch Cities
+      const citiesSnap = await getDocs(collection(db, 'cities'));
+      citiesSnap.forEach(doc => {
+        const cityData = doc.data();
+        if (cityData.name) {
+          const citySlug = cityData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          sitemap += `
+  <url>
+    <loc>https://bookmytable.co.in/city/${citySlug}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>`;
+        }
+      });
+
+      // Fetch Restaurants
+      const restaurantsSnap = await getDocs(collection(db, 'restaurants'));
+      restaurantsSnap.forEach(doc => {
+        const resData = doc.data();
+        const id = doc.id;
+        if (resData.name && resData.city) {
+          const citySlug = resData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const nameSlug = resData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          sitemap += `
+  <url>
+    <loc>https://bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>
-</urlset>`);
+  <url>
+    <loc>https://bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}/book</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+        }
+      });
+
+      sitemap += `\n</urlset>`;
+      
+      res.type('application/xml');
+      res.send(sitemap);
+    } catch (e) {
+      console.error('Error generating sitemap:', e);
+      res.status(500).send('Error generating sitemap');
+    }
   });
 
   const isProduction = process.env.NODE_ENV === 'production' || process.argv[1]?.endsWith('server.cjs');
