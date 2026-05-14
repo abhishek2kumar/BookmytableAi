@@ -196,14 +196,6 @@ async function startServer() {
     }
   });
 
-  // SEO: robots.txt
-  app.get('/robots.txt', (req, res) => {
-    res.type('text/plain');
-    res.send(`User-agent: *
-Allow: /
-Sitemap: https://bookmytable.co.in/sitemap.xml`);
-  });
-
   // SEO: dynamic sitemap.xml
   app.get('/sitemap.xml', async (req, res) => {
     try {
