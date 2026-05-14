@@ -100,14 +100,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navItems.push({ label: 'Admin', path: '/admin', icon: ShieldCheck });
   }
 
-  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || location.pathname.startsWith('/book/');
+  const isBookPage = location.pathname.endsWith('/book') || location.pathname.startsWith('/book/');
+  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage;
 
   return (
     <div className="min-h-screen flex flex-col bg-vibrant-bg">
       {/* Header - Hidden on Mobile Restaurant Page, completely hidden on Book page */}
       <header className={cn(
         "sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 transition-all duration-300",
-        location.pathname.startsWith('/book/') ? "hidden" : (isRestaurantPage ? "md:block hidden" : "block")
+        isBookPage ? "hidden" : (isRestaurantPage ? "md:block hidden" : "block")
       )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">

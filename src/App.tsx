@@ -72,6 +72,8 @@ export default function App() {
                   <Route path="/city/:cityId" element={<CityView />} />
                   <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
                   <Route path="/restaurant/:city/:name/:id" element={<RestaurantDetailsView />} />
+                  <Route path="/restaurant/:city/:name/:id/book" element={<BookTableView />} />
+                  <Route path="/restaurant/:id/book" element={<BookTableView />} />
                   <Route path="/restaurant/:city/:name/:id/:tab" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:id" element={<RestaurantDetailsView />} />
                   <Route path="/book/:id" element={<BookTableView />} />

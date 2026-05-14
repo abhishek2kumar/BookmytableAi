@@ -17,15 +17,26 @@ export function slugify(text: string): string {
     .replace(/\-\-+/g, '-');    // Replace multiple - with single -
 }
 
-export function getRestaurantUrl(restaurant: { id?: string, name?: string, location?: string } | null, fallbackId?: string, fallbackName?: string, fallbackLocation?: string): string {
+export function getRestaurantUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, fallbackId?: string, fallbackName?: string, fallbackLocation?: string): string {
   if (!restaurant && !fallbackId) return '/';
   
   const id = restaurant?.id || fallbackId;
   if (!id) return '/';
 
-  const citySlug = slugify(restaurant?.location || fallbackLocation || 'ind');
+  const citySlug = slugify(restaurant?.city || restaurant?.location || fallbackLocation || 'ind');
   const nameSlug = slugify(restaurant?.name || fallbackName || 'restaurant');
   return `/restaurant/${citySlug}/${nameSlug}/${id}`;
+}
+
+export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, fallbackId?: string, fallbackName?: string, fallbackLocation?: string): string {
+  if (!restaurant && !fallbackId) return '/';
+  
+  const id = restaurant?.id || fallbackId;
+  if (!id) return '/';
+
+  const citySlug = slugify(restaurant?.city || restaurant?.location || fallbackLocation || 'ind');
+  const nameSlug = slugify(restaurant?.name || fallbackName || 'restaurant');
+  return `/restaurant/${citySlug}/${nameSlug}/${id}/book`;
 }
 
 export function formatDate(date: any) {

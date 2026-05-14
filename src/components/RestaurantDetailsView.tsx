@@ -10,7 +10,7 @@ import { Restaurant, Booking, Review } from '../types';
 import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday } from 'date-fns';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
@@ -867,7 +867,7 @@ export default function RestaurantDetailsView() {
                   <button 
                     onClick={() => {
                       if (restaurant.isBookingEnabled) {
-                        navigate(`/book/${restaurant.id}`);
+                        navigate(getRestaurantBookUrl(restaurant));
                       }
                     }}
                     disabled={!restaurant.isBookingEnabled}
@@ -1533,7 +1533,7 @@ export default function RestaurantDetailsView() {
                <button 
                 onClick={() => {
                   if (restaurant.isBookingEnabled !== false) {
-                    navigate(`/book/${restaurant.id}`);
+                    navigate(getRestaurantBookUrl(restaurant));
                   }
                 }}
                 className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
