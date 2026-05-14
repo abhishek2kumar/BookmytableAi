@@ -3,7 +3,7 @@ import { useAuth } from './AuthProvider';
 import { useBookings, useFavoriteRestaurants } from '../hooks/useFirebase';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
+import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
 import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -147,7 +147,7 @@ export default function DashboardView() {
                             <span className="text-sm">{booking.guests} Guests</span>
                           </div>
                           <Link 
-                            to={`/restaurant/${booking.restaurantId}`}
+                            to={getRestaurantUrl(null, booking.restaurantId, booking.restaurantName)}
                             className="flex items-center gap-2 text-slate-500 hover:text-brand transition-all text-sm font-black uppercase tracking-tighter"
                           >
                             <MapPin size={16} className="text-brand" />
@@ -168,6 +168,22 @@ export default function DashboardView() {
                               Cancel
                             </button>
                           )}
+
+                          {(() => {
+                            const d = booking.dateTime?.toDate ? booking.dateTime.toDate() : new Date(booking.dateTime);
+                            if (booking.status === 'confirmed' && d < new Date()) {
+                              return (
+                                <Link
+                                  to={`${getRestaurantUrl(null, booking.restaurantId, booking.restaurantName)}#review`}
+                                  className="ml-auto flex items-center gap-2 text-brand hover:text-brand/80 transition-colors text-sm font-black uppercase tracking-widest"
+                                >
+                                  <Star size={16} />
+                                  Leave a Review
+                                </Link>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -213,7 +229,7 @@ export default function DashboardView() {
                     transition={{ delay: index * 0.05 }}
                     className="group"
                   >
-                    <Link to={`/restaurant/${res.id}`} className="block bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden relative">
+                    <Link to={getRestaurantUrl(res)} className="block bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden relative">
                       <div className="aspect-[4/5] relative overflow-hidden">
                         <img 
                           src={res.image || RESTAURANT_IMAGE_FALLBACK} 

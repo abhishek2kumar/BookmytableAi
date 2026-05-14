@@ -8,7 +8,7 @@ import {
   UtensilsCrossed, Star, X, Soup, Wine, IceCream, 
   Car, Wifi, Music, Tv, Baby, Coffee, Info,
   History, Eye, LogOut, Loader2, Globe, Shield,
-  ArrowRight, Heart, Share2, MoreVertical, Snowflake, Sun
+  ArrowRight, Heart, Share2, MoreVertical, Snowflake, Sun, Gift
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { 
@@ -16,7 +16,7 @@ import {
   doc, updateDoc, onSnapshot, orderBy,
   limit, serverTimestamp, getDoc
 } from 'firebase/firestore';
-import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
+import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, convertTo12Hour, convertTo24Hour } from '../lib/utils';
 
 interface OwnerDashboardViewProps {
   ownerId?: string;
@@ -41,7 +41,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
   const [restaurant, setRestaurant] = useState<any>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'management' | 'menu'>('overview');
-  const [activeMgmtTab, setActiveMgmtTab] = useState<'general' | 'operational' | 'visuals' | 'reservations'>('general');
+  const [activeMgmtTab, setActiveMgmtTab] = useState<'general' | 'operational' | 'visuals' | 'offers' | 'reservations'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -119,7 +119,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
       'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'bookingSlots', 
-      'instantBookingLimit', 'blackoutDates'
+      'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories'
     ];
 
     const updateData: any = {};
@@ -492,6 +492,31 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Latitude</label>
+                <input 
+                  type="number"
+                  step="any"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.lat || ''}
+                  onChange={e => setEditForm({...editForm, lat: parseFloat(e.target.value)})}
+                  placeholder="e.g. 18.5204"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Longitude</label>
+                <input 
+                  type="number"
+                  step="any"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  value={editForm.lng || ''}
+                  onChange={e => setEditForm({...editForm, lng: parseFloat(e.target.value)})}
+                  placeholder="e.g. 73.8567"
+                />
+              </div>
+            </div>
+
             <div className="space-y-3">
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Our Culinary Philosophy</label>
               <textarea 
@@ -544,6 +569,63 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     <div className={cn("w-3 h-3 rounded-full", editForm.isOpen ? "bg-white animate-pulse" : "bg-red-500")} />
                     {editForm.isOpen ? 'Restaurant Is Open' : 'Restaurant Is Closed'}
                   </button>
+               </div>
+            </div>
+
+            <div className="space-y-8">
+               <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+                 <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Daily Operating Hours</span>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                   const curr = (editForm.dailyTimings && editForm.dailyTimings[day]) || { closed: false, open: '11:00 AM', close: '11:00 PM' };
+                   return (
+                     <div key={day} className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm space-y-4">
+                       <div className="flex items-center justify-between">
+                         <span className="font-bold text-slate-900">{day}</span>
+                         <button 
+                           type="button"
+                           onClick={() => {
+                             const next = { ...(editForm.dailyTimings || {}) };
+                             next[day] = { ...curr, closed: !curr.closed };
+                             setEditForm({...editForm, dailyTimings: next});
+                           }}
+                           className={cn(
+                             "px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                             curr.closed ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"
+                           )}
+                         >
+                           {curr.closed ? 'Closed' : 'Open'}
+                         </button>
+                       </div>
+                       {!curr.closed && (
+                         <div className="flex items-center gap-4">
+                           <input 
+                             type="time"
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-center focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                             value={convertTo24Hour(curr.open)}
+                             onChange={e => {
+                               const next = { ...(editForm.dailyTimings || {}) };
+                               next[day] = { ...curr, open: convertTo12Hour(e.target.value) };
+                               setEditForm({...editForm, dailyTimings: next});
+                             }}
+                           />
+                           <span className="text-slate-300 font-bold">to</span>
+                           <input 
+                             type="time"
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-center focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                             value={convertTo24Hour(curr.close)}
+                             onChange={e => {
+                               const next = { ...(editForm.dailyTimings || {}) };
+                               next[day] = { ...curr, close: convertTo12Hour(e.target.value) };
+                               setEditForm({...editForm, dailyTimings: next});
+                             }}
+                           />
+                         </div>
+                       )}
+                     </div>
+                   );
+                 })}
                </div>
             </div>
 
@@ -718,35 +800,150 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   </div>
                </div>
 
-               <div className="space-y-6">
+               <div className="space-y-6 pt-6 border-t border-slate-100">
                   <div className="flex items-center justify-between mb-4">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Operational Time Slots</label>
-                    <span className="text-[10px] font-black text-brand uppercase tracking-widest">{editForm.bookingSlots?.length || 0} Slots Active</span>
-                  </div>
-                  <div className="bg-slate-50/50 p-10 rounded-[40px] border-2 border-slate-100/50 flex flex-wrap gap-4 shadow-inner">
-                     {(editForm.bookingSlots || []).map((slot: string, idx: number) => (
-                       <div key={idx} className="bg-white border-2 border-slate-100 px-6 py-4 rounded-[20px] text-base font-black flex items-center gap-4 shadow-sm hover:border-brand hover:text-brand transition-all group">
-                         {slot}
-                         <button type="button" onClick={() => setEditForm({...editForm, bookingSlots: editForm.bookingSlots.filter((_:any, i:any) => i !== idx)})} className="text-slate-300 hover:text-red-500 transition-colors"><X size={18} /></button>
-                       </div>
-                     ))}
-                     <input 
-                       className="w-40 bg-white border-2 border-slate-100 hover:border-brand transition-all rounded-[20px] px-6 py-4 text-base font-black outline-none focus:border-brand shadow-sm text-center"
-                       placeholder="HH:MM"
-                       onKeyDown={e => {
-                         if (e.key === 'Enter') {
-                           const val = (e.currentTarget as HTMLInputElement).value.trim();
-                           if (val && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val)) {
-                             setEditForm({...editForm, bookingSlots: [...(editForm.bookingSlots || []), val].sort()});
-                             (e.currentTarget as HTMLInputElement).value = '';
-                           }
-                         }
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Reservation Categories</label>
+                    <button 
+                       type="button"
+                       onClick={() => {
+                          const newId = Date.now().toString();
+                          setEditForm({
+                             ...editForm,
+                             slotCategories: [...(editForm.slotCategories || []), { id: newId, name: 'New Category', slots: [] }]
+                          });
                        }}
-                     />
+                       className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-2"
+                    >
+                       <Plus size={14} /> Add Category
+                    </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-bold px-4">Press ENTER after typing a time (e.g. 19:30) to add a new slot.</p>
+                  
+                  <div className="space-y-6">
+                     {(editForm.slotCategories || []).map((cat: any, catIdx: number) => (
+                        <div key={cat.id} className="bg-slate-50 border border-slate-100 p-8 rounded-[32px] shadow-sm">
+                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                              <input 
+                                 className="bg-transparent text-2xl font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full"
+                                 value={cat.name}
+                                 placeholder="Category Name (e.g. Dinner)"
+                                 onChange={e => {
+                                    const nextCats = [...(editForm.slotCategories || [])];
+                                    nextCats[catIdx] = { ...cat, name: e.target.value };
+                                    setEditForm({...editForm, slotCategories: nextCats});
+                                 }}
+                              />
+                              <button 
+                                 type="button"
+                                 onClick={() => {
+                                    const nextCats = [...(editForm.slotCategories || [])];
+                                    nextCats.splice(catIdx, 1);
+                                    setEditForm({...editForm, slotCategories: nextCats});
+                                 }}
+                                 className="w-12 h-12 rounded-[20px] bg-red-50 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shrink-0 shadow-sm text-xs font-bold"
+                              >
+                                 <Trash2 size={20} />
+                              </button>
+                           </div>
+                           <div className="flex flex-wrap items-center gap-4">
+                             {(cat.slots || []).map((s: string, idx: number) => (
+                               <div key={idx} className="bg-white px-6 py-3 border-2 border-slate-100 shadow-sm rounded-[20px] text-sm font-black flex items-center gap-3 text-slate-700 hover:border-brand transition-colors group">
+                                 {convertTo12Hour(s)}
+                                 <button type="button" onClick={() => {
+                                    const nextCats = [...(editForm.slotCategories || [])];
+                                    nextCats[catIdx].slots = nextCats[catIdx].slots.filter((_:any, i:any) => i !== idx);
+                                    setEditForm({...editForm, slotCategories: nextCats});
+                                 }} className="text-slate-300 hover:text-red-500 transition-colors"><X size={16} /></button>
+                               </div>
+                             ))}
+                             <div className="relative group/time">
+                               <input 
+                                  type="time"
+                                  className="bg-white border-2 border-slate-100 outline-none rounded-[20px] px-6 py-3 text-sm font-black focus:border-brand shadow-sm text-slate-700 w-[160px] transition-all"
+                                  onChange={e => {
+                                     const val = e.target.value;
+                                     if (val) {
+                                        const nextCats = [...(editForm.slotCategories || [])];
+                                        if (!nextCats[catIdx].slots.includes(val)) {
+                                           nextCats[catIdx].slots = [...nextCats[catIdx].slots, val].sort();
+                                        }
+                                        setEditForm({...editForm, slotCategories: nextCats});
+                                        e.target.value = '';
+                                     }
+                                  }}
+                               />
+                               <span className="absolute -top-3 left-4 bg-white px-2 text-[10px] font-black text-slate-400 uppercase z-10 hidden group-hover/time:block rounded-md shadow-sm">Add Slot</span>
+                             </div>
+                           </div>
+                        </div>
+                     ))}
+                     
+                     {!(editForm.slotCategories || []).length && (
+                        <div className="py-16 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] text-center opacity-70">
+                           <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
+                           <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No slot categories configured</p>
+                        </div>
+                     )}
+                  </div>
                </div>
             </div>
+          </motion.div>
+        );
+      case 'offers':
+        return (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+             <div className="flex items-center gap-4 border-l-4 border-orange-500 pl-6 mb-8">
+                <div>
+                   <h4 className="text-2xl font-display font-black text-slate-900">Current Offers</h4>
+                   <p className="text-slate-400 font-bold text-xs">Manage deals and special promotions.</p>
+                </div>
+             </div>
+
+             <div className="space-y-6">
+                {(editForm.offers || []).map((offer: string, idx: number) => (
+                  <div key={idx} className="flex items-center gap-4 bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm">
+                     <div className="w-12 h-12 bg-orange-50/50 rounded-[20px] flex items-center justify-center text-orange-500 shadow-inner shrink-0">
+                        <Gift size={20} />
+                     </div>
+                     <input 
+                        className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-base outline-none"
+                        value={offer}
+                        placeholder="Offer details... e.g. 20% off on weekends"
+                        onChange={e => {
+                           const next = [...(editForm.offers || [])];
+                           next[idx] = e.target.value;
+                           setEditForm({...editForm, offers: next});
+                        }}
+                     />
+                     <button 
+                       type="button"
+                       onClick={() => {
+                          const next = [...(editForm.offers || [])];
+                          next.splice(idx, 1);
+                          setEditForm({...editForm, offers: next});
+                       }}
+                       className="w-12 h-12 bg-red-50 text-red-500 rounded-[20px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 shadow-sm"
+                     >
+                        <Trash2 size={20} />
+                     </button>
+                  </div>
+                ))}
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                     const next = [...(editForm.offers || [])];
+                     next.push('');
+                     setEditForm({...editForm, offers: next});
+                  }}
+                  className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[28px] text-slate-400 hover:border-orange-500 hover:text-orange-500 transition-all font-black uppercase tracking-[0.2em] text-[10px] flex justify-center items-center gap-2 bg-white/50"
+                >
+                   <Plus size={16} /> Add New Offer
+                </button>
+             </div>
           </motion.div>
         );
       default:
@@ -881,7 +1078,8 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     { id: 'general', label: 'General', icon: Info },
                     { id: 'operational', label: 'Operations', icon: Settings },
                     { id: 'visuals', label: 'Visuals', icon: ImageIcon },
-                    { id: 'reservations', label: 'Bookings', icon: Calendar }
+                    { id: 'reservations', label: 'Bookings', icon: Calendar },
+                    { id: 'offers', label: 'Offers', icon: Gift }
                   ].map(tab => (
                     <button
                       key={tab.id}

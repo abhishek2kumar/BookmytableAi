@@ -4,7 +4,7 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useMasterData } from './MasterDataContext';
 import { Star, MapPin, ChevronLeft, Zap, Info } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
 
 export default function CuisineView() {
@@ -156,7 +156,7 @@ export default function CuisineView() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (index % 4) * 0.1 }}
               >
-                <Link to={`/restaurant/${restaurant.id}`} className="group flex flex-col h-full bg-white rounded-2xl shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-1">
+                <Link to={getRestaurantUrl(restaurant)} className="group flex flex-col h-full bg-white rounded-2xl shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-1">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img 
                       src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} 

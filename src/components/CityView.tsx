@@ -8,7 +8,7 @@ import { useMasterData } from './MasterDataContext';
 import { useAuth } from './AuthProvider';
 import { Star, MapPin, Search, Filter, Navigation, Zap, ChevronRight, ChevronLeft, TrendingUp, Percent, ArrowRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,9 +23,31 @@ export default function CityView() {
   const loading = restaurantsLoading || masterDataLoading;
   const { coords: userCoords, city: contextCity } = useLocationContext();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(8);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('bookmytable_recent_searches');
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Error loading recent searches', e);
+    }
+  }, []);
+
+  const saveRecentSearch = (item: any) => {
+    try {
+      const updated = [item, ...recentSearches.filter(s => s.id !== item.id)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem('bookmytable_recent_searches', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error saving recent search', e);
+    }
+  };
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     cuisines: [] as string[],
@@ -156,7 +178,19 @@ export default function CityView() {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setPortalTarget(document.getElementById('navbar-search-portal'));
+    let timer: NodeJS.Timeout;
+    const findAndSetPortal = () => {
+      const el = document.getElementById('navbar-search-portal');
+      if (el) {
+        setPortalTarget(el);
+        if (timer) clearInterval(timer);
+      }
+    };
+    
+    findAndSetPortal();
+    timer = setInterval(findAndSetPortal, 100);
+    
+    return () => clearInterval(timer);
   }, []);
 
   const searchSuggestions = useMemo(() => {
@@ -189,79 +223,41 @@ export default function CityView() {
   return (
     <div className="pb-20 bg-vibrant-bg min-h-screen">
       {portalTarget && createPortal(
-         <div className="relative w-full group hidden md:block">
-           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-focus-within:text-brand transition-colors" size={18} />
-           <input 
-             type="text" 
-             placeholder="Search restaurants, cuisines..."
-             className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-transparent focus:bg-white focus:border-brand/20 rounded-xl font-medium shadow-sm transition-all text-sm outline-none"
-             value={searchQuery}
-             onChange={(e) => setSearchQuery(e.target.value)}
-             onFocus={() => setIsSearchFocused(true)}
-             onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-           />
+         <div className="w-full flex justify-end md:block">
+           <div className="hidden md:block relative w-full group">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={18} />
+             <input 
+               type="text" 
+               readOnly
+               onClick={() => setIsSearchOverlayOpen(true)}
+               placeholder="Search for restaurant"
+               className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-transparent hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+               value={searchQuery}
+             />
+           </div>
            
-           <AnimatePresence>
-             {isSearchFocused && searchSuggestions.length > 0 && (
-               <motion.div
-                 initial={{ opacity: 0, y: 10 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: 10 }}
-                 className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100 max-h-72 overflow-y-auto"
-               >
-                 {searchSuggestions.map((res) => (
-                   <Link
-                     key={res.id}
-                     to={`/restaurant/${res.id}`}
-                     className="w-full px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors text-left group/item border-b border-gray-50 last:border-0"
-                   >
-                     <div className="w-10 h-10 shrink-0 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                       {res.image ? (
-                         <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
-                       ) : (
-                         <MapPin className="text-slate-400" size={20} />
-                       )}
-                     </div>
-                     <div className="min-w-0 flex-1">
-                       <p className="font-black text-slate-900 group-hover/item:text-brand transition-colors truncate">
-                           {res.name}
-                           {res.location && <span className="font-bold text-slate-400 ml-2">({res.location})</span>}
-                       </p>
-                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest truncate">{res.cuisine} • {res.rating} <Star size={10} className="inline fill-current -mt-0.5" /></p>
-                     </div>
-                     <ChevronRight size={16} className="text-gray-300 group-hover/item:text-brand shrink-0" />
-                   </Link>
-                 ))}
-               </motion.div>
-             )}
-           </AnimatePresence>
+           <button 
+             className="md:hidden p-2 text-vibrant-gray hover:text-brand transition-colors"
+             onClick={() => setIsSearchOverlayOpen(true)}
+           >
+             <Search size={22} className="stroke-[2.5]" />
+           </button>
          </div>,
          portalTarget
       )}
-
-      {/* Mobile Search Trigger */}
-      <div className="md:hidden px-4 py-4 bg-white shadow-sm sticky top-[60px] z-40 border-b border-slate-100">
-        <button 
-          onClick={() => setIsMobileSearchOpen(true)}
-          className="w-full flex items-center gap-3 px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl font-semibold text-vibrant-gray/60 text-sm focus:outline-brand"
-        >
-          <Search size={18} />
-          <span>Search for food or places...</span>
-        </button>
-      </div>
 
       {/* Categories & Cuisines */}
       <section className="relative bg-white pt-4 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
           {/* Welcome Banner */}
-          <div className="relative mb-6 rounded-2xl overflow-hidden h-28 md:h-36 w-full flex items-center bg-slate-100">
+          <div className="relative mb-6 md:rounded-2xl overflow-hidden h-[120px] md:h-36 w-[calc(100%+32px)] -mx-4 md:w-full md:mx-0 flex items-center bg-slate-100">
              {loading || authLoading ? (
                <div className="absolute inset-0 bg-slate-200 animate-pulse" />
              ) : (
                <>
                  <img src={currentCity?.bannerImage || "https://i.pinimg.com/736x/3b/ae/79/3bae79a6ae0f44e1ed07bba4f8a13b69.jpg"} alt="Welcome Banner" className="absolute inset-0 w-full h-full object-cover" />
                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                 <h2 className="relative z-10 text-2xl md:text-3xl font-display font-black text-white px-6 md:px-10 w-full md:max-w-2xl leading-tight">
+                 <h2 className="relative z-10 text-xl sm:text-2xl md:text-3xl font-display font-black text-white px-6 md:px-10 w-full md:max-w-2xl leading-tight">
                    {welcomeText}
                  </h2>
                </>
@@ -517,20 +513,20 @@ export default function CityView() {
       </div>
 
       {/* Filter Drawer */}
-      {/* Mobile Search Overlay */}
+      {/* Search Overlay */}
       <AnimatePresence>
-        {isMobileSearchOpen && (
+        {isSearchOverlayOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-white z-[200] flex flex-col md:hidden"
+            className="fixed inset-0 bg-white z-[200] flex flex-col"
           >
             {/* Header */}
-            <div className="p-4 border-b flex items-center gap-3">
+            <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
               <button 
-                onClick={() => setIsMobileSearchOpen(false)}
-                className="p-2 -ml-2 text-vibrant-dark"
+                onClick={() => setIsSearchOverlayOpen(false)}
+                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
@@ -540,14 +536,14 @@ export default function CityView() {
                   autoFocus
                   type="text" 
                   placeholder="Where would you like to eat?"
-                  className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-brand"
+                  className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-3 md:py-4 md:text-base text-sm font-bold focus:ring-2 focus:ring-brand"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors"
                   >
                     <X size={12} />
                   </button>
@@ -556,83 +552,142 @@ export default function CityView() {
             </div>
 
             {/* Viewport content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto">
               {searchQuery.length > 0 ? (
-                <div className="p-4 divide-y divide-gray-100">
+                <div className="p-4 md:p-6 divide-y divide-gray-100">
                   {searchSuggestions.length > 0 ? (
                     <>
                       <div className="pb-3 pt-1">
-                        <span className="text-[10px] font-black text-vibrant-gray uppercase tracking-[0.15em]">Restaurants</span>
+                        <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Restaurants</span>
                       </div>
-                      {searchSuggestions.map(res => (
-                        <Link 
-                          key={res.id} 
-                          to={`/restaurant/${res.id}`}
-                          onClick={() => setIsMobileSearchOpen(false)}
-                          className="flex items-center gap-4 py-4"
-                        >
-                          <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 shadow-sm">
-                            <img src={res.image} alt="" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-vibrant-dark truncate">{res.name}</h4>
-                            <p className="text-xs text-vibrant-gray font-medium">{res.cuisine} • {res.location}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <div className="flex">
-                                {[1,2,3,4,5].map(i => (
-                                  <Star key={i} size={10} fill={i <= res.rating ? "#FF4D00" : "none"} stroke={i <= res.rating ? "#FF4D00" : "#CBD5E1"} />
-                                ))}
-                              </div>
-                              <span className="text-[10px] font-bold text-brand ml-1">{res.rating}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {searchSuggestions.map(res => (
+                          <Link 
+                            key={res.id} 
+                            to={getRestaurantUrl(res)}
+                            onClick={() => {
+                              setIsSearchOverlayOpen(false);
+                              saveRecentSearch({
+                                type: 'restaurant',
+                                id: `res-${res.id}`,
+                                name: res.name,
+                                image: res.image || '',
+                                city: res.city || res.location,
+                                restaurantId: res.id,
+                                subtitle: 'Restaurant'
+                              });
+                            }}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100"
+                          >
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
+                              <img src={res.image} alt="" className="w-full h-full object-cover" />
                             </div>
-                          </div>
-                        </Link>
-                      ))}
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.cuisine} • {res.location}</p>
+                              <div className="flex items-center gap-1 mt-0.5 md:mt-1">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(i => (
+                                    <Star key={i} size={10} fill={i <= res.rating ? "#FF4D00" : "none"} stroke={i <= res.rating ? "#FF4D00" : "#CBD5E1"} />
+                                  ))}
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-brand ml-1">{res.rating}</span>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
                       <button 
-                        onClick={() => setIsMobileSearchOpen(false)}
-                        className="w-full mt-4 py-3 bg-brand/5 text-brand font-black text-xs rounded-xl flex items-center justify-center gap-2"
+                        onClick={() => setIsSearchOverlayOpen(false)}
+                        className="w-full mt-6 py-4 bg-brand/5 text-brand font-black text-xs md:text-sm rounded-xl flex items-center justify-center gap-2 hover:bg-brand/10 transition-colors"
                       >
                         SEE ALL RESULTS <ArrowRight size={14} />
                       </button>
                     </>
                   ) : (
                     <div className="py-20 text-center">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                        <Search size={32} />
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                        <Search size={32} className="md:w-10 md:h-10" />
                       </div>
-                      <p className="text-vibrant-gray font-bold">No results found for "{searchQuery}"</p>
+                      <p className="text-vibrant-gray font-bold md:text-lg">No results found for "{searchQuery}"</p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="p-6">
-                  <h4 className="text-xs font-black text-vibrant-gray uppercase tracking-widest mb-6">Popular Cuisines</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {cuisines.slice(0, 6).map(cuisine => (
+                <div className="p-4 md:p-6">
+                  {recentSearches.length > 0 && (
+                    <div className="mb-10 md:mb-16">
+                      <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">Recent Searches</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {recentSearches.map(res => (
+                          <div 
+                            key={`rs-${res.id}`} 
+                            onClick={() => {
+                              setIsSearchOverlayOpen(false);
+                              if (res.type === 'city') {
+                                navigate(`/city/${res.name.toLowerCase()}`);
+                              } else if (res.type === 'restaurant') {
+                                navigate(`/restaurant/${res.restaurantId || res.id.replace('res-', '')}`);
+                              }
+                            }}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left cursor-pointer"
+                          >
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
+                              {res.image ? (
+                                <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                  {res.type === 'city' ? <MapPin size={24} /> : <Search size={24} />}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                    {cuisines.slice(0, 8).map(cuisine => (
                       <button
                         key={cuisine.id}
                         onClick={() => {
                           setSearchQuery(cuisine.name);
-                          // We keep overlay open to show rest results
                         }}
-                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl hover:bg-brand/5 active:scale-95 transition-all text-left"
+                        className="flex items-center gap-3 p-3 md:p-4 bg-slate-50 rounded-2xl hover:bg-brand/5 active:scale-95 transition-all text-left group"
                       >
-                        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white">
-                          <img src={cuisine.image} alt="" className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden shrink-0 border border-white group-hover:shadow-md transition-shadow">
+                          <img src={cuisine.image} alt={cuisine.name} className="w-full h-full object-cover" />
                         </div>
-                        <span className="text-xs font-bold text-vibrant-dark truncate">{cuisine.name}</span>
+                        <span className="font-bold text-sm md:text-base text-vibrant-dark group-hover:text-brand transition-colors truncate">{cuisine.name}</span>
                       </button>
                     ))}
                   </div>
 
-                  <div className="mt-10">
-                    <h4 className="text-xs font-black text-vibrant-gray uppercase tracking-widest mb-6">Trending Near {cityName}</h4>
-                    <div className="space-y-4">
-                      {featuredRestaurants.slice(0, 3).map(res => (
-                        <div key={res.id} onClick={() => { setIsMobileSearchOpen(false); navigate(`/restaurant/${res.id}`); }} className="flex items-center gap-3 cursor-pointer group">
-                           <TrendingUp size={14} className="text-brand shrink-0" />
-                           <span className="text-sm font-bold text-vibrant-dark group-hover:text-brand transition-colors">{res.name}</span>
-                           <span className="text-[10px] bg-slate-100 text-vibrant-gray px-1.5 py-0.5 rounded font-black ml-auto">{res.cuisine}</span>
+                  <div className="mt-10 md:mt-16">
+                    <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">Trending Near {cityName}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {featuredRestaurants.slice(0, 4).map(res => (
+                        <div key={res.id} onClick={() => { 
+                          setIsSearchOverlayOpen(false); 
+                          saveRecentSearch({
+                            type: 'restaurant',
+                            id: `res-${res.id}`,
+                            name: res.name,
+                            image: res.image || '',
+                            city: res.city || res.location,
+                            restaurantId: res.id,
+                            subtitle: 'Restaurant'
+                          });
+                          navigate(`/restaurant/${res.id}`); 
+                        }} className="flex items-center gap-3 md:gap-4 cursor-pointer group p-3 md:p-4 hover:bg-slate-50 rounded-2xl transition-colors">
+                           <TrendingUp size={16} className="text-brand shrink-0" />
+                           <span className="text-sm md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors truncate">{res.name}</span>
+                           <span className="text-[10px] md:text-xs bg-slate-100 text-vibrant-gray px-2 py-1 rounded font-black ml-auto whitespace-nowrap">{res.cuisine}</span>
                         </div>
                       ))}
                     </div>

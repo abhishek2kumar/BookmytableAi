@@ -8,7 +8,7 @@ interface AppIconProps {
   bgColor?: string;
 }
 
-export default function AppIcon({ className, size = 120, iconColor = "#ffffff", bgColor = "#FC8019" }: AppIconProps) {
+export default function AppIcon({ className, size = 120, iconColor = "#ffffff", bgColor = "#ff5200" }: AppIconProps) {
   return (
     <svg 
       viewBox="0 0 120 120" 

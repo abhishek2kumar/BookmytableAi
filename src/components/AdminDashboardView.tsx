@@ -3,8 +3,8 @@ import AppIcon from './AppIcon';
 import { db } from '../lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs } from 'firebase/firestore';
 import { Restaurant, Booking, UserProfile } from '../types';
-import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK } from '../lib/utils';
-import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, ChefHat, Settings, Image } from 'lucide-react';
+import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, convertTo12Hour, convertTo24Hour } from '../lib/utils';
+import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, ChefHat, Settings, Image, Gift } from 'lucide-react';
 import { searchRealRestaurants } from '../services/aiService';
 import { useAuth } from './AuthProvider';
 import { useMasterData } from './MasterDataContext';
@@ -52,7 +52,7 @@ export default function AdminDashboardView() {
   const [editingCity, setEditingCity] = useState<City | null>(null);
   const [editingCuisine, setEditingCuisine] = useState<Cuisine | null>(null);
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
-  const [activeEditTab, setActiveEditTab] = useState<'general' | 'operational' | 'visuals' | 'menu' | 'reservations' | 'system'>('general');
+  const [activeEditTab, setActiveEditTab] = useState<'general' | 'operational' | 'visuals' | 'menu' | 'offers' | 'reservations' | 'system'>('general');
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
   
@@ -205,7 +205,7 @@ export default function AdminDashboardView() {
       const allowedKeys = [
         'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'address', 'city', 
         'isOpen', 'rating', 'approved', 'facilities', 'offers', 'menu', 'menuImages', 
-        'secondaryImages', 'dailyTimings', 'isBookingEnabled', 'bookingSlots',
+        'secondaryImages', 'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'lat', 'lng',
         'instantBookingLimit', 'blackoutDates', 'slotCategories', 'categorySlots', 'menuCategories'
       ];
       
@@ -465,6 +465,31 @@ export default function AdminDashboardView() {
                 />
               </div>
             </div>
+            
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
+                <input 
+                  type="number"
+                  step="any"
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.lat || ''}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, lat: parseFloat(e.target.value)})}
+                  placeholder="e.g. 18.5204"
+                />
+              </div>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
+                <input 
+                  type="number"
+                  step="any"
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.lng || ''}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, lng: parseFloat(e.target.value)})}
+                  placeholder="e.g. 73.8567"
+                />
+              </div>
+            </div>
           </motion.div>
         );
       case 'operational':
@@ -525,20 +550,22 @@ export default function AdminDashboardView() {
                       {!(editingRestaurant.dailyTimings?.[day]?.closed) && (
                         <div className="space-y-2">
                           <input 
+                            type="time"
                             className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
-                            value={editingRestaurant.dailyTimings?.[day]?.open || '11:00 AM'}
+                            value={convertTo24Hour(editingRestaurant.dailyTimings?.[day]?.open || '11:00 AM')}
                             onChange={e => {
                               const next = {...(editingRestaurant.dailyTimings || {})};
-                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), open: e.target.value };
+                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), open: convertTo12Hour(e.target.value) };
                               setEditingRestaurant({...editingRestaurant, dailyTimings: next});
                             }}
                           />
                           <input 
+                            type="time"
                             className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
-                            value={editingRestaurant.dailyTimings?.[day]?.close || '11:00 PM'}
+                            value={convertTo24Hour(editingRestaurant.dailyTimings?.[day]?.close || '11:00 PM')}
                             onChange={e => {
                               const next = {...(editingRestaurant.dailyTimings || {})};
-                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), close: e.target.value };
+                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), close: convertTo12Hour(e.target.value) };
                               setEditingRestaurant({...editingRestaurant, dailyTimings: next});
                             }}
                           />
@@ -799,28 +826,160 @@ export default function AdminDashboardView() {
                      onChange={e => setEditingRestaurant({...editingRestaurant, instantBookingLimit: Number(e.target.value)})}
                    />
                 </div>
-                <div className="space-y-4">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Active Slots (n)</label>
-                   <div className="flex flex-wrap gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl min-h-[100px]">
-                      {(editingRestaurant.bookingSlots || []).map((s, idx) => (
-                        <div key={idx} className="bg-white px-2 py-1 rounded text-[9px] font-bold flex items-center gap-1 border">
-                           {s}
-                           <button type="button" onClick={() => setEditingRestaurant({...editingRestaurant, bookingSlots: editingRestaurant.bookingSlots?.filter((_, i) => i !== idx)})}><X size={10} /></button>
-                        </div>
+                <div className="space-y-4 md:col-span-2">
+                   <div className="flex items-center justify-between">
+                      <div>
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Reservation Categories</label>
+                         <p className="text-xs font-bold text-slate-500 mt-1">Organize your operational hours (e.g., Breakfast, Lunch)</p>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                           const newId = Date.now().toString();
+                           setEditingRestaurant({
+                              ...editingRestaurant, 
+                              slotCategories: [...(editingRestaurant.slotCategories || []), { id: newId, name: 'New Category', slots: [] }]
+                           });
+                        }}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-2"
+                      >
+                         <Plus size={14} /> Add Category
+                      </button>
+                   </div>
+                   
+                   <div className="space-y-4">
+                      {(editingRestaurant.slotCategories || []).map((cat, catIdx) => (
+                         <div key={cat.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[24px]">
+                            <div className="flex items-center justify-between gap-4 mb-4">
+                               <input 
+                                  className="bg-transparent text-lg font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full"
+                                  value={cat.name}
+                                  placeholder="Category Name (e.g. Dinner)"
+                                  onChange={e => {
+                                     const nextCats = [...(editingRestaurant.slotCategories || [])];
+                                     nextCats[catIdx] = { ...cat, name: e.target.value };
+                                     setEditingRestaurant({...editingRestaurant, slotCategories: nextCats});
+                                  }}
+                               />
+                               <button 
+                                  type="button"
+                                  onClick={() => {
+                                     const nextCats = [...(editingRestaurant.slotCategories || [])];
+                                     nextCats.splice(catIdx, 1);
+                                     setEditingRestaurant({...editingRestaurant, slotCategories: nextCats});
+                                  }}
+                                  className="w-10 h-10 rounded-xl bg-red-100 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shrink-0 shadow-sm text-xs font-bold"
+                               >
+                                  <Trash2 size={16} />
+                               </button>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              {(cat.slots || []).map((s, idx) => (
+                                <div key={idx} className="bg-white px-4 py-2 border border-slate-200 shadow-sm rounded-xl text-xs font-bold flex items-center gap-2 text-slate-700">
+                                  {convertTo12Hour(s)}
+                                  <button type="button" onClick={() => {
+                                     const nextCats = [...(editingRestaurant.slotCategories || [])];
+                                     nextCats[catIdx].slots = nextCats[catIdx].slots.filter((_, i) => i !== idx);
+                                     setEditingRestaurant({...editingRestaurant, slotCategories: nextCats});
+                                  }} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                                </div>
+                              ))}
+                              <div className="relative group/time">
+                                <span className="absolute -top-3 left-2 bg-white px-1 text-[8px] font-black text-slate-400 uppercase z-10 hidden group-hover/time:block">Add Slot</span>
+                                <input 
+                                   type="time"
+                                   className="bg-white border border-slate-200 outline-none rounded-xl px-4 py-2 text-xs font-bold focus:border-brand shadow-sm text-slate-700 w-[140px]"
+                                   onChange={e => {
+                                      const val = e.target.value;
+                                      if (val) {
+                                         const nextCats = [...(editingRestaurant.slotCategories || [])];
+                                         if (!nextCats[catIdx].slots.includes(val)) {
+                                            nextCats[catIdx].slots = [...nextCats[catIdx].slots, val].sort();
+                                         }
+                                         setEditingRestaurant({...editingRestaurant, slotCategories: nextCats});
+                                         e.target.value = '';
+                                      }
+                                   }}
+                                />
+                              </div>
+                            </div>
+                         </div>
                       ))}
-                      <input 
-                         className="w-16 bg-transparent outline-none text-[9px] font-bold"
-                         placeholder="+"
-                         onKeyDown={e => {
-                            if(e.key === 'Enter') {
-                               const val = e.currentTarget.value.trim();
-                               if(val) setEditingRestaurant({...editingRestaurant, bookingSlots: [...(editingRestaurant.bookingSlots || []), val]});
-                               e.currentTarget.value = '';
-                            }
-                         }}
-                      />
+                      
+                      {!(editingRestaurant.slotCategories || []).length && (
+                         <div className="py-12 bg-white border-2 border-dashed border-slate-200 rounded-[24px] text-center opacity-60">
+                            <Calendar size={32} className="mx-auto text-slate-200 mb-2" />
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No slot categories configured</p>
+                         </div>
+                      )}
                    </div>
                 </div>
+             </div>
+          </motion.div>
+        );
+      case 'offers':
+        return (
+          <motion.div 
+            key="offers"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-10"
+          >
+             <div className="flex items-center justify-between px-1">
+                <div>
+                   <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight">Active Offers</h3>
+                   <p className="text-slate-400 text-xs font-bold mt-1">Configure special deals and discounts.</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => {
+                     const next = [...(editingRestaurant.offers || [])];
+                     next.push('New Offer');
+                     setEditingRestaurant({...editingRestaurant, offers: next});
+                  }}
+                  className="px-8 py-4 bg-brand text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-brand/20 hover:scale-105 transition-all"
+                >
+                   Add Offer
+                </button>
+             </div>
+
+             <div className="space-y-4">
+                {(editingRestaurant.offers || []).map((offer, idx) => (
+                  <div key={idx} className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                     <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+                        <Gift size={16} />
+                     </div>
+                     <input 
+                        className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none"
+                        value={offer}
+                        placeholder="Offer details..."
+                        onChange={e => {
+                           const next = [...(editingRestaurant.offers || [])];
+                           next[idx] = e.target.value;
+                           setEditingRestaurant({...editingRestaurant, offers: next});
+                        }}
+                     />
+                     <button 
+                       type="button"
+                       onClick={() => {
+                          const next = [...(editingRestaurant.offers || [])];
+                          next.splice(idx, 1);
+                          setEditingRestaurant({...editingRestaurant, offers: next});
+                       }}
+                       className="w-10 h-10 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
+                     >
+                        <Trash2 size={16} />
+                     </button>
+                  </div>
+                ))}
+
+                {(editingRestaurant.offers || []).length === 0 && (
+                  <div className="py-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[32px]">
+                     <Gift size={48} className="mx-auto text-slate-200 mb-4" />
+                     <p className="text-slate-400 font-bold">No active offers exist.</p>
+                  </div>
+                )}
              </div>
           </motion.div>
         );
@@ -2126,21 +2285,21 @@ export default function AdminDashboardView() {
             </motion.div>
           </div>
         )}        {editingRestaurant && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setEditingRestaurant(null)}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" 
+              className="absolute inset-0 bg-slate-900/90 backdrop-blur-md" 
             />
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 30 }}
+              initial={{ scale: 0.98, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 30 }}
-              className="bg-white w-full max-w-5xl rounded-[48px] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] border border-white"
+              exit={{ scale: 0.98, opacity: 0, y: 20 }}
+              className="bg-white w-full h-full md:w-[98vw] md:h-[98vh] md:rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col border border-white"
             >
-              <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-white relative">
+              <div className="p-10 border-b border-slate-50 flex shrink-0 items-center justify-between bg-white relative">
                  <div className="flex items-center gap-6">
                     <div className="w-16 h-16 bg-slate-900 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
                        <ChefHat size={32} />
@@ -2161,13 +2320,14 @@ export default function AdminDashboardView() {
                  </button>
               </div>
 
-              <div className="flex bg-slate-50 border-b border-slate-100 px-10 gap-8 overflow-x-auto no-scrollbar">
+              <div className="flex shrink-0 bg-slate-50 border-b border-slate-100 px-10 gap-8 overflow-x-auto no-scrollbar pt-2">
                  {[
                    { id: 'general', label: 'Brand', icon: Globe },
                    { id: 'operational', label: 'Logistics', icon: Clock },
                    { id: 'visuals', label: 'Portfolio', icon: Image },
                    { id: 'menu', label: 'Menu', icon: Soup },
                    { id: 'reservations', label: 'Reservations', icon: Calendar },
+                   { id: 'offers', label: 'Offers', icon: Gift },
                    { id: 'system', label: 'Control', icon: Settings }
                  ].map(tab => (
                    <button
@@ -2195,7 +2355,7 @@ export default function AdminDashboardView() {
                  </form>
               </div>
 
-              <div className="p-8 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+              <div className="p-8 border-t border-slate-50 bg-slate-50/30 flex shrink-0 gap-4">
                  <button 
                    type="submit" 
                    form="master-edit-form"

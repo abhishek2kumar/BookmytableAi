@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, Clock, X, UtensilsCrossed, CheckCircle } from 'lucide-react';
+import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, ChevronLeft, Clock, X, UtensilsCrossed, CheckCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
 import { cn } from '../lib/utils';
 import { useRestaurants } from '../hooks/useFirebase';
+import { Helmet } from 'react-helmet-async';
 
 export default function HomeLandingView() {
   const navigate = useNavigate();
@@ -14,10 +15,31 @@ export default function HomeLandingView() {
   const { restaurants } = useRestaurants(true);
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
 
-  const [isSubmittingOnboarding, setIsSubmittingOnboarding] = useState(false);
-  const [onboardingSubmitted, setOnboardingSubmitted] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('bookmytable_recent_searches');
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Error loading recent searches', e);
+    }
+  }, []);
+
+  const saveRecentSearch = (item: any) => {
+    try {
+      const updated = [item, ...recentSearches.filter(s => s.id !== item.id)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem('bookmytable_recent_searches', JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error saving recent search', e);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -58,6 +80,7 @@ export default function HomeLandingView() {
   };
 
   const handleSuggestionSelect = (suggestion: any) => {
+    saveRecentSearch(suggestion);
     if (suggestion.type === 'city') {
       const cityData = cities.find(c => c.name === suggestion.name);
       if (cityData) {
@@ -71,6 +94,7 @@ export default function HomeLandingView() {
       navigate(`/restaurant/${suggestion.restaurantId}`);
     }
     setShowSuggestions(false);
+    setIsSearchOverlayOpen(false);
   };
 
   const handleSearchSubmit = () => {
@@ -80,7 +104,7 @@ export default function HomeLandingView() {
     // First try finding an exact match
     const exactCity = cities.find(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
     if (exactCity) {
-      handleSuggestionSelect({ type: 'city', name: exactCity.name });
+      handleSuggestionSelect({ type: 'city', id: `city-${exactCity.name}`, name: exactCity.name, image: exactCity.image, subtitle: 'City' });
       return;
     }
 
@@ -118,6 +142,7 @@ export default function HomeLandingView() {
            id: `city-${c.name}`, 
            name: c.name, 
            image: c.image, 
+           city: undefined,
            subtitle: 'City' 
         }))
     : [];
@@ -149,6 +174,12 @@ export default function HomeLandingView() {
 
   return (
     <div className="bg-white">
+      <Helmet>
+        <title>Bookmytable - Discover & Book the Best Restaurants</title>
+        <meta name="description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+        <meta property="og:title" content="Bookmytable - Discover & Book the Best Restaurants" />
+        <meta property="og:description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative h-[500px] md:h-[600px] flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
@@ -166,76 +197,23 @@ export default function HomeLandingView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
+            className="flex flex-col items-center"
           >
-            <h1 className="text-4xl md:text-7xl font-display font-black text-white mb-6 leading-tight drop-shadow-2xl">
+            <h1 className="text-4xl md:text-7xl font-display font-black text-white mb-6 leading-tight drop-shadow-2xl text-center">
               Book the perfect table,<br />
               <span className="text-brand">wherever you are.</span>
             </h1>
-            <p className="text-base md:text-xl text-slate-100 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-md">
-              Discover and book the finest dining experiences at the best restaurants in your city.
+            <p className="text-base md:text-xl text-slate-200 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-md text-center">
+              Discover and book the finest dining experiences at the best restaurants in your city using <span className="text-brand font-bold">AI-powered</span> features.
             </p>
             
-            <div className="max-w-3xl mx-auto flex flex-col md:flex-row gap-3 md:gap-4 relative px-4 md:px-0" ref={searchRef}>
-              <div className="flex-grow relative group">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-focus-within:text-brand transition-colors" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search cities or restaurants..."
-                  className="w-full pl-12 pr-4 py-4 md:py-5 bg-white border-2 border-transparent focus:border-brand rounded-2xl text-lg font-bold outline-none shadow-elevation transition-all placeholder:text-slate-300"
-                  value={searchValue}
-                  onChange={(e) => {
-                    setSearchValue(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                       handleSearchSubmit();
-                    }
-                  }}
-                />
-
-                {/* Suggestions Dropdown */}
-                <AnimatePresence>
-                  {showSuggestions && suggestions.length > 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-50 border border-slate-100 max-h-72 overflow-y-auto"
-                    >
-                      {suggestions.map((item: any) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleSuggestionSelect(item)}
-                          className="w-full px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors text-left group/item"
-                        >
-                          <div className="w-10 h-10 shrink-0 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                             {item.image ? (
-                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                             ) : (
-                               <MapPin className="text-slate-400" size={20} />
-                             )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-black text-slate-900 group-hover/item:text-brand transition-colors truncate">
-                                {item.name}
-                                {item.type === 'restaurant' && item.city && <span className="font-bold text-slate-400 ml-2">({item.city})</span>}
-                            </p>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest truncate">{item.subtitle}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            <div className="max-w-4xl mx-auto w-full relative px-2 md:px-0">
+              <div className="relative group w-full cursor-pointer" onClick={() => setIsSearchOverlayOpen(true)}>
+                <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={24} />
+                <div className="w-full pl-16 pr-4 py-4 md:py-6 bg-white border-2 border-transparent hover:border-brand/30 rounded-2xl md:rounded-[2rem] text-lg md:text-xl font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center">
+                  Search cities or restaurants...
+                </div>
               </div>
-              <button 
-                onClick={handleSearchSubmit}
-                className="w-full md:w-auto bg-brand text-white px-10 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-brand-dark transition-all transform active:scale-95 shadow-lg shadow-brand/40"
-              >
-                Search
-              </button>
             </div>
 
             <div className="mt-8">
@@ -345,147 +323,7 @@ export default function HomeLandingView() {
         </div>
       </section>
 
-      {/* Partner Onboarding Section */}
-      <section id="onboarding-request" className="py-24 md:py-32 bg-vibrant-dark text-white overflow-hidden relative">
-        <div className="max-w-7xl mx-auto px-4 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-              >
-                <h2 className="text-4xl md:text-6xl font-display font-black mb-8 leading-tight">
-                  Grow your business with <span className="text-brand">Bookmytable</span>
-                </h2>
-                <p className="text-xl text-white/70 mb-12 font-medium leading-relaxed">
-                  Join thousands of restaurant owners who are reaching more customers and streamlining their bookings with our platform.
-                </p>
-                
-                <div className="space-y-6 mb-12">
-                   {[
-                     'Zero onboarding fee for the first 3 months',
-                     'Real-time booking management dashboard',
-                     'Performance analytics and insights',
-                     'Dedicated partner support team'
-                   ].map((item, i) => (
-                     <div key={i} className="flex items-center gap-4">
-                        <div className="w-6 h-6 bg-brand/20 rounded-full flex items-center justify-center">
-                           <div className="w-2 h-2 bg-brand rounded-full" />
-                        </div>
-                        <span className="font-bold text-white/90">{item}</span>
-                     </div>
-                   ))}
-                </div>
 
-                <div className="flex flex-wrap gap-6">
-                  <button 
-                    onClick={() => navigate('/owner')}
-                    className="bg-brand text-white px-10 py-5 rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-105 transition-all"
-                  >
-                    Register as Partner
-                  </button>
-                  <button 
-                    onClick={() => navigate('/contact')}
-                    className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-10 py-5 rounded-2xl font-black text-lg hover:bg-white/20 transition-all"
-                  >
-                    Contact Sales
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-            
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-                <div className="bg-gradient-to-br from-brand to-brand-dark p-1 rounded-2xl shadow-2xl">
-                   <div className="bg-slate-900 rounded-2xl overflow-hidden p-8 md:p-12">
-                    {onboardingSubmitted ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-vibrant-success/20 text-vibrant-success rounded-full flex items-center justify-center mx-auto mb-4">
-                           <CheckCircle className="w-8 h-8" />
-                        </div>
-                        <h3 className="text-2xl font-display font-black mb-2">Request Received!</h3>
-                        <p className="text-white/60 mb-6 font-medium">Our team will get in touch with you shortly.</p>
-                        <button 
-                          onClick={() => setOnboardingSubmitted(false)}
-                          className="text-brand font-bold hover:underline text-sm uppercase tracking-widest"
-                        >
-                          Submit Another
-                        </button>
-                      </div>
-                    ) : (
-                      <form 
-                        className="space-y-6"
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          setIsSubmittingOnboarding(true);
-                          try {
-                            const formData = new FormData(e.currentTarget);
-                            const data = Object.fromEntries(formData.entries());
-                            const response = await fetch('/api/contact', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({...data, subject: 'Onboarding Request'}),
-                            });
-                            if (response.ok) setOnboardingSubmitted(true);
-                          } catch (error) {
-                            console.error('Failed to submit', error);
-                          } finally {
-                            setIsSubmittingOnboarding(false);
-                          }
-                        }}
-                      >
-                         <h3 className="text-2xl font-display font-black text-center mb-8">Onboarding Request</h3>
-                         
-                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Owner Name</label>
-                            <input required name="name" type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. John Doe" />
-                         </div>
-
-                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Email Address</label>
-                            <input required name="email" type="email" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. john@spice-garden.com" />
-                         </div>
-
-                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Restaurant Name</label>
-                            <input required name="restaurantName" type="text" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="E.g. Spice Garden" />
-                         </div>
-                         
-                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2 block">Contact Number</label>
-                            <div className="flex gap-2">
-                               <span className="bg-white/5 px-4 py-3 rounded-xl font-bold border border-white/10">+91</span>
-                               <input required name="phone" type="tel" className="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand transition-colors font-bold" placeholder="9988776655" />
-                            </div>
-                         </div>
-                         
-                         <button 
-                            type="submit" 
-                            disabled={isSubmittingOnboarding}
-                            className="w-full bg-brand py-4 rounded-xl font-black tracking-widest uppercase text-sm mt-4 shadow-xl shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                         >
-                            {isSubmittingOnboarding ? 'Submitting...' : 'Get a call back'}
-                         </button>
-                      </form>
-                    )}
-                 </div>
-              </div>
-              
-              {/* Decorative elements */}
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand/20 rounded-full blur-3xl -z-10 animate-pulse"></div>
-              <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-brand/10 rounded-full blur-3xl -z-10"></div>
-            </motion.div>
-          </div>
-        </div>
-        
-        {/* Background texture */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-      </section>
 
       {/* CTA section */}
       <section className="py-24 md:py-32 bg-white">
@@ -652,6 +490,126 @@ export default function HomeLandingView() {
             <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-brand/10 rounded-full blur-[120px] -z-0" />
          </div>
       </section>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOverlayOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-[200] flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
+              <button 
+                onClick={() => setIsSearchOverlayOpen(false)}
+                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <div className="flex-1 relative border-none">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand" size={18} />
+                <input 
+                  autoFocus
+                  type="text" 
+                  placeholder="Where would you like to eat?"
+                  className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-3 md:py-4 md:text-base text-sm font-bold focus:ring-2 focus:ring-brand outline-none"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                       handleSearchSubmit();
+                    }
+                  }}
+                />
+                {searchValue && (
+                  <button 
+                    onClick={() => setSearchValue('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Viewport content */}
+            <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto">
+              <div className="p-4 md:p-6 divide-y divide-gray-100">
+                {!searchValue.trim() && recentSearches.length > 0 ? (
+                  <>
+                    <div className="pb-3 pt-1">
+                      <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Recent Searches</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {recentSearches.map(res => (
+                        <button 
+                          key={res.id} 
+                          onClick={() => handleSuggestionSelect(res)}
+                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left"
+                        >
+                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
+                            {res.image ? (
+                               <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center">
+                                 <Clock className="text-slate-400" size={24} />
+                               </div>
+                             )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                            <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : suggestions.length > 0 ? (
+                  <>
+                    <div className="pb-3 pt-1">
+                      <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Search Results</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {suggestions.map(res => (
+                        <button 
+                          key={res.id} 
+                          onClick={() => handleSuggestionSelect(res)}
+                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left"
+                        >
+                          <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
+                            {res.image ? (
+                               <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center">
+                                 <MapPin className="text-slate-400" size={24} />
+                               </div>
+                             )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                            <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  searchValue.trim() && (
+                    <div className="py-20 text-center">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                        <Search size={32} className="md:w-10 md:h-10" />
+                      </div>
+                      <p className="text-vibrant-gray font-bold md:text-lg">No results found for "{searchValue}"</p>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

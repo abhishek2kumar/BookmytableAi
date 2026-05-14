@@ -1,7 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { Resend } from 'resend';
 import { GoogleGenAI } from '@google/genai';
@@ -24,12 +23,14 @@ function getResend() {
   return resendClient;
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function startServer() {
   const app = express();
-  const PORT = 8080;
+  // AI Studio environment strictly requires port 3000.
+  // For your external deployments via GitHub, set the EXTERNAL_DEPLOYMENT_PORT environment variable 
+  // on your server (e.g., EXTERNAL_DEPLOYMENT_PORT=8080).
+  const PORT = process.env.PORT 
+    ? parseInt(process.env.PORT, 10) 
+    : 3000;
 
   app.use(express.json());
 
@@ -163,7 +164,7 @@ async function startServer() {
       res.json(data.restaurants || data);
     } catch (error: any) {
       console.error('Gemini Search Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(200).json({ restaurants: [] });
     }
   });
 
@@ -173,7 +174,7 @@ async function startServer() {
     const ai = getAI();
 
     if (!ai) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+      return res.status(200).json({ summary: 'AI Summary is currently unavailable (API Key missing on server).' });
     }
 
     try {
@@ -190,8 +191,44 @@ async function startServer() {
       res.json({ summary: response.text });
     } catch (error: any) {
       console.error('Gemini Summary Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(200).json({ summary: "AI Summary is currently unavailable. Please check the AI config or try again later." });
     }
+  });
+
+  // SEO: robots.txt
+  app.get('/robots.txt', (req, res) => {
+    res.type('text/plain');
+    res.send(`User-agent: *
+Allow: /
+Sitemap: https://bookmytable.co.in/sitemap.xml`);
+  });
+
+  // SEO: basic sitemap.xml
+  app.get('/sitemap.xml', (req, res) => {
+    res.type('application/xml');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://bookmytable.co.in/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://bookmytable.co.in/about</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://bookmytable.co.in/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://bookmytable.co.in/onboarding-request</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>`);
   });
 
   // Vite middleware for development
@@ -209,9 +246,21 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Contact notifications set for: bookmytableindia@gmail.com`);
+  });
+
+  server.on('error', (error: any) => {
+    if (error.code === 'EADDRINUSE') {
+      console.warn(`Warning: Port ${PORT} is in use (likely AI Studio environment). Falling back to port 3000...`);
+      app.listen(3000, '0.0.0.0', () => {
+        console.log(`Server running on http://localhost:3000`);
+        console.log(`Contact notifications set for: bookmytableindia@gmail.com`);
+      });
+    } else {
+      console.error('Server error:', error);
+    }
   });
 }
 

@@ -12,7 +12,10 @@ import {
   UtensilsCrossed,
   MapPin,
   ChevronDown,
-  Navigation
+  Navigation,
+  Facebook,
+  Twitter,
+  Instagram
 } from 'lucide-react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
@@ -97,14 +100,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navItems.push({ label: 'Admin', path: '/admin', icon: ShieldCheck });
   }
 
-  const isRestaurantPage = location.pathname.startsWith('/restaurant/');
+  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || location.pathname.startsWith('/book/');
 
   return (
     <div className="min-h-screen flex flex-col bg-vibrant-bg">
-      {/* Header - Hidden on Mobile Restaurant Page */}
+      {/* Header - Hidden on Mobile Restaurant Page, completely hidden on Book page */}
       <header className={cn(
         "sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 transition-all duration-300",
-        isRestaurantPage ? "md:block hidden" : "block"
+        location.pathname.startsWith('/book/') ? "hidden" : (isRestaurantPage ? "md:block hidden" : "block")
       )}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -189,7 +192,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Portal target for page-specific search (like CityView) */}
-            <div id="navbar-search-portal" className="hidden md:flex flex-1 mx-4 max-w-2xl transition-all"></div>
+            <div id="navbar-search-portal" className="flex flex-1 justify-end md:justify-start mx-2 md:mx-4 max-w-2xl transition-all min-w-[40px] min-h-[40px]"></div>
 
             {/* Nav Links */}
             <nav className="hidden md:flex items-center gap-8">
@@ -304,85 +307,102 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             The best way to book a table at your favorite restaurants.
           </p>
           <div className="flex justify-center gap-8 mb-8 text-sm font-medium">
+            <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             <Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link>
+            <Link to="/onboarding-request" className="hover:text-white transition-colors">Partner With Us</Link>
           </div>
+          
+          <div className="flex justify-center gap-6 mb-8">
+            <a href="https://www.facebook.com/bookmytableIN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2">
+              <Facebook size={24} />
+            </a>
+            <a href="https://twitter.com/bookmytableIN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2">
+              <Twitter size={24} />
+            </a>
+            <a href="https://www.instagram.com/bookmytable_IN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2">
+              <Instagram size={24} />
+            </a>
+          </div>
+
           <p className="text-xs opacity-50">
             &copy; {new Date().getFullYear()} Bookmytable. All rights reserved.
           </p>
         </div>
       </footer>
       {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
-        <Link
-          to="/"
-          className={cn(
-            "flex flex-col items-center gap-1 transition-all active:scale-95",
-            location.pathname === "/" ? "text-brand" : "text-vibrant-gray opacity-50"
-          )}
-        >
-          <div className={cn(
-            "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-            location.pathname === "/" ? "bg-brand/10" : ""
-          )}>
-            <Search size={22} className={location.pathname === "/" ? "stroke-[2.5]" : ""} />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">Explore</span>
-        </Link>
-
-        {navItems.map((item) => (
+      {!isRestaurantPage && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
           <Link
-            key={item.path}
-            to={item.path}
+            to="/"
             className={cn(
               "flex flex-col items-center gap-1 transition-all active:scale-95",
-              location.pathname === item.path ? "text-brand" : "text-vibrant-gray opacity-50"
+              location.pathname === "/" ? "text-brand" : "text-vibrant-gray opacity-50"
             )}
           >
             <div className={cn(
               "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-              location.pathname === item.path ? "bg-brand/10" : ""
+              location.pathname === "/" ? "bg-brand/10" : ""
             )}>
-              <item.icon size={22} className={location.pathname === item.path ? "stroke-[2.5]" : ""} />
+              <Search size={22} className={location.pathname === "/" ? "stroke-[2.5]" : ""} />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Explore</span>
           </Link>
-        ))}
 
-        {profile ? (
-          <button
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className={cn(
-              "flex flex-col items-center gap-1 transition-all active:scale-95",
-              isProfileOpen ? "text-brand" : "text-vibrant-gray opacity-50"
-            )}
-          >
-            <div className={cn(
-              "w-10 h-10 rounded-full border-2 transition-all overflow-hidden",
-              isProfileOpen ? "border-brand" : "border-transparent"
-            )}>
-              <img
-                src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">Profile</span>
-          </button>
-        ) : (
-          <button
-            onClick={signInWithGoogle}
-            className="flex flex-col items-center gap-1 text-brand active:scale-95"
-          >
-            <div className="w-12 h-8 flex items-center justify-center rounded-2xl bg-brand/10">
-              <UserIcon size={22} className="stroke-[2.5]" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">Login</span>
-          </button>
-        )}
-      </div>
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all active:scale-95",
+                location.pathname === item.path ? "text-brand" : "text-vibrant-gray opacity-50"
+              )}
+            >
+              <div className={cn(
+                "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
+                location.pathname === item.path ? "bg-brand/10" : ""
+              )}>
+                <item.icon size={22} className={location.pathname === item.path ? "stroke-[2.5]" : ""} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+            </Link>
+          ))}
+
+          {profile ? (
+            <button
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all active:scale-95",
+                isProfileOpen ? "text-brand" : "text-vibrant-gray opacity-50"
+              )}
+            >
+              <div className={cn(
+                "w-10 h-10 rounded-full border-2 transition-all overflow-hidden",
+                isProfileOpen ? "border-brand" : "border-transparent"
+              )}>
+                <img
+                  src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">Profile</span>
+            </button>
+          ) : (
+            <button
+              onClick={signInWithGoogle}
+              className="flex flex-col items-center gap-1 text-brand active:scale-95"
+            >
+              <div className="w-12 h-8 flex items-center justify-center rounded-2xl bg-brand/10">
+                <UserIcon size={22} className="stroke-[2.5]" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">Login</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

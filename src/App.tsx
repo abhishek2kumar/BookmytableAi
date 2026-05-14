@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { LocationProvider } from './components/LocationContext';
 import { MasterDataProvider } from './components/MasterDataContext';
@@ -9,6 +10,7 @@ import ScrollToTop from './components/ScrollToTop';
 import CityView from './components/CityView';
 import CuisineView from './components/CuisineView';
 import RestaurantDetailsView from './components/RestaurantDetailsView';
+import BookTableView from './components/BookTableView';
 import DashboardView from './components/DashboardView';
 import OwnerDashboardView from './components/OwnerDashboardView';
 import AdminDashboardView from './components/AdminDashboardView';
@@ -17,6 +19,8 @@ import ContactView from './components/ContactView';
 import PrivacyView from './components/PrivacyView';
 import TermsView from './components/TermsView';
 import ErrorView from './components/ErrorView';
+import OnboardingRequestView from './components/OnboardingRequestView';
+import AboutView from './components/AboutView';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Capacitor } from '@capacitor/core';
@@ -56,31 +60,38 @@ export default function App() {
   }, []);
 
   return (
-    <Router>
-      <AuthProvider>
-        <MasterDataProvider>
-          <ScrollToTop />
-          <LocationProvider>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<HomeLandingView />} />
-                <Route path="/city/:cityId" element={<CityView />} />
-                <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
-                <Route path="/restaurant/:id" element={<RestaurantDetailsView />} />
-                <Route path="/dashboard" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
-                <Route path="/owner" element={<ProtectedRoute role="owner"><OwnerDashboardView /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
-                <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
-                <Route path="/contact" element={<ContactView />} />
-                <Route path="/privacy" element={<PrivacyView />} />
-                <Route path="/terms" element={<TermsView />} />
-                <Route path="/error" element={<ErrorView />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </Layout>
-          </LocationProvider>
-        </MasterDataProvider>
-      </AuthProvider>
-    </Router>
+    <HelmetProvider>
+      <Router>
+        <AuthProvider>
+          <MasterDataProvider>
+            <ScrollToTop />
+            <LocationProvider>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<HomeLandingView />} />
+                  <Route path="/city/:cityId" element={<CityView />} />
+                  <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
+                  <Route path="/restaurant/:city/:name/:id" element={<RestaurantDetailsView />} />
+                  <Route path="/restaurant/:city/:name/:id/:tab" element={<RestaurantDetailsView />} />
+                  <Route path="/restaurant/:id" element={<RestaurantDetailsView />} />
+                  <Route path="/book/:id" element={<BookTableView />} />
+                  <Route path="/dashboard" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
+                  <Route path="/owner" element={<ProtectedRoute role="owner"><OwnerDashboardView /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
+                  <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
+                  <Route path="/contact" element={<ContactView />} />
+                  <Route path="/privacy" element={<PrivacyView />} />
+                  <Route path="/terms" element={<TermsView />} />
+                  <Route path="/onboarding-request" element={<OnboardingRequestView />} />
+                  <Route path="/about" element={<AboutView />} />
+                  <Route path="/error" element={<ErrorView />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </Layout>
+            </LocationProvider>
+          </MasterDataProvider>
+        </AuthProvider>
+      </Router>
+    </HelmetProvider>
   );
 }

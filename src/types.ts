@@ -6,6 +6,7 @@ export interface UserProfile {
   displayName?: string;
   photoURL?: string;
   role: UserRole;
+  phone?: string;
   favorites?: string[];
   createdAt: any;
 }
