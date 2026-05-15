@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { Restaurant } from '../types';
 import { useMasterData } from './MasterDataContext';
-import { cn } from '../lib/utils';
+import { cn, convertTo12Hour, convertTo24Hour } from '../lib/utils';
+import { INDIAN_STATES } from '../constants';
 import { 
   Store, 
   MapPin, 
@@ -17,8 +18,17 @@ import {
   User,
   IndianRupee,
   Utensils,
-  Image as ImageIcon,
-  Star
+  ImageIcon,
+  Star,
+  Loader2,
+  ChevronRight,
+  Globe,
+  UtensilsCrossed,
+  Plus,
+  Trash2,
+  ShieldCheck,
+  Search,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -28,35 +38,55 @@ const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'S
 
 export default function AdminOnboardingView() {
   const navigate = useNavigate();
+
   const { cities, cuisines } = useMasterData();
   const sortedCities = React.useMemo(() => [...cities].sort((a, b) => a.name.localeCompare(b.name)), [cities]);
   const sortedCuisines = React.useMemo(() => [...cuisines].sort((a, b) => a.name.localeCompare(b.name)), [cuisines]);
+  const [step, setStep] = useState(1);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isCoordsValid, setIsCoordsValid] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   const [form, setForm] = useState<Partial<Restaurant>>({
     name: '',
     description: '',
-    cuisine: 'North Indian',
+    cuisine: [],
     avgPrice: 500,
     contactNumber: '',
+    contactEmail: '',
     image: '',
+    shopNo: '',
+    floor: '',
+    area: '',
+    landmark: '',
+    state: '',
+    pincode: '',
+    country: 'India',
     location: '',
     address: '',
     city: 'Bangalore',
-    lat: BANGALORE_COORDS.lat,
-    lng: BANGALORE_COORDS.lng,
+    lat: 0,
+    lng: 0,
     ownerId: '',
     isOpen: true,
-    rating: 4.0, // Default base rating for new restaurants
-    approved: true, // Admin onboarding is pre-approved
+    rating: 4.0, 
+    approved: false, // Default to false for manual onboarding
     openingHours: {
       open: '11:00 AM',
       close: '11:00 PM',
       days: 'Mon-Sun'
     },
+    menu: [{ name: '', price: 0, description: '' }],
+    menuCategories: [],
+    facilities: [],
+    secondaryImages: [], // General
+    foodImages: [],
+    ambienceImages: [],
     dailyTimings: DAYS_OF_WEEK.reduce((acc, day) => {
-      acc[day] = { open: '11:00 AM', close: '11:00 PM', closed: false };
+      acc[day] = { ranges: [{ open: '11:00 AM', close: '11:00 PM' }], closed: false };
       return acc;
     }, {} as any)
   });
@@ -66,78 +96,236 @@ export default function AdminOnboardingView() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  const handleGeocodeAddress = async () => {
-    const { name, address, location, city } = form;
-    const queryTerm = address || location;
-    if (!queryTerm || queryTerm.length < 5) return;
+  const updateLocationField = (field: string, value: string) => {
+    const nextForm = { ...form, [field]: value };
+    const fullAddress = [nextForm.shopNo, nextForm.floor, nextForm.area, nextForm.city, nextForm.state, nextForm.pincode, nextForm.country, nextForm.landmark]
+      .filter(Boolean)
+      .join(', ');
+    setForm({ ...nextForm, address: fullAddress, location: nextForm.area || '' });
+  };
+
+  const handleGeocodeAddress = async (silent = false) => {
+    const { name, area, city, state, pincode } = form;
+    if (!area || !city) {
+      if (!silent) showNotification('error', 'Area and City are required to locate on map.');
+      return;
+    }
     
+    setIsGeocoding(true);
     try {
-      const queryStr = name ? `${name}, ${queryTerm}, ${city}` : `${queryTerm}, ${city}`;
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1`);
+      const queryStr = [name, area, city, state, pincode].filter(Boolean).join(', ');
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}&limit=1&countrycodes=in&email=rec.abhishek@gmail.com`,
+        {
+          headers: {
+            'Accept-Language': 'en-US,en;q=0.5'
+          }
+        }
+      );
       const data = await response.json();
       
       if (data && data.length > 0) {
-        setForm(prev => ({ 
-          ...prev, 
-          lat: parseFloat(data[0].lat), 
-          lng: parseFloat(data[0].lon) 
-        }));
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          setForm(prev => ({ ...prev, lat, lng: lon }));
+          setIsCoordsValid(true);
+          if (!silent) showNotification('success', 'Exact coordinates detected!');
+        }
+      } else {
+        // Fallback search with fewer details if the specific one fails
+        const fallbackQuery = [area, city, state].filter(Boolean).join(', ');
+        const fallbackResp = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&limit=1&countrycodes=in&email=rec.abhishek@gmail.com`,
+          {
+            headers: {
+              'Accept-Language': 'en-US,en;q=0.5'
+            }
+          }
+        );
+        const fallbackData = await fallbackResp.json();
+        if (fallbackData && fallbackData.length > 0) {
+          const fLat = parseFloat(fallbackData[0].lat);
+          const fLon = parseFloat(fallbackData[0].lon);
+          if (!isNaN(fLat) && !isNaN(fLon)) {
+            setForm(prev => ({ ...prev, lat: fLat, lng: fLon }));
+            setIsCoordsValid(true);
+            if (!silent) showNotification('success', 'Coordinates detected (using area/city).');
+          }
+        } else {
+          setIsCoordsValid(false);
+          if (!silent) showNotification('error', 'Could not detect coordinates automatically. Please enter them manually.');
+        }
       }
     } catch (err) {
       console.error('Geocoding error:', err);
+      if (!silent) showNotification('error', 'Error connecting to search service.');
+      setIsCoordsValid(false);
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
+  // Auto-detect coordinates when identity fields are filled
+  React.useEffect(() => {
+    const { name, area, city, state } = form;
+    if (name && name.length > 3 && area && area.length > 3 && city && state && !isCoordsValid && !isGeocoding) {
+      const timer = setTimeout(() => {
+        handleGeocodeAddress(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [form.name, form.area, form.city, form.state]);
+
+  const validateContact = () => {
+    // Only allow numeric value of length 10 digit.
+    const phoneRegex = /^[0-9]{10}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
-    try {
-      // Duplicate Check: Name + Location (Case-insensitive & Trimmed)
-      const normalizedName = form.name?.trim().toLowerCase();
-      const normalizedLocation = form.location?.trim().toLowerCase();
+    const newErrors: Record<string, boolean> = {};
+    let hasError = false;
+
+    if (!form.contactNumber || !phoneRegex.test(form.contactNumber)) {
+      newErrors.contactNumber = true;
+      hasError = true;
+    }
+    if (!form.contactEmail || !emailRegex.test(form.contactEmail)) {
+      newErrors.contactEmail = true;
+      hasError = true;
+    }
+
+    if (hasError) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
+      showNotification('error', 'Please enter a valid 10-digit number and email.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleNext = async () => {
+    const newErrors: Record<string, boolean> = {};
+
+    if (step === 1) {
+      if (!form.name) newErrors.name = true;
+      if (!form.area) newErrors.area = true;
+      if (!form.city) newErrors.city = true;
+      if (!form.state) newErrors.state = true;
+      if (!form.pincode) newErrors.pincode = true;
+      if (!form.lat) newErrors.lat = true;
+      if (!form.lng) newErrors.lng = true;
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(prev => ({ ...prev, ...newErrors }));
+        
+        if (newErrors.lat || newErrors.lng) {
+          showNotification('error', 'Coordinate is still 0. Please click on "Detect Coordinate" button or enter manually.');
+        } else {
+          showNotification('error', 'Please fill all required identity and coordinate fields.');
+        }
+        return;
+      }
       
-      const duplicateQuery = query(
-        collection(db, 'restaurants'), 
-        where('name', '==', form.name?.trim()), // Firestore is case-sensitive, so we check exact trim
-        where('location', '==', form.location?.trim())
-      );
-      
-      const duplicateSnap = await getDocs(duplicateQuery);
-      if (!duplicateSnap.empty) {
-        showNotification('error', 'A restaurant with this name and location already exists!');
+      setIsSaving(true);
+      try {
+        // Duplicate check before allowing to proceed
+        const q = query(
+          collection(db, 'restaurants'),
+          where('name', '==', form.name?.trim()),
+          where('area', '==', form.area?.trim()),
+          where('city', '==', form.city)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          showNotification('error', 'A restaurant with this name already exists in this area!');
+          setIsSaving(false);
+          return;
+        }
+
+        setStep(2);
+      } catch (err) {
+        console.error(err);
+        showNotification('error', 'Failed to verify restaurant uniqueness.');
+      } finally {
         setIsSaving(false);
+      }
+    } else if (step < 6) {
+      if (step === 2 && !validateContact()) {
+        return;
+      }
+      if (step === 3 && !form.image) {
+        showNotification('error', 'Restaurant image is mandatory.');
+        return;
+      }
+      if (step === 4 && (!form.cuisine || form.cuisine.length === 0)) {
+        showNotification('error', 'Please select at least 1 cuisine.');
+        return;
+      }
+      if (step === 4 && form.cuisine!.length > 8) {
+        showNotification('error', 'Select up to 8 cuisines only.');
         return;
       }
 
-      const resData = {
+      setStep(step + 1);
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    setIsSaving(true);
+    try {
+      const finalData = {
         ...form,
+        status: 'Pending',
+        approved: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        reviewsCount: 0,
-        facilities: [],
-        offers: [],
-        menu: [],
-        secondaryImages: [],
-        isBookingEnabled: true,
-        instantBookingLimit: 10,
-        slotCategories: [
-          { id: 'breakfast', name: 'Breakfast', slots: ['08:00', '08:30', '09:00', '09:30'] },
-          { id: 'lunch', name: 'Lunch', slots: ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30'] },
-          { id: 'dinner', name: 'Dinner', slots: ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'] }
-        ],
-        bookingSlots: ['12:00', '13:00', '14:00', '19:00', '20:00', '21:00']
       };
 
-      await addDoc(collection(db, 'restaurants'), resData);
-      showNotification('success', 'Restaurant onboarded successfully!');
-      setTimeout(() => navigate('/admin'), 2000);
+      const docRef = await addDoc(collection(db, 'restaurants'), finalData);
+      setRestaurantId(docRef.id);
+      setStep(7); // Confirmation screen
     } catch (err) {
       console.error(err);
-      showNotification('error', 'Failed to onboard restaurant.');
+      showNotification('error', 'Failed to submit application.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const addTimingSlot = (day: string) => {
+    const nextTimings = { ...form.dailyTimings };
+    nextTimings[day].ranges.push({ open: '11:00 AM', close: '11:00 PM' });
+    setForm({ ...form, dailyTimings: nextTimings });
+  };
+
+  const copyTimingsToAll = (sourceDay: string) => {
+    const sourceData = JSON.parse(JSON.stringify(form.dailyTimings![sourceDay]));
+    const nextTimings = { ...form.dailyTimings };
+    DAYS_OF_WEEK.forEach(day => {
+      nextTimings[day] = JSON.parse(JSON.stringify(sourceData));
+    });
+    setForm({ ...form, dailyTimings: nextTimings });
+    showNotification('success', `Copied ${sourceDay} timings to all days!`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 5 * 1024 * 1024) {
+      showNotification('error', 'File size exceeds 5MB limit.');
+      return;
+    }
+
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      showNotification('error', 'Invalid file type. Use JPEG, JPG or PNG.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm({ ...form, image: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -171,286 +359,1141 @@ export default function AdminOnboardingView() {
         </button>
 
         <div className="mb-10">
-          <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Onboard New Restaurant</h1>
-          <p className="text-slate-500 font-medium mt-2">Add a new culinary partner to the platform instantly.</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Section: Identity */}
-          <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
-                <Utensils className="text-brand" size={20} />
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Onboard New Restaurant</h1>
+            {step <= 6 && (
+              <div className="bg-brand/10 text-brand px-4 py-2 rounded-2xl font-black text-sm">
+                Step {step} of 6
               </div>
-              <h2 className="text-xl font-bold text-slate-900">Identity & Category</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Restaurant Name</label>
-                <input 
-                  required
-                  placeholder="e.g. The Coastal Kitchen"
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                  value={form.name}
-                  onChange={e => setForm({...form, name: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Contact Number</label>
-                <input 
-                  placeholder="e.g. +91 98765 43210"
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                  value={form.contactNumber}
-                  onChange={e => setForm({...form, contactNumber: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Cuisine Type</label>
-                <select 
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                  value={form.cuisine}
-                  onChange={e => setForm({...form, cuisine: e.target.value})}
-                >
-                  <option value="">Select Cuisine</option>
-                  {sortedCuisines.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {sortedCuisines.length === 0 && <option value="North Indian">North Indian</option>}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Avg Price (For Two)</label>
-                <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"><IndianRupee size={16} /></span>
-                  <input 
-                    type="number"
-                    required
-                    className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                    value={form.avgPrice}
-                    onChange={e => setForm({...form, avgPrice: parseInt(e.target.value)})}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Base Rating (Admin Only)</label>
-                <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-amber-500"><Star size={16} className="fill-amber-500" /></span>
-                  <input 
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="5"
-                    required
-                    className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                    value={form.rating}
-                    onChange={e => setForm({...form, rating: parseFloat(e.target.value)})}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Owner User ID (UID)</label>
-                <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"><User size={16} /></span>
-                  <input 
-                    placeholder="Optional - Assign later"
-                    className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-xs"
-                    value={form.ownerId}
-                    onChange={e => setForm({...form, ownerId: e.target.value})}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
-              <textarea 
-                rows={4}
-                placeholder="Briefly describe the restaurant's legacy and specialty..."
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none font-medium"
-                value={form.description}
-                onChange={e => setForm({...form, description: e.target.value})}
+            )}
+          </div>
+          {step <= 6 && (
+            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-8">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / 6) * 100}%` }}
+                className="h-full bg-brand"
               />
             </div>
-          </section>
+          )}
+        </div>
 
-          {/* Section: Location */}
-          <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <MapPin className="text-blue-500" size={20} />
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">Location Details</h2>
-            </div>
+        <div className="space-y-8">
+          <AnimatePresence mode="wait">
+            {step === 1 && (
+              <motion.section 
+                key="step1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
+                    <Utensils className="text-brand" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Restaurant Identity</h2>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">City</label>
-                <select 
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
-                  value={form.city}
-                  onChange={e => setForm({...form, city: e.target.value})}
-                >
-                  <option value="">Select City</option>
-                  {sortedCities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  {sortedCities.length === 0 && <option value="Bangalore">Bangalore</option>}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Primary Image URL</label>
-                <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"><ImageIcon size={16} /></span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Restaurant Name *</label>
+                    <input 
+                      required
+                      placeholder="e.g. The Coastal Kitchen"
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
+                        errors.name ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.name}
+                      onChange={e => {
+                        setForm({...form, name: e.target.value});
+                        if (errors.name) setErrors(prev => ({ ...prev, name: false }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Restaurant Rating *</label>
+                    <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+                      {[1, 2, 3, 4, 5].map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setForm({...form, rating: r})}
+                          className={cn(
+                            "flex-1 py-3 rounded-xl flex items-center justify-center gap-1 transition-all",
+                            form.rating === r ? "bg-brand text-white shadow-lg shadow-brand/20" : "hover:bg-brand/5 text-slate-400"
+                          )}
+                        >
+                          <span className="font-bold text-sm">{r}</span>
+                          <Star size={14} className={cn(form.rating === r ? "fill-white" : "fill-transparent")} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Shop No. / Building No. (Optional)</label>
+                    <input 
+                      placeholder="e.g. Shop 42, Phoenix Mall"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                      value={form.shopNo}
+                      onChange={e => updateLocationField('shopNo', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Floor / Tower (Optional)</label>
+                    <input 
+                      placeholder="e.g. 2nd Floor, Wing A"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                      value={form.floor}
+                      onChange={e => updateLocationField('floor', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Area / Sector / Locality *</label>
+                    <input 
+                      required
+                      placeholder="e.g. Viman Nagar"
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium",
+                        errors.area ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.area}
+                      onChange={e => {
+                        updateLocationField('area', e.target.value);
+                        if (errors.area) setErrors(prev => ({ ...prev, area: false }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">City *</label>
+                    <select 
+                      required
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-sm",
+                        errors.city ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.city}
+                      onChange={e => {
+                        updateLocationField('city', e.target.value);
+                        if (errors.city) setErrors(prev => ({ ...prev, city: false }));
+                      }}
+                    >
+                      <option value="">Select City</option>
+                      {sortedCities.filter(c => c.lat !== 0).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      {sortedCities.length === 0 && <option value="Bangalore">Bangalore</option>}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">State *</label>
+                    <select 
+                      required
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-sm",
+                        errors.state ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.state}
+                      onChange={e => {
+                        updateLocationField('state', e.target.value);
+                        if (errors.state) setErrors(prev => ({ ...prev, state: false }));
+                      }}
+                    >
+                      <option value="">Select State</option>
+                      {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Pincode *</label>
+                    <input 
+                      required
+                      placeholder="e.g. 560001"
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium",
+                        errors.pincode ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.pincode}
+                      onChange={e => {
+                        updateLocationField('pincode', e.target.value);
+                        if (errors.pincode) setErrors(prev => ({ ...prev, pincode: false }));
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Landmark (Optional)</label>
                   <input 
-                    type="url"
-                    required
-                    className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all text-sm"
-                    value={form.image}
-                    onChange={e => setForm({...form, image: e.target.value})}
+                    placeholder="e.g. Near HDFC Bank"
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                    value={form.landmark}
+                    onChange={e => updateLocationField('landmark', e.target.value)}
                   />
                 </div>
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Area Name (e.g. Viman Nagar)</label>
-                <input 
-                  type="text"
-                  required
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
-                  value={form.location}
-                  onChange={e => setForm({...form, location: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Complete Address</label>
-                <textarea 
-                  required
-                  rows={2}
-                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all resize-none font-medium"
-                  value={form.address}
-                  onChange={e => setForm({...form, address: e.target.value})}
-                  onBlur={handleGeocodeAddress}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-1 block">Latitude</label>
-                <div className="relative">
-                   <div className="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300" />
-                   <input 
-                    type="number"
-                    step="any"
-                    className="w-full pl-8 pr-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
-                    value={form.lat}
-                    onChange={e => setForm({...form, lat: parseFloat(e.target.value)})}
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Brand Description / Story (Optional)</label>
+                  <textarea 
+                    placeholder="Share the story behind your restaurant or what makes it unique..."
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium min-h-[120px] resize-none"
+                    value={form.description}
+                    onChange={e => setForm({...form, description: e.target.value})}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-1 block">Longitude</label>
-                <div className="relative">
-                   <div className="absolute left-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-slate-300" />
-                   <input 
-                    type="number"
-                    step="any"
-                    className="w-full pl-8 pr-4 py-3 bg-slate-50/50 border border-slate-100 rounded-xl text-xs font-mono"
-                    value={form.lng}
-                    onChange={e => setForm({...form, lng: parseFloat(e.target.value)})}
-                  />
+
+                <div className="pt-6 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-4">
+                     <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Pin Coordinates</h3>
+                        <button 
+                          type="button"
+                          onClick={() => handleGeocodeAddress(false)}
+                          disabled={isGeocoding}
+                          className="bg-brand/10 text-brand px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand hover:text-white transition-all flex items-center gap-1.5"
+                        >
+                          {isGeocoding ? <Loader2 size={12} className="animate-spin" /> : <Navigation size={12} />} 
+                          Detect Coordinates
+                        </button>
+                     </div>
+                     {isCoordsValid && (
+                       <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                          <Check size={12} /> Successfully Detected
+                       </div>
+                     )}
+                     {!isCoordsValid && form.lat && (
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
+                          Manual override
+                       </div>
+                     )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[32px] border border-slate-100">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
+                      <div className="relative">
+                        <input 
+                          type="number"
+                          step="any"
+                          placeholder="0.0000"
+                          className={cn(
+                            "w-full px-5 py-4 bg-white border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-mono font-bold",
+                            isCoordsValid ? "border-emerald-500/30" : 
+                            (errors.lat || (!isCoordsValid && !form.lat && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-200"
+                          )}
+                          value={form.lat || ''}
+                          onChange={e => {
+                            setForm({...form, lat: parseFloat(e.target.value)});
+                            setIsCoordsValid(false);
+                            if (errors.lat) setErrors(prev => ({ ...prev, lat: false }));
+                          }}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-black">LAT</div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
+                      <div className="relative">
+                        <input 
+                          type="number"
+                          step="any"
+                          placeholder="0.0000"
+                          className={cn(
+                            "w-full px-5 py-4 bg-white border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-mono font-bold",
+                            isCoordsValid ? "border-emerald-500/30" : 
+                            (errors.lng || (!isCoordsValid && !form.lng && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-200"
+                          )}
+                          value={form.lng || ''}
+                          onChange={e => {
+                            setForm({...form, lng: parseFloat(e.target.value)});
+                            setIsCoordsValid(false);
+                            if (errors.lng) setErrors(prev => ({ ...prev, lng: false }));
+                          }}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-black">LNG</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            
-            <div className="bg-blue-50/50 p-4 rounded-2xl flex items-center gap-3 text-xs font-bold text-blue-600">
-              <Navigation size={16} />
-              Coordinates are automatically detected based on the address.
-            </div>
-          </section>
 
-          {/* Section: Operating Hours */}
-          <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-                <Clock className="text-amber-500" size={20} />
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">Operating Hours</h2>
-            </div>
+                <div className="flex justify-end pt-4">
+                  <button 
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSaving}
+                    className="bg-brand text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <span>Next Section</span>}
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </motion.section>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {DAYS_OF_WEEK.map(day => (
-                 <div key={day} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-3">
+            {step === 2 && (
+              <motion.section 
+                key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <User className="text-blue-500" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Contact Information</h2>
+                </div>
+                
+                <p className="text-slate-400 text-sm font-medium">These details are required to receive booking information and system updates.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Contact Number *</label>
+                    <input 
+                      required
+                      placeholder="e.g. 9876543210"
+                      maxLength={10}
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
+                        errors.contactNumber ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.contactNumber}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setForm({...form, contactNumber: val});
+                        if (errors.contactNumber) setErrors(prev => ({ ...prev, contactNumber: false }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Email Address *</label>
+                    <input 
+                      type="email"
+                      required
+                      placeholder="e.g. contact@thecoastalkitchen.com"
+                      className={cn(
+                        "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
+                        errors.contactEmail ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                      )}
+                      value={form.contactEmail}
+                      onChange={e => {
+                        setForm({...form, contactEmail: e.target.value});
+                        if (errors.contactEmail) setErrors(prev => ({ ...prev, contactEmail: false }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="px-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSaving}
+                    className="bg-brand text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <span>Next Section</span>}
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </motion.section>
+            )}
+
+            {step === 3 && (
+              <motion.section 
+                key="step3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <ImageIcon className="text-amber-500" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Restaurant Image</h2>
+                </div>
+
+                <p className="text-slate-400 text-sm font-medium">Upload a high-quality cover image or provided a URL (Max 5MB). Mandatory for visibility.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                  <div className="space-y-6">
+                    <div className="relative p-8 border-4 border-dashed border-slate-100 rounded-[40px] flex flex-col items-center justify-center text-center group hover:border-brand/30 transition-all bg-slate-50/50">
+                       <input 
+                        type="file" 
+                        accept=".jpeg,.jpg,.png"
+                        className="hidden" 
+                        id="imageUpload"
+                        onChange={handleFileUpload}
+                       />
+                       <label htmlFor="imageUpload" className="cursor-pointer flex flex-col items-center gap-4">
+                          <div className="w-16 h-16 bg-white rounded-3xl shadow-xl flex items-center justify-center text-slate-300 group-hover:text-brand transition-colors">
+                             <ImageIcon size={32} />
+                          </div>
+                          <div>
+                             <p className="font-black text-slate-900 uppercase tracking-widest text-xs">Upload Cover Image</p>
+                             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest leading-none">JPEG, PNG up to 5MB</p>
+                          </div>
+                       </label>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">... or paste Cover Image URL</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-5 flex items-center text-slate-400">
+                          <Globe size={18} />
+                        </div>
+                        <input 
+                          type="url"
+                          placeholder="https://example.com/cover.jpg"
+                          className="w-full pl-14 pr-5 py-5 bg-slate-50 border border-slate-200 rounded-3xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium text-sm"
+                          value={form.image || ''}
+                          onChange={e => setForm({...form, image: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Cover Preview</label>
+                    <div className="aspect-[4/3] w-full rounded-[40px] overflow-hidden bg-slate-50 border-4 border-white shadow-2xl relative group">
+                      {form.image ? (
+                        <img 
+                          src={form.image} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-200">
+                           <ImageIcon size={64} strokeWidth={1} />
+                           <p className="font-black uppercase tracking-widest text-xs mt-4">No image selected</p>
+                        </div>
+                      )}
+                      {form.image && (
+                        <button 
+                          onClick={() => setForm({...form, image: ''})}
+                          className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-xl shadow-xl hover:scale-110 active:scale-95 transition-all"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-10 border-t border-slate-100 space-y-6">
+                  <div className="flex items-center justify-between">
+                     <div className="space-y-1">
+                       <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Additional Images (Optional)</h3>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Add photos of food, ambience or exterior</p>
+                     </div>
+                  </div>
+
+                  <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-100 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Select Category</label>
+                        <div className="flex gap-2">
+                           {['Food', 'Ambience', 'Exterior', 'Other'].map(cat => (
+                             <button
+                                key={cat}
+                                type="button"
+                                onClick={() => (window as any)._imgCat = cat}
+                                className={cn(
+                                  "flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                                  (window as any)._imgCat === cat ? "bg-brand text-white border-brand" : "bg-white text-slate-400 border-slate-200 hover:border-brand/30"
+                                )}
+                                ref={el => { if (el && !(window as any)._imgCat) (window as any)._imgCat = 'Food' }}
+                             >
+                               {cat}
+                             </button>
+                           ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Add Image</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            className="flex-1 relative h-12 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <Plus size={14} /> Upload
+                            <input 
+                              type="file" 
+                              accept=".jpeg,.jpg,.png" 
+                              className="absolute inset-0 opacity-0 cursor-pointer" 
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const cat = (window as any)._imgCat || 'Food';
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const field = cat === 'Food' ? 'foodImages' : cat === 'Ambience' ? 'ambienceImages' : 'secondaryImages';
+                                  setForm({ ...form, [field]: [...(form[field as keyof Restaurant] as string[] || []), reader.result as string] });
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </button>
+                          <div className="flex-[2] relative">
+                            <input 
+                              id="additionalImgUrl"
+                              placeholder="Paste Image URL & press Enter"
+                              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-bold outline-none focus:border-brand transition-all"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const url = (e.target as HTMLInputElement).value.trim();
+                                  if (url) {
+                                    const cat = (window as any)._imgCat || 'Food';
+                                    const field = cat === 'Food' ? 'foodImages' : cat === 'Ambience' ? 'ambienceImages' : 'secondaryImages';
+                                    setForm({ ...form, [field]: [...(form[field as keyof Restaurant] as string[] || []), url] });
+                                    (e.target as HTMLInputElement).value = '';
+                                  }
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {['Food', 'Ambience', 'Exterior'].map(cat => {
+                        const field = cat === 'Food' ? 'foodImages' : cat === 'Ambience' ? 'ambienceImages' : 'secondaryImages';
+                        const images = form[field as keyof Restaurant] as string[] || [];
+                        if (images.length === 0) return null;
+                        return (
+                          <div key={cat} className="space-y-3">
+                            <h4 className="text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2">
+                              {cat} <span className="h-px flex-grow bg-brand/10"></span>
+                            </h4>
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                               {images.map((img, idx) => (
+                                 <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-white shadow-sm group bg-white">
+                                    <img src={img} alt={cat} className="w-full h-full object-cover" />
+                                    <button 
+                                      onClick={() => {
+                                        const next = [...images];
+                                        next.splice(idx, 1);
+                                        setForm({ ...form, [field]: next });
+                                      }}
+                                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                 </div>
+                               ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(!form.foodImages?.length && !form.ambienceImages?.length && !form.secondaryImages?.length) && (
+                        <div className="py-8 bg-white/50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center text-slate-300">
+                           <ImageIcon size={32} strokeWidth={1} />
+                           <p className="text-[8px] font-black uppercase tracking-widest mt-2">No additional images added yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="px-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSaving}
+                    className="bg-brand text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <span>Next Section</span>}
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </motion.section>
+            )}
+
+            {step === 4 && (
+              <motion.section 
+                key="step4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <UtensilsCrossed className="text-emerald-500" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Menu & Cuisines (Optional)</h2>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Select Cuisines * (Min 1, Max 8)</label>
+                       <span className="text-[10px] font-bold text-slate-400">Selected: {form.cuisine?.length || 0}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-100 max-h-[250px] overflow-y-auto">
+                      {sortedCuisines.map(c => {
+                        const isSelected = form.cuisine?.includes(c.name);
+                        return (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              const current = form.cuisine || [];
+                              if (current.includes(c.name)) {
+                                setForm({...form, cuisine: current.filter(item => item !== c.name)});
+                              } else {
+                                if (current.length >= 8) {
+                                   showNotification('error', 'Maximum 8 cuisines allowed.');
+                                   return;
+                                }
+                                setForm({...form, cuisine: [...current, c.name]});
+                              }
+                            }}
+                            className={cn(
+                              "px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold transition-all hover:border-brand/40",
+                              isSelected ? "bg-brand text-white border-brand shadow-lg shadow-brand/20" : "text-slate-600"
+                            )}
+                          >
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">{day}</span>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Popular Dishes</label>
                       <button 
                         type="button"
                         onClick={() => {
-                          const current = form.dailyTimings![day];
-                          setForm({
-                            ...form,
-                            dailyTimings: {
-                              ...form.dailyTimings,
-                              [day]: { ...current, closed: !current.closed }
-                            }
-                          });
+                          const next = [...(form.menu || [])];
+                          next.push({ name: '', price: 0, description: '' });
+                          setForm({...form, menu: next});
                         }}
-                        className={cn(
-                          "px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase transition-all",
-                          form.dailyTimings![day].closed ? "bg-red-500 text-white" : "bg-slate-200 text-slate-500"
-                        )}
+                        className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1"
                       >
-                        {form.dailyTimings![day].closed ? 'Closed' : 'Open'}
+                        <Plus size={14} /> Add Dish
                       </button>
                     </div>
-                    
-                    {!form.dailyTimings![day].closed && (
-                      <div className="flex items-center gap-2">
-                        <input 
-                          placeholder="Open"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center"
-                          value={form.dailyTimings![day].open}
-                          onChange={e => {
-                            const newTimings = { ...form.dailyTimings };
-                            newTimings[day].open = e.target.value;
-                            setForm({...form, dailyTimings: newTimings});
-                          }}
-                        />
-                        <span className="text-slate-300 font-bold">to</span>
-                        <input 
-                          placeholder="Close"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center"
-                          value={form.dailyTimings![day].close}
-                          onChange={e => {
-                            const newTimings = { ...form.dailyTimings };
-                            newTimings[day].close = e.target.value;
-                            setForm({...form, dailyTimings: newTimings});
-                          }}
-                        />
-                      </div>
-                    )}
-                 </div>
-               ))}
-            </div>
-          </section>
+                    <div className="space-y-3">
+                       {form.menu?.map((dish, idx) => (
+                         <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex-grow space-y-3">
+                              <input 
+                                placeholder="Dish Name"
+                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
+                                value={dish.name}
+                                onChange={e => {
+                                  const next = [...(form.menu || [])];
+                                  next[idx].name = e.target.value;
+                                  setForm({...form, menu: next});
+                                }}
+                              />
+                              <input 
+                                placeholder="Short description"
+                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-medium text-xs"
+                                value={dish.description}
+                                onChange={e => {
+                                  const next = [...(form.menu || [])];
+                                  next[idx].description = e.target.value;
+                                  setForm({...form, menu: next});
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                               <input 
+                                  type="number"
+                                  placeholder="Price"
+                                  className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
+                                  value={dish.price || ''}
+                                  onChange={e => {
+                                    const next = [...(form.menu || [])];
+                                    next[idx].price = parseInt(e.target.value) || 0;
+                                    setForm({...form, menu: next});
+                                  }}
+                               />
+                               {form.menu!.length > 1 && (
+                                 <button 
+                                  type="button"
+                                  onClick={() => {
+                                    const next = [...(form.menu || [])];
+                                    next.splice(idx, 1);
+                                    setForm({...form, menu: next});
+                                  }}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                 >
+                                   <Trash2 size={18} />
+                                 </button>
+                               )}
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
 
-          <footer className="flex gap-4">
-             <button 
-              type="submit"
-              disabled={isSaving}
-              className="flex-grow bg-brand text-white py-6 rounded-[24px] font-black text-xl shadow-2xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-             >
-               {isSaving ? <Store className="animate-bounce" /> : <Save size={24} />}
-               Onboard Restaurant
-             </button>
-             <button 
-              type="button"
-              onClick={() => navigate('/admin')}
-              className="px-10 bg-slate-200 text-slate-600 rounded-[24px] font-black text-xl hover:bg-slate-300 transition-all"
-             >
-               Discard
-             </button>
-          </footer>
-        </form>
+                  <div className="pt-8 border-t border-slate-100 space-y-6">
+                    <div className="flex items-center justify-between">
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Menu Categories (e.g. Food, Drinks)</label>
+                       <button 
+                        type="button"
+                        onClick={() => {
+                          const next = [...(form.menuCategories || [])];
+                          next.push({ id: Math.random().toString(36).substr(2, 9), name: 'New Category', images: [] });
+                          setForm({...form, menuCategories: next});
+                        }}
+                        className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1.5"
+                       >
+                         <Plus size={14} /> Add Category
+                       </button>
+                    </div>
+
+                    <div className="space-y-4">
+                       {form.menuCategories?.map((cat, catIdx) => (
+                         <div key={cat.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                            <div className="flex items-center gap-4">
+                               <input 
+                                  className="flex-grow bg-white px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold uppercase tracking-tight"
+                                  value={cat.name}
+                                  placeholder="Category Name"
+                                  onChange={e => {
+                                    const next = [...(form.menuCategories || [])];
+                                    next[catIdx].name = e.target.value;
+                                    setForm({...form, menuCategories: next});
+                                  }}
+                               />
+                               <button 
+                                 type="button"
+                                 onClick={() => {
+                                    const next = [...(form.menuCategories || [])];
+                                    next.splice(catIdx, 1);
+                                    setForm({...form, menuCategories: next});
+                                 }}
+                                 className="p-2 text-red-500 bg-white border border-slate-200 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                               {cat.images.map((img, imgIdx) => (
+                                 <div key={imgIdx} className="relative aspect-[3/4] bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group">
+                                    <img src={img} className="w-full h-full object-cover" />
+                                    <button 
+                                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => {
+                                        const next = [...(form.menuCategories || [])];
+                                        next[catIdx].images.splice(imgIdx, 1);
+                                        setForm({...form, menuCategories: next});
+                                      }}
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                 </div>
+                               ))}
+                               <div className="relative aspect-[3/4] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all overflow-hidden">
+                                  <Plus size={24} />
+                                  <p className="text-[8px] font-black uppercase mt-1">Upload File</p>
+                                  <input 
+                                    type="file" 
+                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        const next = [...(form.menuCategories || [])];
+                                        next[catIdx].images.push(reader.result as string);
+                                        setForm({...form, menuCategories: next});
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }}
+                                  />
+                                </div>
+
+                               <div className="relative aspect-[3/4] group/paste">
+                                 <div 
+                                   className="w-full h-full bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all cursor-pointer overflow-hidden"
+                                 >
+                                    <Globe size={24} />
+                                    <p className="text-[8px] font-black uppercase mt-1">Paste URL</p>
+                                 </div>
+                                 <div className="absolute inset-0 opacity-0 group-hover/paste:opacity-100 transition-opacity bg-white/95 backdrop-blur p-2 flex flex-col items-center justify-center gap-2 rounded-xl">
+                                    <input 
+                                      type="url"
+                                      placeholder="Paste Image URL"
+                                      className="w-full px-2 py-1.5 text-[8px] border border-slate-200 rounded-lg outline-none focus:border-brand font-bold"
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                          const url = (e.target as HTMLInputElement).value;
+                                          if (url) {
+                                            const next = [...(form.menuCategories || [])];
+                                            next[catIdx] = {
+                                              ...next[catIdx],
+                                              images: [...next[catIdx].images, url]
+                                            };
+                                            setForm({...form, menuCategories: next});
+                                            (e.target as HTMLInputElement).value = '';
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <p className="text-[7px] font-black uppercase text-slate-400">Press Enter</p>
+                                 </div>
+                               </div>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="px-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSaving}
+                    className="bg-brand text-white px-10 py-4 rounded-2xl font-black text-lg shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <span>Next Section</span>}
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </motion.section>
+            )}
+
+            {step === 5 && (
+              <motion.section 
+                key="step5"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                    <Clock className="text-amber-500" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Dining Timings</h2>
+                </div>
+
+                <div className="space-y-4">
+                   {DAYS_OF_WEEK.map(day => (
+                     <div key={day} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-4">
+                              <span className="font-black text-slate-900 tracking-wider uppercase text-xs min-w-[80px]">{day}</span>
+                              <div className="flex bg-white rounded-lg border border-slate-200 p-0.5">
+                                 <button 
+                                    type="button"
+                                    onClick={() => {
+                                       const next = { ...form.dailyTimings };
+                                       next[day].closed = false;
+                                       setForm({...form, dailyTimings: next});
+                                    }}
+                                    className={cn(
+                                       "px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all",
+                                       !form.dailyTimings![day].closed ? "bg-emerald-500 text-white" : "text-slate-400 hover:bg-slate-50"
+                                    )}
+                                 >Open</button>
+                                 <button 
+                                    type="button"
+                                    onClick={() => {
+                                       const next = { ...form.dailyTimings };
+                                       next[day].closed = true;
+                                       setForm({...form, dailyTimings: next});
+                                    }}
+                                    className={cn(
+                                       "px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all",
+                                       form.dailyTimings![day].closed ? "bg-red-500 text-white" : "text-slate-400 hover:bg-slate-50"
+                                    )}
+                                 >Closed</button>
+                              </div>
+                           </div>
+                           {!form.dailyTimings![day].closed && (
+                              <button 
+                                 type="button"
+                                 onClick={() => copyTimingsToAll(day)}
+                                 className="bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                              >
+                                 Copy to all days
+                              </button>
+                           )}
+                        </div>
+
+                        {!form.dailyTimings![day].closed && (
+                           <div className="space-y-3">
+                              {form.dailyTimings![day].ranges.map((range, ride) => (
+                                <div key={ride} className="flex items-center gap-3">
+                                   <input 
+                                      type="time" 
+                                      className="flex-grow px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                      value={convertTo24Hour(range.open)}
+                                      onChange={e => {
+                                         const next = { ...form.dailyTimings };
+                                         next[day].ranges[ride].open = convertTo12Hour(e.target.value);
+                                         setForm({...form, dailyTimings: next});
+                                      }}
+                                   />
+                                   <span className="text-slate-300 font-bold text-xs uppercase tracking-widest">to</span>
+                                   <input 
+                                      type="time" 
+                                      className="flex-grow px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                      value={convertTo24Hour(range.close)}
+                                      onChange={e => {
+                                         const next = { ...form.dailyTimings };
+                                         next[day].ranges[ride].close = convertTo12Hour(e.target.value);
+                                         setForm({...form, dailyTimings: next});
+                                      }}
+                                   />
+                                   {ride > 0 && (
+                                     <button 
+                                      onClick={() => {
+                                        const next = { ...form.dailyTimings };
+                                        next[day].ranges.splice(ride, 1);
+                                        setForm({...form, dailyTimings: next});
+                                      }}
+                                      className="p-2 text-red-500"
+                                     >
+                                       <X size={16} />
+                                     </button>
+                                   )}
+                                </div>
+                              ))}
+                              <button 
+                                type="button"
+                                onClick={() => addTimingSlot(day)}
+                                className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-all"
+                              >
+                                + Add Time Slot
+                              </button>
+                           </div>
+                        )}
+                        {form.dailyTimings![day].closed && (
+                           <div className="py-4 text-center">
+                              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Restaurant is mark closed on this day</p>
+                           </div>
+                        )}
+                     </div>
+                   ))}
+                </div>
+
+                <div className="flex justify-between pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setStep(4)}
+                    className="px-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isSaving}
+                    className="bg-slate-900 text-white px-12 py-5 rounded-[24px] font-black text-xl shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <ChevronRight size={24} />}
+                    Next: Amenities
+                  </button>
+                </div>
+              </motion.section>
+            )}
+
+            {step === 6 && (
+              <motion.section 
+                key="step6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                    <ShieldCheck className="text-emerald-500" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900">Amenities & Facilities</h2>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      'WiFi', 'AC', 'Parking', 'Valet Parking', 'Outdoor Seating', 
+                      'Live Music', 'Bar', 'Vegetarian Friendly', 'Home Delivery',
+                      'Takeaway', 'Card Payment', 'Digital Wallet', 'Kid Friendly',
+                      'Smoking Area', 'Rooftop', 'Private Dining'
+                    ].map(amenity => {
+                      const isSelected = form.facilities?.includes(amenity);
+                      return (
+                        <button
+                          key={amenity}
+                          type="button"
+                          onClick={() => {
+                            const current = form.facilities || [];
+                            if (current.includes(amenity)) {
+                              setForm({...form, facilities: current.filter(a => a !== amenity)});
+                            } else {
+                              setForm({...form, facilities: [...current, amenity]});
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 p-4 rounded-2xl border transition-all text-left group",
+                            isSelected 
+                              ? "bg-brand/5 border-brand ring-1 ring-brand/50 shadow-sm" 
+                              : "bg-slate-50 border-slate-100 hover:border-slate-200"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-6 h-6 rounded-lg flex items-center justify-center transition-colors",
+                            isSelected ? "bg-brand text-white" : "bg-white border border-slate-200 text-slate-200 group-hover:border-brand/30"
+                          )}>
+                            {isSelected && <Check size={14} />}
+                          </div>
+                          <span className={cn(
+                            "text-xs font-bold uppercase tracking-wider",
+                            isSelected ? "text-brand" : "text-slate-500"
+                          )}>{amenity}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-4 pt-6 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Other Amenities</label>
+                    </div>
+                    <div className="flex gap-3">
+                      <input 
+                        id="newAmenity"
+                        placeholder="e.g. Pet Friendly, Poolside"
+                        className="flex-grow px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const input = e.target as HTMLInputElement;
+                            const val = input.value.trim();
+                            if (val && !form.facilities?.includes(val)) {
+                              setForm({...form, facilities: [...(form.facilities || []), val]});
+                              input.value = '';
+                            }
+                          }
+                        }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById('newAmenity') as HTMLInputElement;
+                          const val = input.value.trim();
+                          if (val && !form.facilities?.includes(val)) {
+                            setForm({...form, facilities: [...(form.facilities || []), val]});
+                            input.value = '';
+                          }
+                        }}
+                        className="bg-slate-900 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand transition-all shadow-lg"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                       {form.facilities?.filter(a => ![
+                        'WiFi', 'AC', 'Parking', 'Valet Parking', 'Outdoor Seating', 
+                        'Live Music', 'Bar', 'Vegetarian Friendly', 'Home Delivery',
+                        'Takeaway', 'Card Payment', 'Digital Wallet', 'Kid Friendly',
+                        'Smoking Area', 'Rooftop', 'Private Dining'
+                       ].includes(a)).map(a => (
+                         <span key={a} className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl text-[10px] font-black uppercase text-slate-600 border border-slate-200">
+                           {a}
+                           <button 
+                            type="button"
+                            onClick={() => setForm({...form, facilities: form.facilities?.filter(item => item !== a)})}
+                            className="text-slate-400 hover:text-red-500"
+                           >
+                              <X size={12} />
+                           </button>
+                         </span>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-8">
+                  <button 
+                    type="button"
+                    onClick={() => setStep(5)}
+                    className="px-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleFinalSubmit}
+                    disabled={isSaving}
+                    className="bg-slate-900 text-white px-12 py-5 rounded-[24px] font-black text-xl shadow-2xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <Save size={24} />}
+                    Submit Application
+                  </button>
+                </div>
+              </motion.section>
+            )}
+
+            {step === 7 && (
+              <motion.section 
+                key="step6"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-[48px] p-12 border border-slate-200 shadow-2xl text-center space-y-8"
+              >
+                <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto shadow-inner">
+                   <ShieldCheck size={48} />
+                </div>
+                
+                <div>
+                  <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Application Submitted</h2>
+                  <p className="text-slate-500 font-medium mt-3">Your restaurant ID is <span className="text-brand font-black font-mono">#{restaurantId?.slice(-6).toUpperCase()}</span></p>
+                </div>
+
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 max-w-sm mx-auto">
+                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                      Status: <span className="text-amber-500">Pending for Approval</span>
+                   </p>
+                   <p className="text-[10px] text-slate-400 mt-2">
+                     Your entry is currently in the review queue. It will not be visible to users until an admin approves it.
+                   </p>
+                </div>
+
+                <button 
+                  onClick={() => navigate('/admin')}
+                  className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black text-lg hover:bg-brand transition-all shadow-xl shadow-slate-900/10"
+                >
+                   Return to Dashboard
+                </button>
+              </motion.section>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

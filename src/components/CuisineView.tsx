@@ -33,7 +33,9 @@ export default function CuisineView() {
 
   const filteredRestaurants = restaurants
     .filter(res => {
-        const matchesCuisine = res.cuisine?.toLowerCase() === cuisineName?.toLowerCase();
+        const matchesCuisine = Array.isArray(res.cuisine) 
+          ? res.cuisine.some((c: string) => c.toLowerCase() === cuisineName?.toLowerCase())
+          : (res.cuisine as unknown as string)?.toLowerCase() === cuisineName?.toLowerCase();
         
         // Normalize city names for comparison
         const resCityNorm = res.city ? res.city.toLowerCase() : '';

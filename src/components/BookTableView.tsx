@@ -63,9 +63,9 @@ export default function BookTableView() {
 
       if (daily) {
         if (daily.closed) isClosed = true;
-        else {
-          openStr = daily.open;
-          closeStr = daily.close;
+        else if (daily.ranges && daily.ranges.length > 0) {
+          openStr = daily.ranges[0].open;
+          closeStr = daily.ranges[0].close;
         }
       }
       return { openStr, closeStr, isClosed };
@@ -178,6 +178,26 @@ export default function BookTableView() {
         createdAt: serverTimestamp()
       });
 
+      // Call server API for Email Confirmation
+      try {
+        await fetch('/api/confirm-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userEmail: user?.email || profile?.email || '',
+            userName: profile?.displayName || 'Guest',
+            restaurantName: restaurant?.name,
+            restaurantLocation: restaurant?.location,
+            ownerEmail: restaurant?.ownerEmail || '',
+            dateTime: `${format(selectedDate, 'yyyy-MM-dd')} ${selectedTime}`,
+            guests,
+            userPhone
+          })
+        });
+      } catch (emailErr) {
+        console.error('Email API failed (might be missing API key):', emailErr);
+      }
+
       setBookingSuccess(true);
     } catch (err) {
       console.error(err);
@@ -209,7 +229,7 @@ export default function BookTableView() {
            
            <div className="bg-slate-50/80 rounded-2xl p-6 w-full text-left space-y-4 mb-8 font-medium border border-slate-100">
               <div className="border-b border-slate-200 pb-4 mb-4">
-                 <h4 className="font-bold text-slate-900 text-lg mb-1">{restaurant.name}</h4>
+                 <h4 className="font-bold text-slate-900 text-lg mb-1 uppercase tracking-tight">{restaurant.name}</h4>
                  <p className="text-sm text-slate-500">{restaurant.address || restaurant.location}</p>
               </div>
 
@@ -230,13 +250,25 @@ export default function BookTableView() {
                 <span className="text-slate-900 text-sm font-black">Flat 10% off</span>
              </div>
            </div>
-           
-           <button 
-             onClick={() => navigate(`/`)}
-             className="w-full bg-slate-900 text-white rounded-xl py-4 font-bold active:scale-[0.98] transition-all"
-           >
-             Go to Home
-           </button>
+
+           <div className="flex flex-col gap-3">
+             <button 
+               onClick={() => {
+                 const message = `*Booking Confirmed!*%0A%0ARestaurant: ${restaurant.name}%0ADate: ${format(selectedDate, 'MMM d, yyyy')}%0ATime: ${selectedTime}%0AGuests: ${guests}%0A%0ASee you there!`;
+                 window.open(`https://wa.me/?text=${message}`, '_blank');
+               }}
+               className="w-full bg-[#25D366] text-white rounded-xl py-4 font-black flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all"
+             >
+               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.588-5.946 0-6.556 5.332-11.888 11.888-11.888 3.176 0 6.161 1.237 8.404 3.48s3.479 5.228 3.479 8.408c0 6.556-5.332 11.888-11.888 11.888-1.922 0-3.805-.461-5.491-1.336l-6.491 1.705zm6.076-4.524l.363.216c1.378.82 2.981 1.253 4.636 1.253 4.903 0 8.892-3.989 8.892-8.892 0-2.378-.925-4.613-2.607-6.295s-3.917-2.607-6.285-2.607c-4.903 0-8.892 3.989-8.892 8.892 0 1.637.45 3.231 1.3 4.632l.237.389-.861 3.146 3.217-.844zm11.314-5.318c-.287-.143-1.696-.838-1.959-.933-.262-.096-.452-.143-.642.143-.191.286-.739.933-.906 1.127-.166.19-.333.214-.62.071-.286-.143-1.209-.445-2.304-1.422-.852-.759-1.428-1.697-1.595-1.983-.166-.286-.018-.44.125-.581.129-.126.286-.333.429-.5.143-.167.19-.286.286-.476.095-.19.048-.357-.024-.5-.071-.143-.642-1.547-.881-2.119-.232-.562-.468-.485-.643-.494-.167-.008-.357-.01-.547-.01s-.5.071-.762.357c-.262.286-1.001.977-1.001 2.381 0 1.405 1.024 2.762 1.167 2.952.143.19 2.015 3.076 4.881 4.316.682.295 1.214.471 1.629.603.684.217 1.307.187 1.8.113.55-.083 1.696-.693 1.935-1.36.239-.667.239-1.238.167-1.36-.071-.121-.262-.19-.548-.333z"/></svg>
+               Send via WhatsApp
+             </button>
+             <button 
+               onClick={() => navigate(`/`)}
+               className="w-full bg-slate-100 text-slate-800 rounded-xl py-4 font-bold active:scale-[0.98] transition-all hover:bg-slate-200"
+             >
+               Go to Home
+             </button>
+           </div>
         </div>
       </div>
     );

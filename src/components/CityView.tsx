@@ -155,14 +155,17 @@ export default function CityView() {
       // Search matches
       const matchesSearch = 
         res.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        res.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (Array.isArray(res.cuisine) ? res.cuisine.join(' ') : (res.cuisine || '')).toLowerCase().includes(searchQuery.toLowerCase()) ||
         res.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (res.address && res.address.toLowerCase().includes(searchQuery.toLowerCase()));
       
       if (!matchesSearch && searchQuery.length > 0) return false;
 
       // Filter matches
-      const matchesCuisine = activeFilters.cuisines.length === 0 || activeFilters.cuisines.includes(res.cuisine);
+      const matchesCuisine = activeFilters.cuisines.length === 0 || 
+        (Array.isArray(res.cuisine) 
+          ? res.cuisine.some(c => activeFilters.cuisines.includes(c))
+          : activeFilters.cuisines.includes(res.cuisine));
       const matchesRating = res.rating >= activeFilters.minRating;
       const matchesOffers = !activeFilters.onlyWithOffers || (res.offers && res.offers.length > 0);
 
@@ -197,7 +200,7 @@ export default function CityView() {
     if (searchQuery.length < 2) return [];
     return cityRestaurants.filter(res => 
       res.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      res.cuisine.toLowerCase().includes(searchQuery.toLowerCase())
+      (Array.isArray(res.cuisine) ? res.cuisine.join(' ') : (res.cuisine || '')).toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 6);
   }, [cityRestaurants, searchQuery]);
 
@@ -248,9 +251,9 @@ export default function CityView() {
 
       {/* Categories & Cuisines */}
       <section className="relative bg-white pt-4 pb-8 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-6">
           {/* Welcome Banner */}
-          <div className="relative mb-6 md:rounded-2xl overflow-hidden h-[120px] md:h-36 w-[calc(100%+32px)] -mx-4 md:w-full md:mx-0 flex items-center bg-slate-100">
+          <div className="relative mb-6 md:rounded-2xl overflow-hidden h-[120px] md:h-36 w-[calc(100%+48px)] -mx-6 md:w-full md:mx-0 flex items-center bg-slate-100">
              {loading || authLoading ? (
                <div className="absolute inset-0 bg-slate-200 animate-pulse" />
              ) : (
@@ -266,7 +269,7 @@ export default function CityView() {
 
           {/* Cuisine Circle Carousel */}
           <div>
-            <div className="flex items-start gap-4 md:gap-10 overflow-x-auto pb-4 scrollbar-none snap-x -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex items-start gap-4 md:gap-10 overflow-x-auto pb-4 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="flex flex-col items-center gap-2 md:gap-3 shrink-0 snap-start animate-pulse">
@@ -300,7 +303,7 @@ export default function CityView() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 mt-8 md:mt-12 space-y-12 md:space-y-20">
+      <div className="max-w-7xl mx-auto px-6 mt-8 md:mt-12 space-y-12 md:space-y-20">
         
         {/* Featured Section */}
         {(loading || featuredRestaurants.length > 0) && (
@@ -329,7 +332,7 @@ export default function CityView() {
               </div>
             </div>
             
-            <div ref={featuredRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-4 px-4 md:mx-0 md:px-0">
+            <div ref={featuredRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start animate-pulse">
@@ -377,7 +380,7 @@ export default function CityView() {
               </div>
             </div>
             
-            <div ref={discountRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-4 px-4 md:mx-0 md:px-0">
+            <div ref={discountRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start animate-pulse">
@@ -422,7 +425,7 @@ export default function CityView() {
               </div>
             </div>
             
-            <div ref={nearbyRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-4 px-4 md:mx-0 md:px-0">
+            <div ref={nearbyRef} className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start animate-pulse">
@@ -584,7 +587,9 @@ export default function CityView() {
                             </div>
                             <div className="min-w-0">
                               <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
-                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.cuisine} • {res.location}</p>
+                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">
+                                {Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine} • {res.location}
+                              </p>
                               <div className="flex items-center gap-1 mt-0.5 md:mt-1">
                                 <div className="flex">
                                   {[1,2,3,4,5].map(i => (
@@ -687,7 +692,9 @@ export default function CityView() {
                         }} className="flex items-center gap-3 md:gap-4 cursor-pointer group p-3 md:p-4 hover:bg-slate-50 rounded-2xl transition-colors">
                            <TrendingUp size={16} className="text-brand shrink-0" />
                            <span className="text-sm md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors truncate">{res.name}</span>
-                           <span className="text-[10px] md:text-xs bg-slate-100 text-vibrant-gray px-2 py-1 rounded font-black ml-auto whitespace-nowrap">{res.cuisine}</span>
+                           <span className="text-[10px] md:text-xs bg-slate-100 text-vibrant-gray px-2 py-1 rounded font-black ml-auto whitespace-nowrap">
+                             {Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine}
+                           </span>
                         </div>
                       ))}
                     </div>

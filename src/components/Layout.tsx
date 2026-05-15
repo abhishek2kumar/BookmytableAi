@@ -102,6 +102,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const isBookPage = location.pathname.endsWith('/book') || location.pathname.startsWith('/book/');
   const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage;
+  const isHomePage = location.pathname === '/';
 
   return (
     <div className="min-h-screen flex flex-col bg-vibrant-bg">
@@ -332,8 +333,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </footer>
-      {/* Mobile Bottom Navigation */}
-      {!isRestaurantPage && (
+      {/* Mobile Bottom Navigation - Hidden on Restaurant and Home pages */}
+      {(!isRestaurantPage && !isHomePage) && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
           <Link
             to="/"

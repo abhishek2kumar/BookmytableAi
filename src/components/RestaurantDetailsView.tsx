@@ -116,7 +116,19 @@ export default function RestaurantDetailsView() {
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [isTimingsOpen, setIsTimingsOpen] = useState(false);
+  const [activePhotoTab, setActivePhotoTab] = useState<'food' | 'ambience' | 'exterior'>('food');
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isXXL = windowWidth >= 1536;
+  const isDesktop = windowWidth >= 768;
+  const photoLimit = isXXL ? 10 : (isDesktop ? 5 : 4);
 
   // Enhanced Photo Gallery & Viewer State
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
@@ -128,6 +140,8 @@ export default function RestaurantDetailsView() {
     return [
       restaurant.image,
       ...(restaurant.secondaryImages || []),
+      ...(restaurant.foodImages || []),
+      ...(restaurant.ambienceImages || []),
       ...(restaurant.menuImages || []),
       ...menuCatImages
     ].filter(Boolean);
@@ -185,6 +199,14 @@ export default function RestaurantDetailsView() {
     }
   }, [user, reviews]);
 
+  useEffect(() => {
+    if (restaurant) {
+      if (restaurant.foodImages?.length) setActivePhotoTab('food');
+      else if (restaurant.ambienceImages?.length) setActivePhotoTab('ambience');
+      else if (restaurant.secondaryImages?.length) setActivePhotoTab('exterior');
+    }
+  }, [restaurant]);
+
   // Review Auto-slide
   useEffect(() => {
     if (reviews.length <= 1) return;
@@ -197,6 +219,13 @@ export default function RestaurantDetailsView() {
     }, 5000);
     return () => clearInterval(interval);
   }, [reviews.length]);
+
+  const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -400 : 400;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -420,9 +449,9 @@ export default function RestaurantDetailsView() {
 
       if (daily) {
         if (daily.closed) isClosed = true;
-        else {
-          openStr = daily.open;
-          closeStr = daily.close;
+        else if (daily.ranges && daily.ranges.length > 0) {
+          openStr = daily.ranges[0].open;
+          closeStr = daily.ranges[0].close;
         }
       }
       return { openStr, closeStr, isClosed };
@@ -591,9 +620,9 @@ export default function RestaurantDetailsView() {
 
         if (daily) {
           if (daily.closed) isClosed = true;
-          else {
-            openStr = daily.open;
-            closeStr = daily.close;
+          else if (daily.ranges && daily.ranges.length > 0) {
+            openStr = daily.ranges[0].open;
+            closeStr = daily.ranges[0].close;
           }
         }
         return { openStr, closeStr, isClosed };
@@ -943,7 +972,7 @@ export default function RestaurantDetailsView() {
                           <ChevronDown size={14} className="text-brand shrink-0" />
                         </div>
                         <p className="text-[13px] text-slate-600">
-                          {restaurant.cuisine} | ₹{restaurant.avgPrice} for two
+                          {Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine} | ₹{restaurant.avgPrice} for two
                         </p>
                       </div>
                       
@@ -1014,7 +1043,7 @@ export default function RestaurantDetailsView() {
            <a href="#offers" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#offers' || (!location.hash && restaurant.offers?.length) ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Offers</a>
            <a href="#menu" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#menu' || (!location.hash && !restaurant.offers?.length) ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Menu</a>
            <a href="#photos" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#photos' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Photos</a>
-           <a href="#overview" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#overview' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Overview</a>
+           <a href="#overview" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#overview' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Story</a>
            <a href="#reviews" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#reviews' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Reviews</a>
         </div>
       </div>
@@ -1123,7 +1152,7 @@ export default function RestaurantDetailsView() {
 
                       return (
                         <div className="relative group/slides">
-                          <div ref={menuScrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0" style={{ scrollBehavior: 'smooth' }}>
+                          <div ref={menuScrollRef} className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-6 md:mx-0 md:px-0" style={{ scrollBehavior: 'smooth' }}>
                             {images.map((img: string, i: number) => (
                               <div 
                                 key={i}
@@ -1131,11 +1160,27 @@ export default function RestaurantDetailsView() {
                                 onClick={() => openPhotoViewer(img)}
                               >
                                 <img src={img} alt={`Menu page ${i + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={handleImageError} />
-                                <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded bg-white/10 text-white text-[9px] font-black tracking-widest shadow-sm">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded text-white text-[9px] font-black tracking-widest shadow-sm">
                                   {i + 1} / {images.length}
                                 </div>
                               </div>
                             ))}
+                          </div>
+
+                          {/* Navigation Arrows for Web/Tab */}
+                          <div className="hidden md:block">
+                             <button 
+                               onClick={() => scroll(menuScrollRef, 'left')}
+                               className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                             >
+                               <ChevronLeft size={20} />
+                             </button>
+                             <button 
+                               onClick={() => scroll(menuScrollRef, 'right')}
+                               className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                             >
+                               <ChevronRight size={20} />
+                             </button>
                           </div>
                         </div>
                       );
@@ -1147,36 +1192,130 @@ export default function RestaurantDetailsView() {
           </div>
 
           {/* Photos Section */}
-          {restaurant.secondaryImages && restaurant.secondaryImages.length > 0 && (
+          {(restaurant.secondaryImages?.length || restaurant.foodImages?.length || restaurant.ambienceImages?.length) && (
             <div id="photos" className="scroll-mt-24 pt-8 border-t border-slate-300">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Photos</h2>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                {restaurant.secondaryImages.slice(0, 5).map((img, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      "h-32 md:h-40 rounded-xl overflow-hidden cursor-zoom-in group relative",
-                      i === 0 && "col-span-2 lg:col-span-1 h-32 md:h-40 lg:h-40" // Make first photo wide on mobile
-                    )}
-                    onClick={() => openPhotoViewer(img)}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-slate-900">Photo Gallery</h2>
+                
+                <div className="flex bg-slate-50 p-1 rounded-2xl overflow-x-auto scrollbar-hide shrink-0">
+                  {restaurant.foodImages && restaurant.foodImages.length > 0 && (
+                    <button
+                      onClick={() => setActivePhotoTab('food')}
+                      className={cn(
+                        "px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                        activePhotoTab === 'food' ? "bg-white text-brand shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Food
+                    </button>
+                  )}
+                  {restaurant.ambienceImages && restaurant.ambienceImages.length > 0 && (
+                    <button
+                      onClick={() => setActivePhotoTab('ambience')}
+                      className={cn(
+                        "px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                        activePhotoTab === 'ambience' ? "bg-white text-brand shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Ambience
+                    </button>
+                  )}
+                  {restaurant.secondaryImages && restaurant.secondaryImages.length > 0 && (
+                    <button
+                      onClick={() => setActivePhotoTab('exterior')}
+                      className={cn(
+                        "px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                        activePhotoTab === 'exterior' ? "bg-white text-brand shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      Exterior
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="relative min-h-[200px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activePhotoTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <img src={img} alt={`View ${i}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" onError={handleImageError} />
-                    {i === 4 && restaurant.secondaryImages!.length > 5 && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center cursor-pointer hover:bg-black/80 transition-colors">
-                        <span className="text-white font-black text-lg">+{restaurant.secondaryImages!.length - 5} MORE</span>
+                    {activePhotoTab === 'food' && restaurant.foodImages && (
+                      <div className="grid grid-cols-2 md:grid-cols-5 2xl:grid-cols-10 gap-2 md:gap-3">
+                        {restaurant.foodImages.map((img, i, arr) => {
+                          const showMore = i === photoLimit - 1 && arr.length > photoLimit;
+                          if (i >= photoLimit) return null;
+                          
+                          return (
+                            <div key={i} className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none" onClick={() => openPhotoViewer(img)}>
+                              <img src={img} alt={`Food ${i}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" onError={handleImageError} />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                              {showMore && (
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                                  <span className="text-xl md:text-2xl font-black">+{arr.length - (photoLimit - 1)}</span>
+                                  <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest">More</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                  </div>
-                ))}
+                    {activePhotoTab === 'ambience' && restaurant.ambienceImages && (
+                      <div className="grid grid-cols-2 md:grid-cols-5 2xl:grid-cols-10 gap-2 md:gap-3">
+                        {restaurant.ambienceImages.map((img, i, arr) => {
+                           const showMore = i === photoLimit - 1 && arr.length > photoLimit;
+                           if (i >= photoLimit) return null;
+
+                          return (
+                            <div key={i} className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none" onClick={() => openPhotoViewer(img)}>
+                              <img src={img} alt={`Ambience ${i}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" onError={handleImageError} />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                              {showMore && (
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                                  <span className="text-xl md:text-2xl font-black">+{arr.length - (photoLimit - 1)}</span>
+                                  <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest">More</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {activePhotoTab === 'exterior' && restaurant.secondaryImages && (
+                      <div className="grid grid-cols-2 md:grid-cols-5 2xl:grid-cols-10 gap-2 md:gap-3">
+                        {restaurant.secondaryImages.map((img, i, arr) => {
+                           const showMore = i === photoLimit - 1 && arr.length > photoLimit;
+                           if (i >= photoLimit) return null;
+
+                          return (
+                            <div key={i} className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none" onClick={() => openPhotoViewer(img)}>
+                              <img src={img} alt={`Exterior ${i}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" onError={handleImageError} />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                              {showMore && (
+                                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-[2px]">
+                                  <span className="text-xl md:text-2xl font-black">+{arr.length - (photoLimit - 1)}</span>
+                                  <span className="text-[8px] md:text-[10px] uppercase font-black tracking-widest">More</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
           )}
 
-          {/* Overview Section */}
           <div id="overview" className="scroll-mt-24 pt-8 border-t border-slate-300">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">Overview</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-6">{restaurant.name}'s Story</h2>
             {restaurant.description && (
-              <p className="text-slate-600 text-[14px] md:text-base font-medium leading-relaxed mb-8">
+              <p className="text-slate-600 text-[14px] md:text-base font-medium leading-relaxed mb-8 text-justify">
                 {restaurant.description}
               </p>
             )}
@@ -1228,7 +1367,7 @@ export default function RestaurantDetailsView() {
                          <p className="text-xs font-medium animate-pulse text-white/80">Summarizing...</p>
                        </div>
                      ) : aiSummary ? (
-                       <div className="prose prose-invert max-w-none text-white/95 font-medium text-xs leading-relaxed text-opacity-90 line-clamp-6">
+                       <div className="prose prose-invert max-w-none text-white/95 font-medium text-xs md:text-sm leading-relaxed text-opacity-90 line-clamp-6 text-justify">
                           <ReactMarkdown>{aiSummary}</ReactMarkdown>
                        </div>
                      ) : (
@@ -1432,7 +1571,9 @@ export default function RestaurantDetailsView() {
                         "font-medium text-lg",
                         daily?.closed ? "text-red-500" : "text-slate-900"
                       )}>
-                        {daily ? (daily.closed ? 'Closed' : `${daily.open} - ${daily.close}`) : `${restaurant.openingHours?.open || '12:30 PM'} - ${restaurant.openingHours?.close || '11:59 PM'}`}
+                        {daily ? (
+                          daily.closed ? 'Closed' : daily.ranges.map(r => `${r.open} - ${r.close}`).join(', ')
+                        ) : `${restaurant.openingHours?.open || '12:30 PM'} - ${restaurant.openingHours?.close || '11:59 PM'}`}
                       </span>
                     </div>
                   );

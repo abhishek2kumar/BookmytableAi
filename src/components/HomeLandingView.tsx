@@ -510,19 +510,22 @@ export default function HomeLandingView() {
               </button>
               <div className="flex-1 relative border-none">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand" size={18} />
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="Where would you like to eat?"
-                  className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-3 md:py-4 md:text-base text-sm font-bold focus:ring-2 focus:ring-brand outline-none"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                       handleSearchSubmit();
-                    }
-                  }}
-                />
+                <div className="flex flex-col w-full">
+                  <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="Where would you like to eat?"
+                    className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-2.5 md:text-base text-sm font-bold focus:ring-0 outline-none h-11"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearchSubmit();
+                      }
+                    }}
+                  />
+                  <div className="pl-12 text-[10px] text-slate-400 font-medium leading-none mt-1">Search by cuisine, restaurant or location</div>
+                </div>
                 {searchValue && (
                   <button 
                     onClick={() => setSearchValue('')}

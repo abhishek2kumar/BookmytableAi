@@ -4,10 +4,11 @@ import { db } from '../lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, serverTimestamp, addDoc, getDocs } from 'firebase/firestore';
 import { Restaurant, Booking, UserProfile } from '../types';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, convertTo12Hour, convertTo24Hour } from '../lib/utils';
-import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, ChefHat, Settings, Image, Gift } from 'lucide-react';
+import { Star, CheckCircle, XCircle, AlertCircle, ShieldCheck, Users, Store, Calendar, Clock, History, TrendingUp, Sparkles, Loader2, MapPin, X, MoreVertical, Search, Filter, UtensilsCrossed, Settings2, Power, PowerOff, Plus, Globe, Soup, ChevronRight, Trash2, Edit2, Database, Save, Settings, Image, Gift } from 'lucide-react';
 import { searchRealRestaurants } from '../services/aiService';
 import { useAuth } from './AuthProvider';
 import { useMasterData } from './MasterDataContext';
+import { INDIAN_STATES } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,7 +55,49 @@ export default function AdminDashboardView() {
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [activeEditTab, setActiveEditTab] = useState<'general' | 'operational' | 'visuals' | 'menu' | 'offers' | 'reservations' | 'system'>('general');
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  const updateEditingLocationField = (field: string, value: string) => {
+    if (!editingRestaurant) return;
+    const nextRes = { ...editingRestaurant, [field]: value };
+    const fullAddress = [nextRes.shopNo, nextRes.floor, nextRes.area, nextRes.city, nextRes.state, nextRes.pincode, nextRes.country, nextRes.landmark]
+      .filter(Boolean)
+      .join(', ');
+    setEditingRestaurant({ ...nextRes, address: fullAddress, location: nextRes.area || nextRes.location || '' });
+  };
+
+  const handleGeocode = async () => {
+    if (!editingRestaurant?.address || isGeocoding) return;
+    setIsGeocoding(true);
+    try {
+      const response = await fetch('/api/system/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          address: editingRestaurant.address,
+          city: editingRestaurant.city
+        })
+      });
+      const data = await response.json();
+      if (data.lat && data.lng) {
+        setEditingRestaurant({
+          ...editingRestaurant,
+          lat: data.lat,
+          lng: data.lng
+        });
+        setNotification({ type: 'success', message: 'Coordinates updated from address!' });
+      } else {
+        setNotification({ type: 'error', message: 'AI could not find precise coordinates.' });
+      }
+    } catch (err) {
+      console.error(err);
+      setNotification({ type: 'error', message: 'Geocoding request failed.' });
+    } finally {
+      setIsGeocoding(false);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
   
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [resSearchQuery, setResSearchQuery] = useState('');
@@ -63,7 +106,7 @@ export default function AdminDashboardView() {
   const [pulseCityFilter, setPulseCityFilter] = useState('all');
   const [citySearchQuery, setCitySearchQuery] = useState('');
   const [cuisineSearchQuery, setCuisineSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'fleet' | 'pulse' | 'inventory'>('fleet');
+  const [activeTab, setActiveTab] = useState<'fleet' | 'pulse' | 'inventory' | 'approvals'>('fleet');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending'>('all');
 
   const handleFirestoreError = (error: any, operation: string, path: string) => {
@@ -168,7 +211,7 @@ export default function AdminDashboardView() {
       list = list.filter(r => 
         (r.name?.toLowerCase() || '').includes(query) || 
         (r.city?.toLowerCase() || '').includes(query) ||
-        (r.cuisine?.toLowerCase() || '').includes(query) ||
+        (Array.isArray(r.cuisine) ? r.cuisine.join(' ') : (r.cuisine || '')).toLowerCase().includes(query) ||
         (r.location?.toLowerCase() || '').includes(query) ||
         (r.address?.toLowerCase() || '').includes(query) ||
         (r.lastModifiedBy?.toLowerCase() || '').includes(query)
@@ -203,9 +246,10 @@ export default function AdminDashboardView() {
       const { id } = editingRestaurant;
       
       const allowedKeys = [
-        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'image', 'location', 'address', 'city', 
+        'name', 'description', 'cuisine', 'avgPrice', 'contactNumber', 'contactEmail', 'image', 'location', 'address', 'city', 
+        'state', 'pincode', 'country', 'shopNo', 'floor', 'area', 'landmark',
         'isOpen', 'rating', 'approved', 'facilities', 'offers', 'menu', 'menuImages', 
-        'secondaryImages', 'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'lat', 'lng',
+        'secondaryImages', 'foodImages', 'ambienceImages', 'popularDishes', 'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'lat', 'lng',
         'instantBookingLimit', 'blackoutDates', 'slotCategories', 'categorySlots', 'menuCategories'
       ];
       
@@ -216,6 +260,13 @@ export default function AdminDashboardView() {
           updateData[key] = val;
         }
       });
+
+      // Re-compose address
+      updateData.address = [updateData.shopNo, updateData.floor, updateData.area, updateData.city, updateData.state, updateData.pincode, updateData.country, updateData.landmark]
+        .filter(Boolean)
+        .join(', ');
+      
+      updateData.location = updateData.area; // Sync for legacy
 
       updateData.lastModifiedBy = currentUser.email || 'admin';
       updateData.lastModifiedByType = 'admin';
@@ -401,89 +452,245 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-10"
+            className="space-y-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Legal Entity Name</label>
                 <input 
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                   value={editingRestaurant.name}
                   onChange={e => setEditingRestaurant({...editingRestaurant, name: e.target.value})}
                   required
                 />
               </div>
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cuisine Classification</label>
-                <select 
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
-                  value={editingRestaurant.cuisine}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, cuisine: e.target.value})}
-                >
-                  {cuisines.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Average Price for two (₹)</label>
+                <input 
+                  type="number"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.avgPrice}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, avgPrice: Number(e.target.value)})}
+                />
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cuisine Classification (Multiple)</label>
+              <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                {cuisines.map(c => {
+                  const isSelected = Array.isArray(editingRestaurant.cuisine) 
+                    ? editingRestaurant.cuisine.includes(c.name)
+                    : editingRestaurant.cuisine === c.name;
+                  
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const current = Array.isArray(editingRestaurant.cuisine) ? editingRestaurant.cuisine : (editingRestaurant.cuisine ? [editingRestaurant.cuisine] : []);
+                        const next = current.includes(c.name) ? current.filter(item => item !== c.name) : [...current, c.name];
+                        setEditingRestaurant({...editingRestaurant, cuisine: next});
+                      }}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border",
+                        isSelected 
+                          ? "bg-brand text-white border-brand shadow-sm" 
+                          : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Number</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.contactNumber || ''}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, contactNumber: e.target.value})}
+                  placeholder="+91..."
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Email</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.contactEmail || ''}
+                  onChange={e => setEditingRestaurant({...editingRestaurant, contactEmail: e.target.value})}
+                  placeholder="contact@restaurant.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Brand Description / Story</label>
               <textarea 
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[120px]"
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[100px]"
                 value={editingRestaurant.description}
                 onChange={e => setEditingRestaurant({...editingRestaurant, description: e.target.value})}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Service City</label>
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Facilities</label>
+              <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-100">
+                {['Fine Dine', 'Bar', 'Valet Parking', 'Indoor Seating', 'Outdoor Seating', 'Live Music', 'Vegetarian Only', 'Alcohol Served', 'Rooftop', 'Luxury', 'WiFi', 'Digital Menu'].map(fac => (
+                  <button
+                    key={fac}
+                    type="button"
+                    onClick={() => {
+                      const current = editingRestaurant.facilities || [];
+                      const next = current.includes(fac) ? current.filter(f => f !== fac) : [...current, fac];
+                      setEditingRestaurant({...editingRestaurant, facilities: next});
+                    }}
+                    className={cn(
+                      "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all",
+                      editingRestaurant.facilities?.includes(fac) 
+                        ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10" 
+                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm"
+                    )}
+                  >
+                    {fac}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Shop / Building No. (Optional)</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.shopNo || ''}
+                  onChange={e => updateEditingLocationField('shopNo', e.target.value)}
+                  onBlur={handleGeocode}
+                  placeholder="Shop 101"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Floor / Tower (Optional)</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.floor || ''}
+                  onChange={e => updateEditingLocationField('floor', e.target.value)}
+                  onBlur={handleGeocode}
+                  placeholder="2nd Floor"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Area / Locality *</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.area || editingRestaurant.location || ''}
+                  onChange={e => updateEditingLocationField('area', e.target.value)}
+                  onBlur={handleGeocode}
+                  placeholder="Viman Nagar"
+                  required
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">City *</label>
                 <select 
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
                   value={editingRestaurant.city}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, city: e.target.value})}
+                  onChange={e => updateEditingLocationField('city', e.target.value)}
+                  onBlur={handleGeocode}
+                  required
                 >
                   {cities.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Area Name</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">State *</label>
+                <select 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm appearance-none"
+                  value={editingRestaurant.state || ''}
+                  onChange={e => updateEditingLocationField('state', e.target.value)}
+                  onBlur={handleGeocode}
+                  required
+                >
+                  <option value="">Select State</option>
+                  {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Pincode *</label>
                 <input 
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
-                  value={editingRestaurant.location || ''}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, location: e.target.value})}
-                  placeholder="e.g. Viman Nagar"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.pincode || ''}
+                  onChange={e => updateEditingLocationField('pincode', e.target.value)}
+                  onBlur={handleGeocode}
+                  required
+                  placeholder="e.g. 560001"
                 />
               </div>
-              <div className="space-y-4 md:col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Complete Address</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Country *</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.country || ''}
+                  onChange={e => updateEditingLocationField('country', e.target.value)}
+                  onBlur={handleGeocode}
+                  required
+                  placeholder="e.g. India"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Landmark (Optional)</label>
+                <input 
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  value={editingRestaurant.landmark || ''}
+                  onChange={e => updateEditingLocationField('landmark', e.target.value)}
+                  onBlur={handleGeocode}
+                  placeholder="Near Park"
+                />
+              </div>
+              <div className="space-y-3 md:col-span-3 relative">
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Complete Address (Auto-generated on Save)</label>
+                  <button 
+                    type="button"
+                    onClick={handleGeocode}
+                    disabled={isGeocoding || !editingRestaurant.address}
+                    className="flex items-center gap-1.5 text-[9px] font-black text-brand uppercase tracking-wider hover:underline disabled:opacity-50"
+                  >
+                    {isGeocoding ? <Loader2 size={10} className="animate-spin" /> : <MapPin size={10} />}
+                    Refresh Coordinates
+                  </button>
+                </div>
                 <textarea 
                   rows={2}
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm resize-none"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm resize-none opacity-60"
                   value={editingRestaurant.address || ''}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, address: e.target.value})}
-                  placeholder="Full street address"
+                  readOnly
+                  placeholder="Full street address will be re-composed"
                 />
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
                 <input 
                   type="number"
                   step="any"
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                   value={editingRestaurant.lat || ''}
                   onChange={e => setEditingRestaurant({...editingRestaurant, lat: parseFloat(e.target.value)})}
                   placeholder="e.g. 18.5204"
                 />
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Longitude</label>
                 <input 
                   type="number"
                   step="any"
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                  className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                   value={editingRestaurant.lng || ''}
                   onChange={e => setEditingRestaurant({...editingRestaurant, lng: parseFloat(e.target.value)})}
                   placeholder="e.g. 73.8567"
@@ -499,80 +706,108 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-10"
+            className="space-y-8"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Backbone (M)</label>
-                <input 
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
-                  value={editingRestaurant.contactNumber}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, contactNumber: e.target.value})}
-                />
-              </div>
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Avg Ticket Size (₹)</label>
-                <input 
-                  type="number"
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
-                  value={editingRestaurant.avgPrice}
-                  onChange={e => setEditingRestaurant({...editingRestaurant, avgPrice: Number(e.target.value)})}
-                />
-              </div>
-            </div>
-
             <div className="space-y-6">
                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Operational Pulse</span>
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Operational Hours</span>
                   <div className="h-px flex-grow bg-slate-100" />
                </div>
-               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                    <div key={day} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className="text-[10px] font-black text-slate-500 uppercase text-center">{day.substring(0, 3)}</span>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const currentTimings = editingRestaurant.dailyTimings || {};
-                          const currentDay = currentTimings[day] || { open: '11:00 AM', close: '11:00 PM', closed: false };
-                          setEditingRestaurant({
-                            ...editingRestaurant,
-                            dailyTimings: { ...currentTimings, [day]: { ...currentDay, closed: !currentDay.closed } }
-                          });
-                        }}
-                        className={cn(
-                           "w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                           editingRestaurant.dailyTimings?.[day]?.closed ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
-                        )}
-                      >
-                        {editingRestaurant.dailyTimings?.[day]?.closed ? 'OFF' : 'ON'}
-                      </button>
-                      {!(editingRestaurant.dailyTimings?.[day]?.closed) && (
-                        <div className="space-y-2">
-                          <input 
-                            type="time"
-                            className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
-                            value={convertTo24Hour(editingRestaurant.dailyTimings?.[day]?.open || '11:00 AM')}
-                            onChange={e => {
-                              const next = {...(editingRestaurant.dailyTimings || {})};
-                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), open: convertTo12Hour(e.target.value) };
-                              setEditingRestaurant({...editingRestaurant, dailyTimings: next});
-                            }}
-                          />
-                          <input 
-                            type="time"
-                            className="w-full bg-white border-2 border-slate- transparency focus:border-brand rounded-xl text-xs font-bold text-center py-2 shadow-inner"
-                            value={convertTo24Hour(editingRestaurant.dailyTimings?.[day]?.close || '11:00 PM')}
-                            onChange={e => {
-                              const next = {...(editingRestaurant.dailyTimings || {})};
-                              next[day] = { ...(next[day] || {open: '', close: '', closed: false}), close: convertTo12Hour(e.target.value) };
-                              setEditingRestaurant({...editingRestaurant, dailyTimings: next});
-                            }}
-                          />
+               <div className="grid grid-cols-1 gap-4">
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                    const currentTimings = editingRestaurant.dailyTimings || {};
+                    const dayData = currentTimings[day] || { ranges: [{ open: '11:00 AM', close: '11:00 PM' }], closed: false };
+                    
+                    return (
+                      <div key={day} className="flex flex-col md:flex-row md:items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="w-24 shrink-0">
+                          <span className="text-xs font-black text-slate-900 uppercase tracking-widest">{day}</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        
+                        <div className="flex-grow flex flex-wrap items-center gap-3">
+                          {dayData.closed ? (
+                            <span className="text-[10px] font-black text-red-500 uppercase tracking-widest px-4 py-2 bg-red-50 rounded-xl">Closed for operations</span>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-3">
+                              {(dayData.ranges || []).map((range, rIdx) => (
+                                <div key={rIdx} className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm relative group/range">
+                                  <input 
+                                    type="time"
+                                    className="bg-transparent text-xs font-bold w-24 outline-none"
+                                    value={convertTo24Hour(range.open)}
+                                    onChange={e => {
+                                      const nextRanges = [...(dayData.ranges || [])];
+                                      nextRanges[rIdx] = { ...range, open: convertTo12Hour(e.target.value) };
+                                      setEditingRestaurant({
+                                        ...editingRestaurant,
+                                        dailyTimings: { ...currentTimings, [day]: { ...dayData, ranges: nextRanges } }
+                                      });
+                                    }}
+                                  />
+                                  <span className="text-slate-300 font-bold">-</span>
+                                  <input 
+                                    type="time"
+                                    className="bg-transparent text-xs font-bold w-24 outline-none"
+                                    value={convertTo24Hour(range.close)}
+                                    onChange={e => {
+                                      const nextRanges = [...(dayData.ranges || [])];
+                                      nextRanges[rIdx] = { ...range, close: convertTo12Hour(e.target.value) };
+                                      setEditingRestaurant({
+                                        ...editingRestaurant,
+                                        dailyTimings: { ...currentTimings, [day]: { ...dayData, ranges: nextRanges } }
+                                      });
+                                    }}
+                                  />
+                                  <button 
+                                    type="button"
+                                    onClick={() => {
+                                      const nextRanges = (dayData.ranges || []).filter((_, i) => i !== rIdx);
+                                      setEditingRestaurant({
+                                        ...editingRestaurant,
+                                        dailyTimings: { ...currentTimings, [day]: { ...dayData, ranges: nextRanges } }
+                                      });
+                                    }}
+                                    className="w-6 h-6 bg-red-50 text-red-500 rounded-lg flex items-center justify-center opacity-0 group-hover/range:opacity-100 transition-all"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const nextRanges = [...(dayData.ranges || []), { open: '11:00 AM', close: '11:00 PM' }];
+                                  setEditingRestaurant({
+                                    ...editingRestaurant,
+                                    dailyTimings: { ...currentTimings, [day]: { ...dayData, ranges: nextRanges } }
+                                  });
+                                }}
+                                className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-brand transition-all shadow-sm"
+                              >
+                                <Plus size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setEditingRestaurant({
+                              ...editingRestaurant,
+                              dailyTimings: { ...currentTimings, [day]: { ...dayData, closed: !dayData.closed, ranges: dayData.ranges || [{ open: '11:00 AM', close: '11:00 PM' }] } }
+                            });
+                          }}
+                          className={cn(
+                             "w-full md:w-28 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm shrink-0",
+                             dayData.closed ? "bg-red-500 text-white" : "bg-emerald-500 text-white"
+                          )}
+                        >
+                          {dayData.closed ? 'RE-OPEN' : 'MARK CLOSED'}
+                        </button>
+                      </div>
+                    );
+                  })}
                </div>
             </div>
           </motion.div>
@@ -584,13 +819,13 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-12"
+            className="space-y-8"
           >
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Primary Display Asset</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Primary Display Asset</label>
               <div className="group relative">
                 <input 
-                  className="w-full pl-6 pr-24 py-5 bg-slate-50 border-2 border-slate- transparency focus:border-brand rounded-[24px] font-bold text-slate-800 outline-none transition-all shadow-inner text-base"
+                  className="w-full pl-5 pr-24 py-3.5 bg-slate-50 border-2 border-slate- transparency focus:border-brand rounded-2xl font-bold text-slate-800 outline-none transition-all shadow-inner text-sm"
                   value={editingRestaurant.image}
                   onChange={e => setEditingRestaurant({...editingRestaurant, image: e.target.value})}
                   placeholder="https://images.unsplash.com/..."
@@ -599,38 +834,37 @@ export default function AdminDashboardView() {
                    <img src={editingRestaurant.image || RESTAURANT_IMAGE_FALLBACK} alt="Hero" className="w-full h-full object-cover" onError={handleImageError} />
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2">* High-resolution 16:9 ratio recommended</p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Secondary Intelligence Gallery</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Food Gallery</label>
                 <button 
                   type="button"
-                  onClick={() => setEditingRestaurant({...editingRestaurant, secondaryImages: [...(editingRestaurant.secondaryImages || []), '']})}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-2"
+                  onClick={() => setEditingRestaurant({...editingRestaurant, foodImages: [...(editingRestaurant.foodImages || []), '']})}
+                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1.5"
                 >
-                  <Plus size={14} /> Add Slot
+                  <Plus size={12} /> Add
                 </button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {(editingRestaurant.secondaryImages || []).map((img, i) => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {(editingRestaurant.foodImages || []).map((img, i) => (
                   <div key={i} className="relative group aspect-video rounded-[24px] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm">
-                    <img src={img || RESTAURANT_IMAGE_FALLBACK} alt={`Gallery ${i}`} className="w-full h-full object-cover" onError={handleImageError} />
+                    <img src={img || RESTAURANT_IMAGE_FALLBACK} alt={`Food ${i}`} className="w-full h-full object-cover" onError={handleImageError} />
                     <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-4">
                       <input 
                         className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-3 py-1.5 text-white text-[10px] font-bold outline-none mb-2"
                         value={img}
                         onChange={e => {
-                          const next = [...(editingRestaurant.secondaryImages || [])];
+                          const next = [...(editingRestaurant.foodImages || [])];
                           next[i] = e.target.value;
-                          setEditingRestaurant({...editingRestaurant, secondaryImages: next});
+                          setEditingRestaurant({...editingRestaurant, foodImages: next});
                         }}
                         placeholder="Image URL"
                       />
                       <button 
                         type="button"
-                        onClick={() => setEditingRestaurant({...editingRestaurant, secondaryImages: editingRestaurant.secondaryImages?.filter((_, idx) => idx !== i)})}
+                        onClick={() => setEditingRestaurant({...editingRestaurant, foodImages: editingRestaurant.foodImages?.filter((_, idx) => idx !== i)})}
                         className="bg-red-500 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
                       >
                         Purge
@@ -638,36 +872,45 @@ export default function AdminDashboardView() {
                     </div>
                   </div>
                 ))}
-                {(editingRestaurant.secondaryImages || []).length === 0 && (
-                  <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-100 rounded-[32px] bg-slate-50 opacity-40">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">No auxiliary assets uploaded</p>
-                  </div>
-                )}
               </div>
             </div>
 
-            <div className="space-y-6">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-1">Capability Matrix (Facilities)</label>
-              <div className="flex flex-wrap gap-3 p-8 bg-slate-50 rounded-[32px] border border-slate-100">
-                 {['Fine Dine', 'Bar', 'Valet Parking', 'Indoor Seating', 'Outdoor Seating', 'Live Music', 'Vegetarian Only', 'Alcohol Served', 'Rooftop', 'Luxury', 'WiFi', 'Digital Menu'].map(fac => (
-                   <button
-                     key={fac}
-                     type="button"
-                     onClick={() => {
-                       const current = editingRestaurant.facilities || [];
-                       const next = current.includes(fac) ? current.filter(f => f !== fac) : [...current, fac];
-                       setEditingRestaurant({...editingRestaurant, facilities: next});
-                     }}
-                     className={cn(
-                       "px-6 py-4 rounded-[20px] text-[10px] font-black uppercase tracking-widest border transition-all",
-                       editingRestaurant.facilities?.includes(fac) 
-                        ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/20 scale-105" 
-                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm"
-                     )}
-                   >
-                     {fac}
-                   </button>
-                 ))}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ambience Gallery</label>
+                <button 
+                  type="button"
+                  onClick={() => setEditingRestaurant({...editingRestaurant, ambienceImages: [...(editingRestaurant.ambienceImages || []), '']})}
+                  className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={12} /> Add
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {(editingRestaurant.ambienceImages || []).map((img, i) => (
+                  <div key={i} className="relative group aspect-video rounded-[24px] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm">
+                    <img src={img || RESTAURANT_IMAGE_FALLBACK} alt={`Ambience ${i}`} className="w-full h-full object-cover" onError={handleImageError} />
+                    <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-4">
+                      <input 
+                        className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-3 py-1.5 text-white text-[10px] font-bold outline-none mb-2"
+                        value={img}
+                        onChange={e => {
+                          const next = [...(editingRestaurant.ambienceImages || [])];
+                          next[i] = e.target.value;
+                          setEditingRestaurant({...editingRestaurant, ambienceImages: next});
+                        }}
+                        placeholder="Image URL"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setEditingRestaurant({...editingRestaurant, ambienceImages: editingRestaurant.ambienceImages?.filter((_, idx) => idx !== i)})}
+                        className="bg-red-500 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                      >
+                        Purge
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>
@@ -679,12 +922,48 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-12"
+            className="space-y-10"
           >
-             <div className="flex items-center justify-between px-1">
+             <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                   <h3 className="text-lg font-display font-black text-slate-900 tracking-tight uppercase">Popular Dishes</h3>
+                   <button 
+                     type="button"
+                     onClick={() => setEditingRestaurant({...editingRestaurant, popularDishes: [...(editingRestaurant.popularDishes || []), '']})}
+                     className="px-4 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1.5"
+                   >
+                      <Plus size={12} /> Add Dish
+                   </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {(editingRestaurant.popularDishes || []).map((dish, idx) => (
+                      <div key={idx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                         <input 
+                            className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none"
+                            value={dish}
+                            placeholder="e.g. Butter Chicken"
+                            onChange={e => {
+                               const next = [...(editingRestaurant.popularDishes || [])];
+                               next[idx] = e.target.value;
+                               setEditingRestaurant({...editingRestaurant, popularDishes: next});
+                            }}
+                         />
+                         <button 
+                           type="button"
+                           onClick={() => setEditingRestaurant({...editingRestaurant, popularDishes: editingRestaurant.popularDishes?.filter((_, i) => i !== idx)})}
+                           className="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                         >
+                            <Trash2 size={14} />
+                         </button>
+                      </div>
+                   ))}
+                </div>
+             </div>
+
+             <div className="flex items-center justify-between px-1 pt-6 border-t border-slate-100">
                 <div>
-                   <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight">Visual Menu Taxonomy</h3>
-                   <p className="text-slate-400 text-xs font-bold mt-1">Configure multi-category & multi-page digital menu overlays.</p>
+                   <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">Digital Menu Ecosystem</h3>
+                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Manage categories and page overlays</p>
                 </div>
                 <button 
                   type="button"
@@ -693,20 +972,20 @@ export default function AdminDashboardView() {
                      next.push({ id: Math.random().toString(36).substr(2, 9), name: 'New Section', images: [] });
                      setEditingRestaurant({...editingRestaurant, menuCategories: next});
                   }}
-                  className="px-8 py-4 bg-brand text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-brand/20 hover:scale-105 transition-all"
+                  className="px-5 py-2.5 bg-brand text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand/10 hover:bg-brand/90 transition-all"
                 >
                    Add Section
                 </button>
              </div>
 
-             <div className="space-y-10">
+             <div className="space-y-6">
                 {(editingRestaurant.menuCategories || []).map((cat, catIdx) => (
-                  <div key={cat.id} className="bg-slate-50 rounded-[40px] border border-slate-100 p-10 space-y-8 relative group/cat shadow-inner">
-                     <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-8">
+                  <div key={cat.id} className="bg-slate-50 rounded-3xl border border-slate-100 p-6 space-y-6 relative group/cat">
+                     <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
                        <div className="flex-grow">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">Category Title</label>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 mb-1 block">Category Title</label>
                           <input 
-                              className="bg-transparent border-none text-2xl font-display font-black text-slate-900 w-full focus:ring-0 p-0 placeholder:opacity-20"
+                              className="bg-transparent border-none text-xl font-display font-black text-slate-900 w-full focus:ring-0 p-0 placeholder:opacity-20 uppercase tracking-tight"
                               value={cat.name}
                               placeholder="e.g. CULINARY SPECIALS"
                               onChange={e => {
@@ -725,13 +1004,13 @@ export default function AdminDashboardView() {
                               setEditingRestaurant({...editingRestaurant, menuCategories: next});
                             }
                          }}
-                         className="p-4 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center justify-center"
+                         className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm flex items-center justify-center shrink-0"
                        >
-                          <Trash2 size={20} />
+                          <Trash2 size={16} />
                        </button>
                      </div>
                      
-                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {(cat.images || []).map((img, imgIdx) => (
                           <div key={imgIdx} className="space-y-3">
                             <div className="relative group/img aspect-[3/4] rounded-[24px] overflow-hidden border-2 border-white shadow-vibrant bg-white">
@@ -797,13 +1076,13 @@ export default function AdminDashboardView() {
             exit={{ opacity: 0, x: -10 }}
             className="space-y-10"
           >
-             <div className="flex items-center justify-between p-6 bg-slate-900 rounded-3xl text-white">
-                <div className="flex items-center gap-4">
-                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-colors", editingRestaurant.isBookingEnabled ? "bg-emerald-500" : "bg-red-500")}>
-                      <Calendar size={24} />
+             <div className="flex items-center justify-between p-4 bg-slate-900 rounded-2xl text-white">
+                <div className="flex items-center gap-3">
+                   <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-colors", editingRestaurant.isBookingEnabled ? "bg-emerald-500" : "bg-red-500")}>
+                      <Calendar size={20} />
                    </div>
                    <div>
-                      <p className="text-sm font-black">Reservation Engine</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest">Reservation Engine</p>
                       <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{editingRestaurant.isBookingEnabled ? 'Operational' : 'Deactivated'}</p>
                    </div>
                 </div>
@@ -816,21 +1095,21 @@ export default function AdminDashboardView() {
                 </button>
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Confirmation Threshold (n)</label>
                    <input 
                      type="number"
-                     className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold"
+                     className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm"
                      value={editingRestaurant.instantBookingLimit || 10}
                      onChange={e => setEditingRestaurant({...editingRestaurant, instantBookingLimit: Number(e.target.value)})}
                    />
                 </div>
-                <div className="space-y-4 md:col-span-2">
+                <div className="space-y-3 md:col-span-2">
                    <div className="flex items-center justify-between">
                       <div>
                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Reservation Categories</label>
-                         <p className="text-xs font-bold text-slate-500 mt-1">Organize your operational hours (e.g., Breakfast, Lunch)</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Windows (e.g., Lunch)</p>
                       </div>
                       <button 
                         type="button" 
@@ -841,18 +1120,18 @@ export default function AdminDashboardView() {
                               slotCategories: [...(editingRestaurant.slotCategories || []), { id: newId, name: 'New Category', slots: [] }]
                            });
                         }}
-                        className="px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-2"
+                        className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1.5"
                       >
-                         <Plus size={14} /> Add Category
+                         <Plus size={12} /> Add
                       </button>
                    </div>
                    
-                   <div className="space-y-4">
+                   <div className="space-y-3">
                       {(editingRestaurant.slotCategories || []).map((cat, catIdx) => (
-                         <div key={cat.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[24px]">
-                            <div className="flex items-center justify-between gap-4 mb-4">
+                         <div key={cat.id} className="bg-slate-50 border border-slate-100 p-4 rounded-3xl">
+                            <div className="flex items-center justify-between gap-4 mb-3">
                                <input 
-                                  className="bg-transparent text-lg font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full"
+                                  className="bg-transparent text-base font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full uppercase tracking-tight"
                                   value={cat.name}
                                   placeholder="Category Name (e.g. Dinner)"
                                   onChange={e => {
@@ -924,12 +1203,12 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-10"
+            className="space-y-6"
           >
              <div className="flex items-center justify-between px-1">
                 <div>
-                   <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight">Active Offers</h3>
-                   <p className="text-slate-400 text-xs font-bold mt-1">Configure special deals and discounts.</p>
+                   <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">Active Promotions</h3>
+                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Manage deals and special offers</p>
                 </div>
                 <button 
                   type="button"
@@ -938,46 +1217,46 @@ export default function AdminDashboardView() {
                      next.push('New Offer');
                      setEditingRestaurant({...editingRestaurant, offers: next});
                   }}
-                  className="px-8 py-4 bg-brand text-white rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-brand/20 hover:scale-105 transition-all"
+                  className="px-5 py-2 bg-brand text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-brand/10 hover:bg-brand/90 transition-all"
                 >
                    Add Offer
                 </button>
              </div>
 
-             <div className="space-y-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {(editingRestaurant.offers || []).map((offer, idx) => (
-                  <div key={idx} className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
-                     <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
-                        <Gift size={16} />
-                     </div>
-                     <input 
-                        className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none"
-                        value={offer}
-                        placeholder="Offer details..."
-                        onChange={e => {
+                   <div key={idx} className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                      <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+                         <Gift size={14} />
+                      </div>
+                      <input 
+                         className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none"
+                         value={offer}
+                         placeholder="Offer details..."
+                         onChange={e => {
+                            const next = [...(editingRestaurant.offers || [])];
+                            next[idx] = e.target.value;
+                            setEditingRestaurant({...editingRestaurant, offers: next});
+                         }}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => {
                            const next = [...(editingRestaurant.offers || [])];
-                           next[idx] = e.target.value;
+                           next.splice(idx, 1);
                            setEditingRestaurant({...editingRestaurant, offers: next});
                         }}
-                     />
-                     <button 
-                       type="button"
-                       onClick={() => {
-                          const next = [...(editingRestaurant.offers || [])];
-                          next.splice(idx, 1);
-                          setEditingRestaurant({...editingRestaurant, offers: next});
-                       }}
-                       className="w-10 h-10 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
-                     >
-                        <Trash2 size={16} />
-                     </button>
-                  </div>
+                        className="w-8 h-8 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
+                      >
+                         <Trash2 size={14} />
+                      </button>
+                   </div>
                 ))}
 
                 {(editingRestaurant.offers || []).length === 0 && (
-                  <div className="py-20 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[32px]">
-                     <Gift size={48} className="mx-auto text-slate-200 mb-4" />
-                     <p className="text-slate-400 font-bold">No active offers exist.</p>
+                  <div className="col-span-full py-12 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl opacity-50">
+                     <Gift size={32} className="mx-auto text-slate-200 mb-2" />
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No active offers exist</p>
                   </div>
                 )}
              </div>
@@ -990,43 +1269,43 @@ export default function AdminDashboardView() {
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="space-y-10"
+            className="space-y-6"
           >
-             <div className="p-8 bg-red-50 border border-red-100 rounded-[32px] space-y-6 shadow-inner">
+             <div className="p-6 bg-red-50 border border-red-100 rounded-3xl space-y-4 shadow-inner">
                 <div className="flex items-center gap-4 text-red-600">
-                   <AlertCircle size={32} />
+                   <AlertCircle size={28} />
                    <div>
-                      <h3 className="text-xl font-display font-black">Administrative Master Override</h3>
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Proceed with Caution</p>
+                      <h3 className="text-lg font-display font-black">System Override</h3>
+                      <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Proceed with Caution</p>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="bg-white p-6 rounded-2xl border border-red-100 flex items-center justify-between">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="bg-white p-4 rounded-2xl border border-red-100 flex items-center justify-between">
                       <div>
-                         <p className="text-sm font-black text-slate-900">Platform Approval</p>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Public Visibility Control</p>
+                         <p className="text-xs font-black text-slate-900">Platform Approval</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Public Visibility</p>
                       </div>
                       <button 
                         type="button"
                         onClick={() => setEditingRestaurant({...editingRestaurant, approved: !editingRestaurant.approved})}
-                        className={cn("px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all", editingRestaurant.approved ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}
+                        className={cn("px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", editingRestaurant.approved ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}
                       >
                          {editingRestaurant.approved ? 'Approved' : 'Unapproved'}
                       </button>
                    </div>
 
-                   <div className="bg-white p-6 rounded-2xl border border-red-100 flex items-center justify-between">
+                   <div className="bg-white p-4 rounded-2xl border border-red-100 flex items-center justify-between">
                       <div>
-                         <p className="text-sm font-black text-slate-900">System Rating</p>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Rank Bias</p>
+                         <p className="text-xs font-black text-slate-900">System Rating</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Global Rank Bias</p>
                       </div>
                       <input 
                         type="number"
                         step="0.1"
                         max="5"
                         min="0"
-                        className="w-16 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-center font-bold"
+                        className="w-14 px-2 py-1.5 bg-slate-50 border border-slate-100 rounded-lg text-center font-bold text-xs"
                         value={editingRestaurant.rating}
                         onChange={e => setEditingRestaurant({...editingRestaurant, rating: Number(e.target.value)})}
                       />
@@ -1035,14 +1314,14 @@ export default function AdminDashboardView() {
              </div>
 
              {editingRestaurant.lastModifiedBy && (
-                <div className="p-8 bg-slate-900 rounded-[32px] text-white flex items-center justify-between">
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                         <History size={24} />
+                <div className="p-6 bg-slate-900 rounded-3xl text-white flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                         <History size={20} />
                       </div>
                       <div>
-                         <p className="text-[10px] font-black text-white/50 uppercase tracking-widest">Modification Trace</p>
-                         <p className="text-sm font-bold mt-1">Last write by <span className="text-brand">{editingRestaurant.lastModifiedBy} ({editingRestaurant.lastModifiedByType})</span></p>
+                         <p className="text-[9px] font-black text-white/50 uppercase tracking-widest">Modification Trace</p>
+                         <p className="text-xs font-bold mt-0.5">Last write by <span className="text-brand truncate max-w-[150px] inline-block align-middle">{editingRestaurant.lastModifiedBy}</span></p>
                       </div>
                    </div>
                 </div>
@@ -1243,6 +1522,7 @@ export default function AdminDashboardView() {
         <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-100 shadow-sm w-fit mb-12">
           {[
             { id: 'fleet', label: 'Fleet Control', icon: Store },
+            { id: 'approvals', label: 'Review Queue', icon: ShieldCheck, badge: restaurants.filter(r => !r.approved && (r as any).status === 'Pending').length },
             { id: 'pulse', label: 'Live Pulse', icon: TrendingUp },
             { id: 'inventory', label: 'System Master', icon: Database },
           ].map((tab) => (
@@ -1250,7 +1530,7 @@ export default function AdminDashboardView() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-sm transition-all",
+                "flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-sm transition-all relative",
                 activeTab === tab.id 
                   ? "bg-slate-900 text-white shadow-xl shadow-slate-900/10" 
                   : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
@@ -1258,11 +1538,111 @@ export default function AdminDashboardView() {
             >
               <tab.icon size={18} />
               {tab.label}
+              {tab.badge ? (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                  {tab.badge}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
+          {activeTab === 'approvals' && (
+            <motion.div
+              key="approvals"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-8"
+            >
+              <div>
+                <h2 className="text-3xl font-display font-black text-vibrant-dark tracking-tighter">Review Queue</h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Verify new restaurant applications</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {restaurants.filter(r => !r.approved && (r as any).status === 'Pending').map((res) => (
+                  <div key={res.id} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl flex flex-col md:flex-row gap-8 items-start">
+                    <div className="w-full md:w-64 aspect-[4/3] rounded-3xl overflow-hidden shrink-0 shadow-lg">
+                      <img src={res.image || RESTAURANT_IMAGE_FALLBACK} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={handleImageError} />
+                    </div>
+                    
+                    <div className="flex-grow space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-black text-brand bg-brand/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Application #ID-{res.id?.slice(-4).toUpperCase()}</span>
+                          <span className="text-[10px] font-bold text-slate-400 ml-auto">Applied on {res.createdAt ? new Date(res.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                        <h3 className="text-2xl font-display font-black text-slate-900 leading-tight">{res.name}</h3>
+                        <p className="text-slate-400 font-bold text-sm flex items-center gap-1 mt-1">
+                          <MapPin size={14} className="text-brand" /> {res.area}, {res.city}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="p-3 bg-slate-50 rounded-xl">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cuisines</p>
+                            <p className="text-xs font-bold text-slate-700 truncate">{Array.isArray(res.cuisine) ? res.cuisine.join(', ') : (res.cuisine || 'N/A')}</p>
+                         </div>
+                         <div className="p-3 bg-slate-50 rounded-xl">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Contact</p>
+                            <p className="text-xs font-bold text-slate-700">{res.contactNumber || 'N/A'}</p>
+                         </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-4">
+                        <button 
+                          onClick={() => {
+                             if(confirm(`Approve ${res.name}?`)) {
+                               updateDoc(doc(db, 'restaurants', res.id!), { 
+                                 approved: true, 
+                                 status: 'Approved',
+                                 updatedAt: serverTimestamp() 
+                               });
+                             }
+                          }}
+                          className="flex-grow bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                        >
+                          <ShieldCheck size={20} />
+                          Approve Application
+                        </button>
+                        <button 
+                          onClick={() => {
+                             if(confirm(`Reject ${res.name}?`)) {
+                               updateDoc(doc(db, 'restaurants', res.id!), { 
+                                 approved: false, 
+                                 status: 'Rejected',
+                                 updatedAt: serverTimestamp() 
+                               });
+                             }
+                          }}
+                          className="px-6 py-4 bg-red-50 text-red-500 rounded-2xl font-black hover:bg-red-500 hover:text-white transition-all"
+                        >
+                          Reject
+                        </button>
+                        <button 
+                          onClick={() => setEditingRestaurant(res)}
+                          className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all"
+                        >
+                          <Edit2 size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {restaurants.filter(r => !r.approved && (r as any).status === 'Pending').length === 0 && (
+                  <div className="py-24 text-center bg-white/5 border border-white/5 rounded-[48px]">
+                     <ShieldCheck size={64} className="mx-auto text-white/5 mb-6" />
+                     <p className="text-slate-400 font-bold text-lg">No pending applications.</p>
+                     <p className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mt-2">The system is fully caught up.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'fleet' && (
             <motion.div
               key="fleet"
@@ -1337,7 +1717,7 @@ export default function AdminDashboardView() {
                              <div className="w-6 h-6 bg-slate-50 rounded-lg flex items-center justify-center text-brand">
                                 <UtensilsCrossed size={12} />
                              </div>
-                             <span>{res.cuisine}</span>
+                             <span>{Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine}</span>
                           </div>
 
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -1721,7 +2101,7 @@ export default function AdminDashboardView() {
                          {restaurants
                            .filter(r => (r.city || 'Unknown') === selectedCityForRestaurants)
                            .filter(r => (r.location || 'Unknown') === selectedAreaForRestaurants)
-                           .filter(r => restaurantMasterSearch ? (r.name.toLowerCase().includes(restaurantMasterSearch.toLowerCase()) || r.cuisine.toLowerCase().includes(restaurantMasterSearch.toLowerCase())) : true)
+                           .filter(r => restaurantMasterSearch ? (r.name.toLowerCase().includes(restaurantMasterSearch.toLowerCase()) || (Array.isArray(r.cuisine) ? r.cuisine.join(' ') : (r.cuisine || '')).toLowerCase().includes(restaurantMasterSearch.toLowerCase())) : true)
                            .map(res => (
                            <div key={res.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-all">
                              <div className="flex items-center gap-6">
@@ -1729,7 +2109,7 @@ export default function AdminDashboardView() {
                                 <div>
                                    <h3 className="font-display font-black text-slate-900 text-lg">{res.name}</h3>
                                    <div className="flex items-center gap-3 mt-2 text-xs font-bold">
-                                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{res.cuisine}</span>
+                                      <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine}</span>
                                       <span className="text-slate-400">{res.location}</span>
                                    </div>
                                 </div>
@@ -2291,88 +2671,162 @@ export default function AdminDashboardView() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setEditingRestaurant(null)}
-              className="absolute inset-0 bg-slate-900/90 backdrop-blur-md" 
+              className="absolute inset-0 bg-slate-950/95 backdrop-blur-md" 
             />
             <motion.div 
-              initial={{ scale: 0.98, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 20 }}
-              className="bg-white w-full h-full md:w-[98vw] md:h-[98vh] md:rounded-[32px] shadow-2xl relative z-10 overflow-hidden flex flex-col border border-white"
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="bg-white w-full h-full relative z-10 flex flex-col md:flex-row overflow-hidden"
             >
-              <div className="p-10 border-b border-slate-50 flex shrink-0 items-center justify-between bg-white relative">
-                 <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-slate-900 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-slate-900/20">
-                       <ChefHat size={32} />
+              {/* Sidebar Navigation - Desktop */}
+              <div className="hidden md:flex flex-col w-64 bg-slate-50 border-r border-slate-100 shrink-0">
+                <div className="p-6">
+                  <h2 className="text-lg font-display font-black text-slate-900 leading-tight">Master Config</h2>
+                  <p className="text-slate-400 font-black text-[9px] uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+                    {editingRestaurant.name}
+                  </p>
+                </div>
+
+                <div className="flex-grow flex flex-col px-3 gap-0.5">
+                  {[
+                    { id: 'general', label: 'Brand Identity', icon: Globe },
+                    { id: 'operational', label: 'Hours & Logistics', icon: Clock },
+                    { id: 'visuals', label: 'Gallery & Portfolio', icon: Image },
+                    { id: 'menu', label: 'Digital Menu', icon: Soup },
+                    { id: 'reservations', label: 'Booking Logic', icon: Calendar },
+                    { id: 'offers', label: 'Promotions', icon: Gift },
+                    { id: 'system', label: 'System Control', icon: Settings }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveEditTab(tab.id as any)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                        activeEditTab === tab.id 
+                          ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/50" 
+                          : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                      )}
+                    >
+                      <div className={cn("p-1.5 rounded-lg transition-colors", activeEditTab === tab.id ? "bg-brand text-white" : "bg-slate-100")}>
+                        <tab.icon size={14} />
+                      </div>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-6 border-t border-slate-100">
+                   <div className="p-3 bg-white rounded-xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">System ID</p>
+                      <p className="text-[9px] font-mono font-bold text-slate-400 truncate">{editingRestaurant.id}</p>
+                   </div>
+                </div>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="flex-grow flex flex-col min-w-0 bg-white">
+                {/* Mobile Header / Desktop Top Action Bar */}
+                <div className="px-6 py-2 md:px-8 md:py-3 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
+                  <div className="flex flex-col min-w-0 pr-4">
+                     <p className="text-sm font-display font-black text-slate-900 truncate max-w-[120px] md:max-w-md leading-tight">{editingRestaurant.name}</p>
+                     <p className="text-[10px] font-bold text-slate-400 truncate max-w-[120px] md:max-w-md leading-tight whitespace-nowrap">{editingRestaurant.address}</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                      <div className="flex items-center gap-1.5 px-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live</span>
+                        <button 
+                          type="button"
+                          onClick={() => setEditingRestaurant({...editingRestaurant, isOpen: !editingRestaurant.isOpen})}
+                          className={cn("w-8 h-4 rounded-full relative transition-colors", editingRestaurant.isOpen ? "bg-emerald-500" : "bg-slate-300")}
+                        >
+                          <div className={cn("absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all", editingRestaurant.isOpen ? "left-4.5" : "left-0.5")} />
+                        </button>
+                      </div>
+                      <div className="w-px h-4 bg-slate-200" />
+                      <div className="flex items-center gap-1.5 px-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Booking</span>
+                        <button 
+                          type="button"
+                          onClick={() => setEditingRestaurant({...editingRestaurant, isBookingEnabled: !editingRestaurant.isBookingEnabled})}
+                          className={cn("w-8 h-4 rounded-full relative transition-colors", editingRestaurant.isBookingEnabled ? "bg-emerald-500" : "bg-slate-300")}
+                        >
+                          <div className={cn("absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all", editingRestaurant.isBookingEnabled ? "left-4.5" : "left-0.5")} />
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                       <h2 className="text-3xl font-display font-black text-slate-900 leading-tight">Master Configuration</h2>
-                       <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-                          System ID: {editingRestaurant.id.substring(0, 8)} | {editingRestaurant.name}
-                       </p>
-                    </div>
-                 </div>
-                 <button 
-                   onClick={() => setEditingRestaurant(null)} 
-                   className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all font-black"
-                 >
-                   <X size={24} />
-                 </button>
-              </div>
+                  </div>
 
-              <div className="flex shrink-0 bg-slate-50 border-b border-slate-100 px-10 gap-8 overflow-x-auto no-scrollbar pt-2">
-                 {[
-                   { id: 'general', label: 'Brand', icon: Globe },
-                   { id: 'operational', label: 'Logistics', icon: Clock },
-                   { id: 'visuals', label: 'Portfolio', icon: Image },
-                   { id: 'menu', label: 'Menu', icon: Soup },
-                   { id: 'reservations', label: 'Reservations', icon: Calendar },
-                   { id: 'offers', label: 'Offers', icon: Gift },
-                   { id: 'system', label: 'Control', icon: Settings }
-                 ].map(tab => (
-                   <button
-                     key={tab.id}
-                     onClick={() => setActiveEditTab(tab.id as any)}
-                     className={cn(
-                        "py-6 px-2 text-[10px] font-black uppercase tracking-[0.2em] relative transition-all flex items-center gap-2 outline-none whitespace-nowrap",
-                        activeEditTab === tab.id ? "text-slate-900" : "text-slate-400 hover:text-slate-600"
-                     )}
-                   >
-                     <tab.icon size={14} />
-                     {tab.label}
-                     {activeEditTab === tab.id && (
-                       <motion.div layoutId="activeTabUnderline" className="absolute bottom-0 left-0 right-0 h-1 bg-brand rounded-t-full" />
-                     )}
-                   </button>
-                 ))}
-              </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setEditingRestaurant(null)} 
+                      className="w-9 h-9 md:w-10 md:h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-all border border-slate-100"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
 
-              <div className="flex-grow overflow-y-auto p-12 custom-scrollbar bg-white">
-                 <form id="master-edit-form" onSubmit={handleSaveRestaurant}>
-                    <AnimatePresence mode="wait">
-                       {renderEditTabs()}
-                    </AnimatePresence>
-                 </form>
-              </div>
+                {/* Mobile Tabs */}
+                <div className="md:hidden flex bg-white border-b border-slate-100 overflow-x-auto no-scrollbar scroll-smooth">
+                  {[
+                    { id: 'general', label: 'Brand', icon: Globe },
+                    { id: 'operational', label: 'Timing', icon: Clock },
+                    { id: 'visuals', label: 'Media', icon: Image },
+                    { id: 'menu', label: 'Menu', icon: Soup },
+                    { id: 'reservations', label: 'Booking', icon: Calendar },
+                    { id: 'offers', label: 'Offers', icon: Gift },
+                    { id: 'system', label: 'System', icon: Settings }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveEditTab(tab.id as any)}
+                      className={cn(
+                        "py-5 px-6 text-[10px] font-black uppercase tracking-widest relative transition-all whitespace-nowrap",
+                        activeEditTab === tab.id ? "text-brand" : "text-slate-400"
+                      )}
+                    >
+                      {tab.label}
+                      {activeEditTab === tab.id && (
+                        <div className="absolute bottom-0 left-4 right-4 h-1 bg-brand rounded-t-full" />
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="p-8 border-t border-slate-50 bg-slate-50/30 flex shrink-0 gap-4">
-                 <button 
-                   type="submit" 
-                   form="master-edit-form"
-                   disabled={isSavingRestaurant}
-                   className="flex-grow bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all text-base disabled:opacity-50 group overflow-hidden relative"
-                 >
-                   <div className="absolute inset-0 bg-brand translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out -z-10" />
-                   {isSavingRestaurant ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
-                   <span className="uppercase tracking-widest text-sm">Commit All Changes</span>
-                 </button>
-                 <button 
-                   type="button"
-                   onClick={() => setEditingRestaurant(null)}
-                   className="px-12 bg-white border border-slate-200 text-slate-500 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-slate-50 transition-all font-display"
-                 >
-                   Cancel
-                 </button>
+                <div className="flex-grow overflow-y-auto p-4 md:p-6 lg:p-8 bg-white">
+                  <div className="max-w-4xl mx-auto">
+                    <form id="master-edit-form" onSubmit={handleSaveRestaurant}>
+                      <AnimatePresence mode="wait">
+                        {renderEditTabs()}
+                      </AnimatePresence>
+                    </form>
+                  </div>
+                </div>
+
+                <div className="px-6 py-3 md:px-8 md:py-3 border-t border-slate-100 bg-white flex shrink-0">
+                  <div className="max-w-4xl mx-auto w-full flex items-center justify-end gap-3">
+                    <button 
+                      type="submit" 
+                      form="master-edit-form"
+                      disabled={isSavingRestaurant}
+                      className="w-28 md:w-32 bg-slate-900 text-white h-9 md:h-10 rounded-xl font-black shadow-lg flex items-center justify-center gap-2 hover:bg-brand active:scale-[0.98] transition-all text-[11px] disabled:opacity-50"
+                    >
+                      {isSavingRestaurant ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      <span className="uppercase tracking-widest">{isSavingRestaurant ? 'Saving...' : 'Save'}</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setEditingRestaurant(null)}
+                      className="px-4 bg-white text-slate-400 h-9 md:h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-100"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

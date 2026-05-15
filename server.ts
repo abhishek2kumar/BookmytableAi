@@ -35,6 +35,15 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Redirection middleware to force WWW on production domain
+  app.use((req, res, next) => {
+    const host = req.headers.host;
+    if (process.env.NODE_ENV === "production" && host === "bookmytable.co.in") {
+      return res.redirect(301, `https://www.bookmytable.co.in${req.url}`);
+    }
+    next();
+  });
+
   // API Route for Contact Form
   app.post('/api/contact', async (req, res) => {
     const { name, email, subject, message } = req.body;
@@ -99,13 +108,18 @@ async function startServer() {
           to: userEmail,
           subject: 'Reservation Confirmed: ' + restaurantName,
           html: `
-            <h1>Your Reservation is Confirmed!</h1>
-            <p>Hi ${userName},</p>
-            <p>Your table at <strong>${restaurantName}</strong> has been booked.</p>
-            <p><strong>Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
-            <p><strong>Guests:</strong> ${guests}</p>
-            <p><strong>Location:</strong> ${restaurantLocation}</p>
-            <p>We look forward to seeing you!</p>
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+              <h1 style="color: #6366f1;">Your Reservation is Confirmed!</h1>
+              <p>Hi ${userName},</p>
+              <p>Your table at <strong>${restaurantName}</strong> has been booked successfully.</p>
+              <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                <p><strong>📅 Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
+                <p><strong>👥 Guests:</strong> ${guests}</p>
+                <p><strong>📍 Location:</strong> ${restaurantLocation}</p>
+              </div>
+              <p>We look forward to seeing you!</p>
+              <p style="font-size: 12px; color: #64748b;">If you need to cancel, please contact the restaurant directly.</p>
+            </div>
           `
         });
 
@@ -114,15 +128,19 @@ async function startServer() {
           await resend.emails.send({
             from: 'BookMyTable <bookings@bookmytable.co.in>',
             to: ownerEmail,
-            subject: 'New Booking: ' + restaurantName,
+            subject: 'New Booking Alert: ' + restaurantName,
             html: `
-              <h1>New Reservation Received!</h1>
-              <p>You have a new booking at <strong>${restaurantName}</strong>.</p>
-              <p><strong>Customer:</strong> ${userName}</p>
-              <p><strong>Email:</strong> ${userEmail}</p>
-              <p><strong>Phone:</strong> ${userPhone}</p>
-              <p><strong>Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
-              <p><strong>Guests:</strong> ${guests}</p>
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+                <h1 style="color: #f43f5e;">New Reservation Received!</h1>
+                <p>You have a new booking at <strong>${restaurantName}</strong>.</p>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                  <p><strong>👤 Customer:</strong> ${userName}</p>
+                  <p><strong>📧 Email:</strong> ${userEmail}</p>
+                  <p><strong>📞 Phone:</strong> ${userPhone || 'Not provided'}</p>
+                  <p><strong>📅 Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
+                  <p><strong>👥 Guests:</strong> ${guests}</p>
+                </div>
+              </div>
             `
           });
         }
@@ -131,6 +149,21 @@ async function startServer() {
       }
     } else {
       console.log('NOTICE: RESEND_API_KEY missing. Email skipped but logged.');
+    }
+
+    // --- WHATSAPP via TextMeBot ---
+    const textMeBotKey = process.env.TEXTMEBOT_API_KEY;
+    if (textMeBotKey && userPhone) {
+      try {
+        const message = `*Booking Confirmed!*\n\nHi ${userName},\nYour table at *${restaurantName}* is confirmed.\n\nDate: ${new Date(dateTime).toLocaleDateString()}\nTime: ${new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nGuests: ${guests}\n\nSee you there!`;
+        const url = `https://api.textmebot.com/send.php?recipient=${userPhone.replace(/\+/g, '')}&apikey=${textMeBotKey}&text=${encodeURIComponent(message)}`;
+        await fetch(url);
+        console.log('WhatsApp confirmation sent via TextMeBot to:', userPhone);
+      } catch (whatsappErr) {
+        console.error('TextMeBot WhatsApp failed:', whatsappErr);
+      }
+    } else if (!textMeBotKey) {
+      console.log('NOTICE: TEXTMEBOT_API_KEY missing. WhatsApp skipped.');
     }
 
     res.json({ success: true });
@@ -193,6 +226,32 @@ async function startServer() {
     } catch (error: any) {
       console.error('Gemini Summary Error:', error);
       res.status(200).json({ summary: "AI Summary is currently unavailable. Please check the AI config or try again later." });
+    }
+  });
+
+  // API Route for Geocoding (Using Nominatim - Free OSM Service)
+  app.post('/api/system/geocode', async (req, res) => {
+    const { address, city } = req.body;
+
+    try {
+      const query = encodeURIComponent(`${address}, ${city}, India`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
+        headers: {
+          'User-Agent': 'BookMyTable-App/1.0 (rec.abhishek@gmail.com)'
+        }
+      });
+      const data: any = await response.json();
+
+      if (data && data.length > 0) {
+        return res.json({
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon)
+        });
+      }
+      res.status(200).json({ error: "Location not found" });
+    } catch (error: any) {
+      console.error('Geocode Error:', error);
+      res.status(200).json({ error: "Geocoding service unavailable" });
     }
   });
 

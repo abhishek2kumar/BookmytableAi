@@ -54,7 +54,9 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
         </div>
         
         <div className="flex justify-between items-center text-slate-500 font-bold text-xs">
-          <span className="uppercase tracking-widest opacity-60">{restaurant.cuisine}</span>
+          <span className="uppercase tracking-widest opacity-60">
+            {Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine}
+          </span>
           <span className="text-slate-800">₹{restaurant.avgPrice} for 2</span>
         </div>
 

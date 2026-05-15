@@ -38,13 +38,13 @@ export default function ContactView() {
   };
 
   return (
-    <div className="bg-vibrant-bg min-h-screen pt-24 pb-20">
+    <div className="bg-vibrant-bg min-h-screen pt-12 md:pt-24 pb-20">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-16">
+        <div className="text-center mb-10 md:mb-16">
           <motion.h3 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-6xl font-display font-black text-vibrant-dark mb-4"
+            className="text-4xl md:text-6xl font-display font-black text-vibrant-dark mb-4 mt-8 md:mt-0"
           >
             Get in Touch
           </motion.h3>
@@ -100,10 +100,7 @@ export default function ContactView() {
                  <h3 className="text-xl font-display font-bold mb-2">Partner with us</h3>
                  <p className="text-white/60 text-sm font-medium mb-6">Want to list your restaurant? Reach out to our sales team.</p>
                  <button onClick={() => {
-                   navigate('/');
-                   setTimeout(() => {
-                     document.getElementById('onboarding-request')?.scrollIntoView({ behavior: 'smooth' });
-                   }, 300);
+                   navigate('/onboarding-request');
                  }} className="bg-brand text-white px-6 py-3 rounded-xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-brand/20 active:scale-95 transition-all">
                     Register Your Restaurant
                  </button>

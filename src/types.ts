@@ -11,9 +11,13 @@ export interface UserProfile {
   createdAt: any;
 }
 
-export interface DailyTiming {
+export interface TimeRange {
   open: string;
   close: string;
+}
+
+export interface DailyTiming {
+  ranges: TimeRange[];
   closed: boolean;
 }
 
@@ -33,17 +37,24 @@ export interface Restaurant {
   id: string;
   name: string;
   description: string;
-  cuisine: string;
+  cuisine: string[];
   rating: number;
   avgPrice: number;
   image: string;
   location: string; // Area Name
   address?: string; // Full Address
   city: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  shopNo?: string;
+  floor?: string;
+  area: string;
+  landmark?: string;
   lat?: number;
   lng?: number;
   ownerId: string;
-  isOpen: boolean;
+  isOpen: boolean; // Live on Portal
   approved: boolean;
   openingHours?: {
     open: string;
@@ -67,8 +78,12 @@ export interface Restaurant {
   }[];
   menuImages?: string[];
   secondaryImages?: string[];
+  foodImages?: string[];
+  ambienceImages?: string[];
+  popularDishes?: string[];
   menuCategories?: MenuCategory[];
   contactNumber?: string;
+  contactEmail?: string;
   aiSummary?: string;
   aiSummaryUpdatedAt?: any;
   lastModifiedBy?: string;
