@@ -88,6 +88,7 @@ export interface Restaurant {
   aiSummaryUpdatedAt?: any;
   lastModifiedBy?: string;
   lastModifiedByType?: 'admin' | 'owner';
+  ownerEmail?: string;
   createdAt: any;
   updatedAt?: any;
 }

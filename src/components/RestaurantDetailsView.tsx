@@ -130,6 +130,27 @@ export default function RestaurantDetailsView() {
   const isDesktop = windowWidth >= 768;
   const photoLimit = isXXL ? 10 : (isDesktop ? 5 : 4);
 
+  // Memoize banner images to prevent unnecessary re-renders of the slider
+  const bannerImages = useMemo(() => {
+    if (!restaurant) return [];
+    const images = [restaurant.image, ...(restaurant.secondaryImages || [])].filter(Boolean);
+    return images.length > 0 ? images : [RESTAURANT_IMAGE_FALLBACK];
+  }, [restaurant]);
+
+  // Reset banner index when changing restaurants
+  useEffect(() => {
+    setBannerIndex(0);
+  }, [id]);
+
+  // Banner Auto-slide
+  useEffect(() => {
+    if (bannerImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setBannerIndex(prev => (prev + 1) % bannerImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [bannerImages.length]);
+
   // Enhanced Photo Gallery & Viewer State
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -563,16 +584,6 @@ export default function RestaurantDetailsView() {
     return { displayText: `Closed`, color: 'text-red-500', isClosed: true };
   };
 
-  const bannerImages = restaurant ? [restaurant.image, ...(restaurant.secondaryImages || [])] : [];
-
-  useEffect(() => {
-    if (bannerImages.length <= 1) return;
-    const interval = setInterval(() => {
-      setBannerIndex(prev => (prev + 1) % bannerImages.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [bannerImages.length]);
-
   const status = isCurrentlyOpen();
   const dates = useMemo(() => {
     const allDates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
@@ -748,7 +759,7 @@ export default function RestaurantDetailsView() {
       {/* Mobile Blur Extension - Only visible behind the cards! */}
       <div 
         className="md:hidden fixed inset-0 bg-cover bg-center z-[-1] pointer-events-none" 
-        style={{ backgroundImage: `url(${bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK})` }}
+        style={{ backgroundImage: `url(${bannerImages[bannerIndex % bannerImages.length] || RESTAURANT_IMAGE_FALLBACK})` }}
       >
          <div className="absolute inset-0 bg-slate-100/80 backdrop-blur-[30px]" />
          <div className="absolute inset-x-0 bottom-0 h-[60vh] bg-gradient-to-t from-slate-100 to-transparent" />
@@ -825,17 +836,17 @@ export default function RestaurantDetailsView() {
             {/* Banner Slider Section */}
             <div 
               className="w-full aspect-[4/3] md:h-[360px] lg:h-[420px] md:aspect-auto md:rounded-[32px] rounded-none overflow-hidden relative group cursor-zoom-in shrink-0 z-10 shadow-sm"
-              onClick={() => openPhotoViewer(bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK)}
+              onClick={() => openPhotoViewer(bannerImages[bannerIndex % bannerImages.length] || RESTAURANT_IMAGE_FALLBACK)}
             >
               <div className="relative w-full h-full bg-slate-100">
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="popLayout">
                   <motion.img 
                     key={bannerIndex}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    src={bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK} 
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                    src={bannerImages[bannerIndex % bannerImages.length] || RESTAURANT_IMAGE_FALLBACK} 
                     alt={restaurant.name}
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
@@ -845,7 +856,7 @@ export default function RestaurantDetailsView() {
                 
                 {bannerImages.length > 1 && (
                   <div className="absolute top-4 right-4 md:top-4 md:right-4 top-20 right-4 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-md text-white text-[10px] font-black z-10 border border-white/10">
-                    {bannerIndex + 1}/{bannerImages.length}
+                    {((bannerIndex % bannerImages.length) + 1)}/{bannerImages.length}
                   </div>
                 )}
               </div>
@@ -951,7 +962,7 @@ export default function RestaurantDetailsView() {
                      style={{ height: '1px', transform: 'scaleY(400)' }}
                   >
                      <img
-                       src={bannerImages[bannerIndex] || RESTAURANT_IMAGE_FALLBACK}
+                       src={bannerImages[bannerIndex % bannerImages.length] || RESTAURANT_IMAGE_FALLBACK}
                        alt=""
                        className="absolute left-0 w-full object-cover"
                        style={{ height: '75vw', top: 'calc(1px - 75vw)', pointerEvents: 'none' }}

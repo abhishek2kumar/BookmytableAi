@@ -261,22 +261,22 @@ async function startServer() {
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://bookmytable.co.in/</loc>
+    <loc>https://www.bookmytable.co.in/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://bookmytable.co.in/about</loc>
+    <loc>https://www.bookmytable.co.in/about</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://bookmytable.co.in/contact</loc>
+    <loc>https://www.bookmytable.co.in/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://bookmytable.co.in/onboarding-request</loc>
+    <loc>https://www.bookmytable.co.in/onboarding-request</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`;
@@ -289,7 +289,7 @@ async function startServer() {
           const citySlug = cityData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           sitemap += `
   <url>
-    <loc>https://bookmytable.co.in/city/${citySlug}</loc>
+    <loc>https://www.bookmytable.co.in/city/${citySlug}</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>`;
@@ -306,12 +306,12 @@ async function startServer() {
           const nameSlug = resData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           sitemap += `
   <url>
-    <loc>https://bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}</loc>
+    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}/book</loc>
+    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}/book</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>`;
