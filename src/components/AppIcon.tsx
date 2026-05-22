@@ -4,30 +4,23 @@ import { cn } from '../lib/utils';
 interface AppIconProps {
   className?: string;
   size?: number;
-  iconColor?: string;
-  bgColor?: string;
 }
 
-export default function AppIcon({ className, size = 120, iconColor = "#ffffff", bgColor = "#ff5200" }: AppIconProps) {
+export default function AppIcon({ className, size = 120 }: AppIconProps) {
   return (
-    <svg 
-      viewBox="0 0 120 120" 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size} 
-      height={size} 
-      className={cn("shrink-0", className)}
+    <div 
+      className={cn("shrink-0 relative flex items-center justify-center", className)}
+      style={{ 
+        width: size, 
+        height: size 
+      }}
     >
-      {/* Background */}
-      <rect width="120" height="120" rx="28" fill={bgColor}/>
-
-      {/* Table frame */}
-      <rect x="25" y="25" width="70" height="70" rx="10" fill={iconColor}/>
-
-      {/* Booking slot (center cut) */}
-      <rect x="45" y="45" width="30" height="30" rx="6" fill={bgColor}/>
-
-      {/* Subtle vertical line (represents reservation split / B style) */}
-      <rect x="58" y="25" width="4" height="70" fill={bgColor}/>
-    </svg>
+      <img 
+        src="/logo.png?v=1.2" 
+        alt="Bookmytable"
+        className="w-full h-full object-contain block"
+        referrerPolicy="no-referrer"
+      />
+    </div>
   );
 }

@@ -79,7 +79,7 @@ export default function AdminOnboardingView() {
       close: '11:00 PM',
       days: 'Mon-Sun'
     },
-    menu: [{ name: '', price: 0, description: '' }],
+    signatureDishes: [{ name: '', price: 0, description: '' }],
     menuCategories: [],
     facilities: [],
     secondaryImages: [], // General
@@ -985,9 +985,9 @@ export default function AdminOnboardingView() {
                       <button 
                         type="button"
                         onClick={() => {
-                          const next = [...(form.menu || [])];
+                          const next = [...(form.signatureDishes || [])];
                           next.push({ name: '', price: 0, description: '' });
-                          setForm({...form, menu: next});
+                          setForm({...form, signatureDishes: next});
                         }}
                         className="bg-slate-900 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all flex items-center gap-1"
                       >
@@ -995,7 +995,7 @@ export default function AdminOnboardingView() {
                       </button>
                     </div>
                     <div className="space-y-3">
-                       {form.menu?.map((dish, idx) => (
+                       {form.signatureDishes?.map((dish, idx) => (
                          <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                             <div className="flex-grow space-y-3">
                               <input 
@@ -1003,9 +1003,9 @@ export default function AdminOnboardingView() {
                                 className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
                                 value={dish.name}
                                 onChange={e => {
-                                  const next = [...(form.menu || [])];
+                                  const next = [...(form.signatureDishes || [])];
                                   next[idx].name = e.target.value;
-                                  setForm({...form, menu: next});
+                                  setForm({...form, signatureDishes: next});
                                 }}
                               />
                               <input 
@@ -1013,9 +1013,9 @@ export default function AdminOnboardingView() {
                                 className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-medium text-xs"
                                 value={dish.description}
                                 onChange={e => {
-                                  const next = [...(form.menu || [])];
+                                  const next = [...(form.signatureDishes || [])];
                                   next[idx].description = e.target.value;
-                                  setForm({...form, menu: next});
+                                  setForm({...form, signatureDishes: next});
                                 }}
                               />
                             </div>
@@ -1026,18 +1026,18 @@ export default function AdminOnboardingView() {
                                   className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
                                   value={dish.price || ''}
                                   onChange={e => {
-                                    const next = [...(form.menu || [])];
+                                    const next = [...(form.signatureDishes || [])];
                                     next[idx].price = parseInt(e.target.value) || 0;
-                                    setForm({...form, menu: next});
+                                    setForm({...form, signatureDishes: next});
                                   }}
                                />
-                               {form.menu!.length > 1 && (
+                               {form.signatureDishes!.length > 1 && (
                                  <button 
                                   type="button"
                                   onClick={() => {
-                                    const next = [...(form.menu || [])];
+                                    const next = [...(form.signatureDishes || [])];
                                     next.splice(idx, 1);
-                                    setForm({...form, menu: next});
+                                    setForm({...form, signatureDishes: next});
                                   }}
                                   className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all"
                                  >

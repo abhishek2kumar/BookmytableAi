@@ -49,7 +49,7 @@ service cloud.firestore {
         && (!('approved' in data) || data.approved is bool)
         && (!('facilities' in data) || data.facilities is list)
         && (!('offers' in data) || data.offers is list)
-        && (!('menu' in data) || data.menu is list)
+        && (!('signatureDishes' in data) || data.signatureDishes is list)
         && (!('menuImages' in data) || data.menuImages is list)
         && (!('secondaryImages' in data) || data.secondaryImages is list)
         && (!('openingHours' in data) || data.openingHours is map)
@@ -88,7 +88,7 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 'contactNumber',
             'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
-            'offers', 'menu', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt',
+            'offers', 'signatureDishes', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt',
             'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'instantBookingLimit', 
             'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories'
           ]) &&
@@ -169,6 +169,17 @@ service cloud.firestore {
         && (!('description' in data) || data.description is string);
     }
 
+    function isValidSettings(data) {
+      return (!('isComingSoon' in data) || data.isComingSoon is bool)
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidSubscription(data) {
+      return data.email is string && data.email.size() > 5 
+        && data.email.matches('^[^@]+@[^@]+\\.[^@]+$')
+        && data.createdAt is timestamp;
+    }
+
     match /cities/{cityId} {
       allow read: if true;
       allow write: if isAdmin() && isValidCity(incoming());
@@ -177,6 +188,16 @@ service cloud.firestore {
     match /cuisines/{cuisineId} {
       allow read: if true;
       allow write: if isAdmin() && isValidCuisine(incoming());
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(incoming());
+    }
+
+    match /subscriptions/{subscriptionId} {
+      allow create: if isValidId(subscriptionId) && isValidSubscription(incoming()) && incoming().createdAt == request.time;
+      allow read, update, delete: if isAdmin();
     }
   }
 }

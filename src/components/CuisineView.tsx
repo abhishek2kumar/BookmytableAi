@@ -173,7 +173,7 @@ export default function CuisineView() {
                         <div className="bg-brand/90 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-white/20 w-fit max-w-[90%]">
                           <Zap size={14} className="text-white fill-white" />
                           <span className="text-[10px] font-black text-white tracking-tight truncate leading-none">
-                            {restaurant.offers[0]}
+                            {restaurant.offers[0].title}
                           </span>
                         </div>
                       </div>

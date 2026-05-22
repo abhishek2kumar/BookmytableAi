@@ -33,9 +33,35 @@ export interface MenuCategory {
   images: string[];
 }
 
+export interface Offer {
+  id: string;
+  title: string;
+  description?: string;
+  terms?: string;
+  promoCode?: string;
+  validFrom?: string;
+  validUntil?: string;
+  image?: string;
+  isBreakfast?: boolean;
+  isLunch?: boolean;
+  isDinner?: boolean;
+}
+
+export interface Advertisement {
+  id: string;
+  title: string;
+  description?: string;
+  image?: string;
+  videoUrl?: string; // Youtube link
+  active: boolean;
+  validFrom?: string;
+  validUntil?: string;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
+  legalEntityName?: string;
   description: string;
   cuisine: string[];
   rating: number;
@@ -70,8 +96,9 @@ export interface Restaurant {
   slotCategories?: SlotCategory[];
   bookingSlots?: string[];
   facilities?: string[];
-  offers?: string[];
-  menu?: {
+  offers?: Offer[];
+  advertisements?: Advertisement[];
+  signatureDishes?: {
     name: string;
     price: number;
     description?: string;
@@ -82,8 +109,10 @@ export interface Restaurant {
   ambienceImages?: string[];
   popularDishes?: string[];
   menuCategories?: MenuCategory[];
+  gallery?: { [category: string]: string[] };
   contactNumber?: string;
   contactEmail?: string;
+  globalRank?: number;
   aiSummary?: string;
   aiSummaryUpdatedAt?: any;
   lastModifiedBy?: string;

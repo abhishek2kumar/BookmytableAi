@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, query, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, serverTimestamp, getDocs, doc, setDoc } from 'firebase/firestore';
 import { POPULAR_CITIES, KNOWN_CITIES } from '../constants/cities';
 import { CUISINE_DATA } from '../constants/cuisines';
 
@@ -25,8 +25,10 @@ interface Cuisine {
 interface MasterDataContextType {
   cities: City[];
   cuisines: Cuisine[];
+  isComingSoon: boolean;
   loading: boolean;
   seedData: () => Promise<void>;
+  updateComingSoon: (status: boolean) => Promise<void>;
 }
 
 const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ const MasterDataContext = createContext<MasterDataContextType | undefined>(undef
 export function MasterDataProvider({ children }: { children: React.ReactNode }) {
   const [cities, setCities] = useState<City[]>([]);
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
+  const [isComingSoon, setIsComingSoon] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,14 +57,28 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
     const unsubCuisines = onSnapshot(collection(db, 'cuisines'), (snapshot) => {
       const cuisineData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Cuisine[];
       setCuisines(cuisineData);
+    });
+
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'system'), (docSnap) => {
+      if (docSnap.exists()) {
+        setIsComingSoon(docSnap.data().isComingSoon || false);
+      }
       setLoading(false);
     });
 
     return () => {
       unsubCities();
       unsubCuisines();
+      unsubSettings();
     };
   }, []);
+
+  const updateComingSoon = async (status: boolean) => {
+    await setDoc(doc(db, 'settings', 'system'), {
+      isComingSoon: status,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  };
 
   const seedData = async () => {
     const citiesSnap = await getDocs(collection(db, 'cities'));
@@ -106,7 +123,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <MasterDataContext.Provider value={{ cities, cuisines, loading, seedData }}>
+    <MasterDataContext.Provider value={{ cities, cuisines, isComingSoon, loading, seedData, updateComingSoon }}>
       {children}
     </MasterDataContext.Provider>
   );

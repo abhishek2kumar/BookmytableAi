@@ -39,6 +39,14 @@ export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, c
   return `/restaurant/${citySlug}/${nameSlug}/${id}/book`;
 }
 
+export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, tab: string): string {
+  if (!restaurant || !restaurant.id) return '/';
+  
+  const citySlug = slugify(restaurant?.city || restaurant?.location || 'ind');
+  const nameSlug = slugify(restaurant?.name || 'restaurant');
+  return `/restaurant/${citySlug}/${nameSlug}/${restaurant.id}/${tab}`;
+}
+
 export function formatDate(date: any) {
   if (!date) return '';
   const d = date.toDate ? date.toDate() : new Date(date);
@@ -81,6 +89,136 @@ export function convertTo12Hour(time24h: string): string {
   const modifier = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
   return `${hours}:${minutes} ${modifier}`;
+}
+
+export function getRestaurantStatus(restaurant: any) {
+  const now = new Date();
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const currentDay = dayNames[now.getDay()];
+  
+  const getTimingsForDay = (day: string) => {
+    const daily = restaurant?.dailyTimings?.[day];
+    let openStr = restaurant?.openingHours?.open || '11:00 AM';
+    let closeStr = restaurant?.openingHours?.close || '11:00 PM';
+    let isClosed = false;
+
+    if (daily) {
+      if (daily.closed) isClosed = true;
+      else if (daily.ranges && daily.ranges.length > 0) {
+        openStr = daily.ranges[0].open;
+        closeStr = daily.ranges[0].close;
+      }
+    }
+    return { openStr, closeStr, isClosed };
+  };
+
+  const parseTime = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const parts = timeStr.trim().split(' ');
+    const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
+    const time = parts[0].replace(/AM|PM/i, '');
+    let [h, m] = time.split(':').map(Number);
+    if (!isNaN(h)) {
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+    }
+    return (h || 0) * 60 + (m || 0);
+  };
+
+  const currentTimings = getTimingsForDay(currentDay);
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  const yesterdayIndex = (now.getDay() + 6) % 7;
+  const yesterdayDay = dayNames[yesterdayIndex];
+  const yesterdayTimings = getTimingsForDay(yesterdayDay);
+
+  const checkIsOpen = () => {
+    // Check if it's currently open based on today's timings
+    if (!currentTimings.isClosed) {
+      const openMin = parseTime(currentTimings.openStr);
+      const closeMin = parseTime(currentTimings.closeStr);
+
+      if (closeMin > openMin) {
+        if (currentMin >= openMin && currentMin < closeMin) return { open: true, closeTime: currentTimings.closeStr };
+      } else {
+        // Overnight: open today from 'open' till EOD, and closes tomorrow morning
+        if (currentMin >= openMin) return { open: true, closeTime: currentTimings.closeStr };
+      }
+    }
+
+    // Check if it's still open from yesterday's overnight session
+    if (!yesterdayTimings.isClosed) {
+      const yOpenMin = parseTime(yesterdayTimings.openStr);
+      const yCloseMin = parseTime(yesterdayTimings.closeStr);
+
+      if (yCloseMin < yOpenMin) {
+        if (currentMin < yCloseMin) return { open: true, closeTime: yesterdayTimings.closeStr };
+      }
+    }
+
+    return { open: false };
+  };
+
+  const currentStatus = checkIsOpen();
+
+  if (currentStatus.open) {
+    const closeMin = parseTime(currentStatus.closeTime!);
+    if (closeMin - currentMin <= 60 && closeMin > currentMin) {
+      return { 
+        displayText: `Closing soon at ${currentStatus.closeTime}`,
+        color: 'text-amber-500',
+        isClosed: false,
+        isOpen: true
+      };
+    }
+    return { 
+      displayText: `Open till ${currentStatus.closeTime}`,
+      color: 'text-vibrant-success',
+      isClosed: false,
+      isOpen: true
+    };
+  }
+
+  const openMin = parseTime(currentTimings.openStr);
+  const closeMin = parseTime(currentTimings.closeStr);
+  let opensLaterToday = false;
+
+  if (!currentTimings.isClosed) {
+    if (closeMin > openMin) {
+      if (currentMin < openMin) opensLaterToday = true;
+    } else {
+      if (currentMin < openMin && currentMin >= closeMin) opensLaterToday = true;
+    }
+  }
+
+  if (opensLaterToday) {
+    return { 
+      displayText: `Closed, opens at ${currentTimings.openStr}`,
+      color: 'text-red-500',
+      isClosed: true,
+      isOpen: false
+    };
+  } else {
+    // Look for next opening
+    let nextDayIndex = (now.getDay() + 1) % 7;
+    let daysAhead = 1;
+    while (daysAhead <= 7) {
+      const nextDayName = dayNames[nextDayIndex];
+      const nextTimings = getTimingsForDay(nextDayName);
+      if (!nextTimings.isClosed) {
+         const label = daysAhead === 1 ? 'tomorrow' : nextDayName;
+         return { 
+           displayText: `Closed, opens at ${nextTimings.openStr} ${label}`,
+           color: 'text-red-500',
+           isClosed: true,
+           isOpen: false
+         };
+      }
+      nextDayIndex = (nextDayIndex + 1) % 7;
+      daysAhead++;
+    }
+  }
+  
+  return { displayText: `Closed`, color: 'text-red-500', isClosed: true, isOpen: false };
 }
 
 export const RESTAURANT_IMAGE_FALLBACK = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800";

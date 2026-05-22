@@ -82,6 +82,7 @@ export default function App() {
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
                   <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
                   <Route path="/contact" element={<ContactView />} />
+                  <Route path="/contact-us" element={<ContactView />} />
                   <Route path="/privacy" element={<PrivacyView />} />
                   <Route path="/terms" element={<TermsView />} />
                   <Route path="/onboarding-request" element={<OnboardingRequestView />} />

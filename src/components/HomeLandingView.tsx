@@ -209,8 +209,8 @@ export default function HomeLandingView() {
             
             <div className="max-w-4xl mx-auto w-full relative px-2 md:px-0">
               <div className="relative group w-full cursor-pointer" onClick={() => setIsSearchOverlayOpen(true)}>
-                <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={24} />
-                <div className="w-full pl-16 pr-4 py-4 md:py-6 bg-white border-2 border-transparent hover:border-brand/30 rounded-2xl md:rounded-[2rem] text-lg md:text-xl font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center">
+                <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={22} />
+                <div className="w-full pl-14 pr-4 py-3 md:py-4 bg-white border-2 border-transparent hover:border-brand/30 rounded-xl md:rounded-2xl text-base md:text-lg font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center h-14 md:h-16">
                   Search cities or restaurants...
                 </div>
               </div>
@@ -514,7 +514,7 @@ export default function HomeLandingView() {
                   <input 
                     autoFocus
                     type="text" 
-                    placeholder="Where would you like to eat?"
+                    placeholder="Where would you like to eat? Search by cuisine, restaurant or location"
                     className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-2.5 md:text-base text-sm font-bold focus:ring-0 outline-none h-11"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
@@ -524,7 +524,6 @@ export default function HomeLandingView() {
                       }
                     }}
                   />
-                  <div className="pl-12 text-[10px] text-slate-400 font-medium leading-none mt-1">Search by cuisine, restaurant or location</div>
                 </div>
                 {searchValue && (
                   <button 

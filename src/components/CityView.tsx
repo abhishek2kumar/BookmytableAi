@@ -224,7 +224,11 @@ export default function CityView() {
   const welcomeText = authLoading ? '' : user ? `Hi ${profile?.displayName?.split(' ')[0] || 'User'}, What's on your mind?` : `Hey ${cityName}, What's on your mind?`;
 
   return (
-    <div className="pb-20 bg-vibrant-bg min-h-screen">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="pb-20 bg-vibrant-bg min-h-screen"
+    >
       {portalTarget && createPortal(
          <div className="w-full flex justify-end md:block">
            <div className="hidden md:block relative w-full group">
@@ -251,9 +255,9 @@ export default function CityView() {
 
       {/* Categories & Cuisines */}
       <section className="relative bg-white pt-4 pb-8 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
           {/* Welcome Banner */}
-          <div className="relative mb-6 md:rounded-2xl overflow-hidden h-[120px] md:h-36 w-[calc(100%+48px)] -mx-6 md:w-full md:mx-0 flex items-center bg-slate-100">
+          <div className="relative mb-8 md:rounded-2xl overflow-hidden h-[130px] md:h-40 w-[calc(100%+48px)] md:w-[calc(100%+64px)] -mx-6 md:-mx-8 flex items-center bg-slate-100">
              {loading || authLoading ? (
                <div className="absolute inset-0 bg-slate-200 animate-pulse" />
              ) : (
@@ -837,6 +841,6 @@ export default function CityView() {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

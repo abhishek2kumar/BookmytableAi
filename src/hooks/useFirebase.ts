@@ -23,10 +23,14 @@ export function useRestaurants(onlyApproved = false) {
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Restaurant[];
+      const docs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          signatureDishes: data.signatureDishes || data.menu || []
+        } as Restaurant;
+      });
       setRestaurants(docs);
       setLoading(false);
     });
@@ -96,7 +100,14 @@ export function useFavoriteRestaurants(favoriteIds: string[] | undefined) {
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Restaurant))
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            signatureDishes: data.signatureDishes || data.menu || []
+          } as Restaurant;
+        })
         .filter(r => favoriteIds.includes(r.id));
         
       setFavorites(docs);

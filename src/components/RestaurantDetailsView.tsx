@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
@@ -7,10 +8,10 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useLocationContext } from './LocationContext';
 import { RestaurantCard } from './RestaurantCard';
 import { Restaurant, Booking, Review } from '../types';
-import { Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu } from 'lucide-react';
+import { Search, Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu, Megaphone, Play, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { format, addDays, startOfToday } from 'date-fns';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl } from '../lib/utils';
+import { format, addDays, startOfToday, parseISO } from 'date-fns';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl, getRestaurantStatus, getRestaurantTabUrl } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
@@ -47,6 +48,53 @@ export default function RestaurantDetailsView() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarking, setIsBookmarking] = useState(false);
   
+  // Search Overlay
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<any[]>([]);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    const findAndSetPortal = () => {
+      const el = document.getElementById('navbar-search-portal');
+      if (el) {
+        setPortalTarget(el);
+      } else {
+        timer = setTimeout(findAndSetPortal, 100);
+      }
+    };
+    findAndSetPortal();
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('bookmytable_recent_searches');
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
+    } catch (e) {}
+  }, []);
+
+  const saveRecentSearch = (item: any) => {
+    try {
+      const updated = [item, ...recentSearches.filter((s: any) => s.id !== item.id)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem('bookmytable_recent_searches', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery || !allRestaurants) return [];
+    const q = searchQuery.toLowerCase();
+    return allRestaurants.filter(res => {
+      return res.name.toLowerCase().includes(q) || 
+        (Array.isArray(res.cuisine) ? res.cuisine.join(' ') : (res.cuisine || '')).toLowerCase().includes(q) ||
+        res.location.toLowerCase().includes(q);
+    }).slice(0, 8);
+  }, [searchQuery, allRestaurants]);
+
   // Load bookmark status
   useEffect(() => {
     if (user && profile && id) {
@@ -241,6 +289,19 @@ export default function RestaurantDetailsView() {
     return () => clearInterval(interval);
   }, [reviews.length]);
 
+  const formatAddress = (rest: Restaurant) => {
+    const parts = [];
+    if (rest.floor) parts.push(rest.floor);
+    if (rest.shopNo) parts.push(rest.shopNo);
+    if (rest.area) parts.push(rest.area);
+    else if (rest.location) parts.push(rest.location);
+    if (rest.landmark) parts.push(rest.landmark);
+    if (rest.city) parts.push(rest.city);
+    
+    if (parts.length > 0) return parts.join(', ');
+    return rest.address || rest.location || '';
+  };
+
   const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
     if (ref.current) {
       const scrollAmount = direction === 'left' ? -400 : 400;
@@ -263,7 +324,12 @@ export default function RestaurantDetailsView() {
         const docRef = doc(db, 'restaurants', id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const fetchedRestaurant = { id: docSnap.id, ...docSnap.data() } as Restaurant;
+          const data = docSnap.data();
+          const fetchedRestaurant = { 
+            id: docSnap.id, 
+            ...data,
+            signatureDishes: data.signatureDishes || data.menu || [] 
+          } as Restaurant;
           setRestaurant(fetchedRestaurant);
           
           // Auto-redirect to SEO friendly URL if necessary
@@ -332,7 +398,7 @@ export default function RestaurantDetailsView() {
     
     setIsAiLoading(true);
     try {
-      const summary = await summarizeGoogleReviews(restaurant.name, restaurant.address || restaurant.location);
+      const summary = await summarizeGoogleReviews(restaurant.name, formatAddress(restaurant));
       setAiSummary(summary);
       
       // Save to Firestore for caching
@@ -423,7 +489,7 @@ export default function RestaurantDetailsView() {
             userEmail: user.email,
             userName: profile?.displayName || user.displayName || 'Guest',
             restaurantName: restaurant.name,
-            restaurantLocation: restaurant.address || restaurant.location,
+            restaurantLocation: formatAddress(restaurant),
             ownerEmail: restaurantOwnerEmail,
             dateTime: bookingDateTime.toISOString(),
             guests,
@@ -444,147 +510,8 @@ export default function RestaurantDetailsView() {
     }
   };
 
-  const facilityIcons: Record<string, any> = {
-    'WiFi': Wifi,
-    'Parking': Car,
-    'AC': Wind,
-    'Outdoor Seating': MapPin,
-    'Live Music': Music,
-    'Bar': Wine,
-    'Valet': UserCheck,
-    'Family Friendly': Baby,
-    'Kids Play Area': Gamepad2,
-    'TV': Tv,
-  };
 
-  const isCurrentlyOpen = () => {
-    const now = new Date();
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const currentDay = dayNames[now.getDay()];
-    
-    const getTimingsForDay = (day: string) => {
-      const daily = restaurant?.dailyTimings?.[day];
-      let openStr = restaurant?.openingHours?.open || '11:00 AM';
-      let closeStr = restaurant?.openingHours?.close || '11:00 PM';
-      let isClosed = false;
-
-      if (daily) {
-        if (daily.closed) isClosed = true;
-        else if (daily.ranges && daily.ranges.length > 0) {
-          openStr = daily.ranges[0].open;
-          closeStr = daily.ranges[0].close;
-        }
-      }
-      return { openStr, closeStr, isClosed };
-    };
-
-    const currentTimings = getTimingsForDay(currentDay);
-
-    const parseTime = (timeStr: string) => {
-      if (!timeStr) return 0;
-      const parts = timeStr.trim().split(' ');
-      const period = parts.length > 1 ? parts[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
-      const time = parts[0].replace(/AM|PM/i, '');
-      let [h, m] = time.split(':').map(Number);
-      if (period === 'PM' && h !== 12) h += 12;
-      if (period === 'AM' && h === 12) h = 0;
-      return h * 60 + (m || 0);
-    };
-
-    const currentMin = now.getHours() * 60 + now.getMinutes();
-    const yesterdayIndex = (now.getDay() + 6) % 7;
-    const yesterdayDay = dayNames[yesterdayIndex];
-    const yesterdayTimings = getTimingsForDay(yesterdayDay);
-
-    const checkIsOpen = () => {
-      // Check if it's currently open based on today's timings
-      if (!currentTimings.isClosed) {
-        const openMin = parseTime(currentTimings.openStr);
-        const closeMin = parseTime(currentTimings.closeStr);
-
-        if (closeMin > openMin) {
-          if (currentMin >= openMin && currentMin < closeMin) return { open: true, closeTime: currentTimings.closeStr };
-        } else {
-          // Overnight: open today from 'open' till EOD, and closes tomorrow morning
-          if (currentMin >= openMin) return { open: true, closeTime: currentTimings.closeStr };
-        }
-      }
-
-      // Check if it's still open from yesterday's overnight session
-      if (!yesterdayTimings.isClosed) {
-        const yOpenMin = parseTime(yesterdayTimings.openStr);
-        const yCloseMin = parseTime(yesterdayTimings.closeStr);
-
-        if (yCloseMin < yOpenMin) {
-          if (currentMin < yCloseMin) return { open: true, closeTime: yesterdayTimings.closeStr };
-        }
-      }
-
-      return { open: false };
-    };
-
-    const currentStatus = checkIsOpen();
-
-    if (currentStatus.open) {
-      const closeMin = parseTime(currentStatus.closeTime!);
-      if (closeMin - currentMin <= 60 && closeMin > currentMin) {
-        return { 
-          displayText: `Closing soon at ${currentStatus.closeTime}`,
-          color: 'text-amber-500',
-          isClosed: false
-        };
-      }
-      return { 
-        displayText: `Open till ${currentStatus.closeTime}`,
-        color: 'text-vibrant-success',
-        isClosed: false
-      };
-    }
-
-    const openMin = parseTime(currentTimings.openStr);
-    const closeMin = parseTime(currentTimings.closeStr);
-    let opensLaterToday = false;
-
-    if (!currentTimings.isClosed) {
-      if (closeMin > openMin) {
-        // normal shift
-        if (currentMin < openMin) opensLaterToday = true;
-      } else {
-        // overnight shift
-        if (currentMin < openMin && currentMin >= closeMin) opensLaterToday = true;
-      }
-    }
-
-    if (opensLaterToday) {
-      return { 
-        displayText: `Closed, opens at ${currentTimings.openStr}`,
-        color: 'text-red-500',
-        isClosed: true
-      };
-    } else {
-      // Look for next opening
-      let nextDayIndex = (now.getDay() + 1) % 7;
-      let daysAhead = 1;
-      while (daysAhead <= 7) {
-        const nextDayName = dayNames[nextDayIndex];
-        const nextTimings = getTimingsForDay(nextDayName);
-        if (!nextTimings.isClosed) {
-           const label = daysAhead === 1 ? 'tomorrow' : nextDayName;
-           return { 
-             displayText: `Closed, opens at ${nextTimings.openStr} ${label}`,
-             color: 'text-red-500',
-             isClosed: true
-           };
-        }
-        nextDayIndex = (nextDayIndex + 1) % 7;
-        daysAhead++;
-      }
-    }
-    
-    return { displayText: `Closed`, color: 'text-red-500', isClosed: true };
-  };
-
-  const status = isCurrentlyOpen();
+  const status = useMemo(() => getRestaurantStatus(restaurant), [restaurant]);
   const dates = useMemo(() => {
     const allDates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), i));
     if (!restaurant?.blackoutDates || restaurant.blackoutDates.length === 0) return allDates;
@@ -681,6 +608,31 @@ export default function RestaurantDetailsView() {
     return slotData.slots || [];
   }, [slotData]);
 
+  const activeOffers = useMemo(() => {
+    if (!restaurant?.offers) return [];
+    
+    // Use string comparison for YYYY-MM-DD dates to avoid timezone issues
+    const todayStr = format(startOfToday(), 'yyyy-MM-dd');
+    
+    return restaurant.offers.filter(offer => {
+      if (!offer.validFrom && !offer.validUntil) return true;
+      
+      try {
+        const fromStr = offer.validFrom ? offer.validFrom.split('T')[0] : null;
+        const untilStr = offer.validUntil ? offer.validUntil.split('T')[0] : null;
+        
+        if (fromStr && untilStr) {
+          return todayStr >= fromStr && todayStr <= untilStr;
+        }
+        if (fromStr) return todayStr >= fromStr;
+        if (untilStr) return todayStr <= untilStr;
+      } catch (e) {
+        return true;
+      }
+      return true;
+    });
+  }, [restaurant?.offers]);
+
   useEffect(() => {
     if (slotData.categorized && slotData.categories && slotData.categories.length > 0) {
       if (!activeTimeCategory || !slotData.categories.find(c => c.id === activeTimeCategory)) {
@@ -748,7 +700,11 @@ export default function RestaurantDetailsView() {
   );
 
   return (
-    <div className="bg-white min-h-screen pb-20 overflow-x-hidden relative">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="bg-white min-h-screen pb-20 overflow-x-hidden relative"
+    >
       <Helmet>
         <title>{restaurant.name} | Bookmytable</title>
         <meta name="description" content={`Book a table at ${restaurant.name}. ${Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine} Cuisine in ${restaurant.location}.`} />
@@ -756,6 +712,31 @@ export default function RestaurantDetailsView() {
         <meta property="og:description" content={`Book a table at ${restaurant.name}. ${Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine} Cuisine in ${restaurant.location}.`} />
         <meta property="og:image" content={bannerImages[0] || RESTAURANT_IMAGE_FALLBACK} />
       </Helmet>
+
+      {portalTarget && createPortal(
+         <div className="w-full flex justify-end md:block">
+           <div className="hidden md:block relative w-full group">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={18} />
+             <input 
+               type="text" 
+               readOnly
+               onClick={() => setIsSearchOverlayOpen(true)}
+               placeholder="Search for restaurant"
+               className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-transparent hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+               value={searchQuery}
+             />
+           </div>
+           
+           <button 
+             className="md:hidden p-2 text-vibrant-gray hover:text-brand transition-colors"
+             onClick={() => setIsSearchOverlayOpen(true)}
+           >
+             <Search size={22} className="stroke-[2.5]" />
+           </button>
+         </div>,
+         portalTarget
+      )}
+
       {/* Mobile Blur Extension - Only visible behind the cards! */}
       <div 
         className="md:hidden fixed inset-0 bg-cover bg-center z-[-1] pointer-events-none" 
@@ -884,8 +865,7 @@ export default function RestaurantDetailsView() {
 
                 <div className="space-y-1.5 pt-1">
                   <div className="flex gap-2 text-sm items-baseline">
-                    <span className="text-slate-500 font-bold shrink-0">Location</span>
-                    <span className="text-slate-800 font-medium line-clamp-2 leading-snug">{restaurant.address || restaurant.location}</span>
+                    <span className="text-slate-800 font-medium line-clamp-2 leading-snug">{formatAddress(restaurant)}</span>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
@@ -904,18 +884,20 @@ export default function RestaurantDetailsView() {
 
                 {/* Horizontal Action Bar */}
                 <div className="flex items-center flex-wrap gap-2 pt-4 border-t border-slate-100 w-full mt-auto">
-                  <button 
-                    onClick={() => {
-                      if (restaurant.isBookingEnabled) {
-                        navigate(getRestaurantBookUrl(restaurant));
-                      }
-                    }}
-                    disabled={!restaurant.isBookingEnabled}
-                    className="flex items-center gap-2 text-brand bg-brand/5 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm"
-                  >
-                    <CalendarIcon size={16} />
-                    Book Table
-                  </button>
+                  {user && (
+                    <button 
+                      onClick={() => {
+                        if (restaurant.isBookingEnabled) {
+                          navigate(getRestaurantBookUrl(restaurant));
+                        }
+                      }}
+                      disabled={!restaurant.isBookingEnabled}
+                      className="flex items-center gap-2 text-brand bg-brand/5 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm"
+                    >
+                      <CalendarIcon size={16} />
+                      Book Table
+                    </button>
+                  )}
                   
                   <a 
                     href="tel:+919876543210" 
@@ -927,7 +909,7 @@ export default function RestaurantDetailsView() {
                   
                   <div className="ml-auto flex items-center gap-2">
                     <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.address || restaurant.location}`)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center text-brand bg-brand/5 hover:bg-brand/10 font-bold w-[38px] h-[38px] rounded-xl transition-colors shrink-0"
@@ -1013,7 +995,7 @@ export default function RestaurantDetailsView() {
                        
                        <div className="flex gap-2 ml-auto">
                           <a 
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${restaurant.address || restaurant.location}`)}`}
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
                             className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100" target="_blank" rel="noopener noreferrer"
                           >
                             <Compass size={18} />
@@ -1028,17 +1010,20 @@ export default function RestaurantDetailsView() {
             </div>
 
             {/* Mobile Offers Card - Outside the banner image wrapper */}
-            {restaurant.offers && restaurant.offers.length > 0 && (
+            {activeOffers.length > 0 && (
               <div className="md:hidden mx-4 mt-2 relative z-10 bg-white/80 backdrop-blur-xl rounded-[24px] p-4 border border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center gap-1.5 mb-2 text-[#0b8a4a]">
                   <Gift size={16} />
                   <span className="text-[11px] font-black uppercase tracking-widest text-[#0b8a4a]">Exclusive Offers</span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {restaurant.offers.map((offer, i) => (
+                  {activeOffers.map((offer, i) => (
                     <div key={i} className="flex items-start gap-2.5 bg-gradient-to-r from-emerald-50/80 to-white/80 p-3 rounded-xl border border-emerald-100">
                       <Zap className="text-[#0b8a4a] shrink-0 mt-0.5" size={14} />
-                      <p className="text-[12px] font-bold text-slate-800 leading-tight">{offer}</p>
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-[12px] font-bold text-slate-800 leading-tight">{offer.title}</p>
+                        {offer.description && <p className="text-[10px] text-slate-500 font-medium leading-tight">{offer.description}</p>}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1051,11 +1036,33 @@ export default function RestaurantDetailsView() {
       {/* Content Navigation Tabs (Desktop) */}
       <div className="hidden md:flex sticky top-0 bg-white/95 backdrop-blur-md z-40 border-b border-slate-300 mt-8 px-4 md:px-12 lg:px-16 w-full transition-all">
         <div className="max-w-6xl mx-auto w-full flex gap-8">
-           <a href="#offers" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#offers' || (!location.hash && restaurant.offers?.length) ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Offers</a>
-           <a href="#menu" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#menu' || (!location.hash && !restaurant.offers?.length) ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Menu</a>
-           <a href="#photos" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#photos' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Photos</a>
-           <a href="#overview" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#overview' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Story</a>
-           <a href="#reviews" className={cn("py-4 text-base font-bold border-b-[3px] transition-colors", location.hash === '#reviews' ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-900")}>Reviews</a>
+          {[
+            { id: 'offers', label: 'Offers', show: activeOffers.length > 0 },
+            { id: 'menu', label: 'Menu', show: true },
+            { id: 'photos', label: 'Photos', show: (restaurant.secondaryImages?.length || restaurant.foodImages?.length || restaurant.ambienceImages?.length) },
+            { id: 'overview', label: 'Story', show: true },
+            { id: 'reviews', label: 'Reviews', show: true }
+          ].filter(tab => tab.show).map((t) => {
+            const isActive = tab === t.id || (!tab && !location.hash && t.id === (activeOffers.length ? 'offers' : 'menu'));
+            return (
+              <Link 
+                key={t.id}
+                to={getRestaurantTabUrl(restaurant, t.id)}
+                className={cn(
+                  "relative py-4 text-base font-bold transition-colors", 
+                  isActive ? "text-brand" : "text-slate-500 hover:text-slate-900"
+                )}
+              >
+                {t.label}
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand"
+                  />
+                )}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
@@ -1064,18 +1071,54 @@ export default function RestaurantDetailsView() {
         <div className="space-y-12 md:space-y-16">
           
           {/* Offers Section */}
-          {restaurant.offers && restaurant.offers.length > 0 && (
+          {activeOffers.length > 0 && (
             <div id="offers" className="scroll-mt-24">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Offers</h2>
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-                {restaurant.offers.map((offer, i) => (
-                  <div key={i} className="shrink-0 w-[280px] bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl flex items-start gap-4 transition-all hover:bg-emerald-50">
-                    <div className="bg-white p-2 rounded-full shadow-sm text-emerald-600 shrink-0">
-                      <Zap size={16} />
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black text-slate-900">Offers</h2>
+                <div className="hidden md:flex gap-3">
+                   <div className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                     <ArrowLeft size={20} strokeWidth={2} />
+                   </div>
+                   <div className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                     <ArrowRight size={20} strokeWidth={2} />
+                   </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 md:gap-5 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+                {activeOffers.map((offer, i) => (
+                  <div key={i} className="shrink-0 w-[260px] md:w-[280px] bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
+                    <div className="p-5 bg-white pb-6">
+                      <h4 className="font-black text-slate-900 leading-tight text-[20px] md:text-[22px] tracking-tight mb-1">
+                        {offer.title}
+                      </h4>
+                      <div className="text-[13px] text-slate-400 font-medium tracking-tight">
+                        {offer.description || 'on total bill'}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm leading-snug mb-1">{offer}</h4>
-                      <p className="text-xs text-slate-500 font-medium">Auto-applied upon booking</p>
+                    
+                    <div className="relative border-t border-dashed border-slate-200 bg-red-50/40 p-5 flex-grow overflow-hidden">
+                      <div className="absolute right-0 bottom-0 opacity-[0.03] translate-x-1/4 translate-y-1/4 pointer-events-none">
+                        <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-red-900">
+                          <path d="M21.5 2v6h-6M2.13 15.57a9 9 0 1 0 3.87-11.45V2"></path>
+                        </svg>
+                      </div>
+                      
+                      <div className="relative z-10 flex flex-col gap-1.5 w-full">
+                        <div className="flex items-center gap-2">
+
+                          {offer.promoCode && (
+                            <span className="bg-[#f05a41] text-white text-[9px] font-black px-1.5 py-0.5 rounded-[4px] uppercase tracking-wider">
+                              EXCLUSIVE
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[13px] text-slate-500 font-medium leading-snug">
+                          {offer.terms || (offer.promoCode 
+                            ? 'Limited slots, buy offer and book your table' 
+                            : 'Pay restaurant bill to avail the offer')}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1083,15 +1126,58 @@ export default function RestaurantDetailsView() {
             </div>
           )}
 
-
+          {/* Advertisements / Featured Promos */}
+          {restaurant.advertisements && restaurant.advertisements.filter(ad => ad.active).length > 0 && (
+            <div className="scroll-mt-24 pt-8 border-t border-slate-200">
+               <div className="flex items-center gap-3 mb-6">
+                 <Megaphone size={20} className="text-brand" />
+                 <h2 className="text-2xl font-bold text-slate-900">Featured Spotlights</h2>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {restaurant.advertisements.filter(ad => ad.active).map((ad) => (
+                   <div key={ad.id} className="relative aspect-video rounded-[32px] overflow-hidden group shadow-2xl">
+                     <img src={ad.image || RESTAURANT_IMAGE_FALLBACK} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent p-8 flex flex-col justify-end text-white">
+                        <div className="space-y-2">
+                           <h3 className="text-xl font-black tracking-tight">{ad.title}</h3>
+                           <p className="text-sm text-white/70 font-medium line-clamp-2 max-w-sm">{ad.description}</p>
+                           {ad.videoUrl && (
+                             <a 
+                               href={ad.videoUrl} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-white rounded-xl text-[10px] font-black uppercase tracking-widest mt-4 hover:shadow-lg hover:shadow-brand/20 transition-all active:scale-95"
+                             >
+                               <Play size={14} fill="currentColor" /> Watch Video
+                             </a>
+                           )}
+                        </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
 
           {/* Menu Section */}
-          <div id="menu" className={cn("scroll-mt-24", restaurant.offers && restaurant.offers.length > 0 ? "pt-8 border-t border-slate-300" : "")}>
-            {restaurant.menu && restaurant.menu.length > 0 && (
+          <div id="menu" className={cn("scroll-mt-24", (activeOffers.length || restaurant.advertisements?.length) ? "pt-8 border-t border-slate-300" : "")}>
+            {((restaurant.popularDishes && restaurant.popularDishes.length > 0) || (restaurant.signatureDishes && restaurant.signatureDishes.length > 0)) && (
               <div className="mb-8">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Popular Dishes</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-4">Signature Dishes & Bestsellers</h3>
+                
+                {/* Real Popular Dishes from field */}
+                {restaurant.popularDishes && restaurant.popularDishes.length > 0 && (
+                  <div className="flex flex-wrap mb-8">
+                    {restaurant.popularDishes.map((dish, i) => (
+                      <span key={i} className="text-sm font-medium text-slate-700 mr-1">
+                        {dish}{i < restaurant.popularDishes!.length - 1 ? ',' : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  {restaurant.menu.map((item, i) => (
+                  {restaurant.signatureDishes?.map((item, i) => (
                     <div key={i} className="flex justify-between items-start group">
                       <div className="pr-4">
                         <h4 className="font-bold text-slate-900 text-sm group-hover:text-brand transition-colors">{item.name}</h4>
@@ -1335,15 +1421,15 @@ export default function RestaurantDetailsView() {
             <div className="mb-8">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Facilities</h3>
               {restaurant.facilities && restaurant.facilities.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                  {restaurant.facilities.map((fac, i) => {
-                    return (
-                      <div key={i} className="flex items-center gap-2 group">
-                        <Check size={16} className="text-[#0b8a4a]" />
-                        <span className="text-sm font-bold text-slate-700">{fac}</span>
-                      </div>
-                    );
-                  })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {restaurant.facilities.map((fac, i) => (
+                    <div 
+                      key={i} 
+                      className="flex items-center group transition-all"
+                    >
+                      <span className="text-sm font-medium text-slate-700">{fac}</span>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-slate-500 text-sm font-medium italic">Standard amenities provided.</p>
@@ -1357,40 +1443,52 @@ export default function RestaurantDetailsView() {
 
             <div className="bg-slate-50/50 rounded-3xl p-6 md:p-8 space-y-8">
               {/* AI Summary and Leave Review Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 
                 {/* AI Summary */}
-                <div className="bg-gradient-to-br from-indigo-500 to-brand p-6 rounded-2xl text-white shadow-sm relative overflow-hidden flex flex-col justify-center min-h-[120px]">
-                   <div className="absolute top-0 right-0 p-6 opacity-10">
-                     <Sparkles size={80} />
-                   </div>
+                <div className="bg-[#0f172a] p-6 md:p-8 rounded-[28px] text-white shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[180px] border border-white/10 group">
+                   {/* Animated Background Accents */}
+                   <div className="absolute top-0 right-0 w-96 h-96 bg-brand/10 blur-[100px] rounded-full -mr-20 -mt-20 group-hover:bg-brand/20 transition-colors duration-700 pointer-events-none" />
+                   <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full -ml-20 -mb-20 pointer-events-none" />
+                   
                    <div className="relative z-10">
-                     <div className="flex items-center gap-2 mb-4">
-                       <div className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center">
-                         <Sparkles size={16} className="text-white" />
+                     <div className="flex items-center justify-between mb-6">
+                       <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 bg-gradient-to-tr from-brand to-rose-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand/20 ring-1 ring-white/20">
+                           <Sparkles size={24} className="text-white fill-white/20" />
+                         </div>
+                         <div>
+                           <h3 className="text-xl font-black text-white tracking-tight leading-none">AI Dining Insight</h3>
+                           <p className="text-[10px] md:text-xs font-bold text-white/50 uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5">
+                             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                             Verified Analysis
+                           </p>
+                         </div>
                        </div>
-                       <h3 className="text-xl font-bold text-white/90">AI Summary from Google Review</h3>
+                       <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10">
+                          <span className="text-[10px] md:text-xs font-black text-white/70">BETA</span>
+                       </div>
                      </div>
                      
                      {isAiLoading ? (
-                       <div className="flex items-center gap-3">
-                         <Loader2 size={16} className="animate-spin text-white/80" />
-                         <p className="text-xs font-medium animate-pulse text-white/80">Summarizing...</p>
+                       <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl">
+                         <Loader2 size={18} className="animate-spin text-white/80" />
+                         <p className="text-sm font-medium animate-pulse text-white/80">Processing culinary insights and guest experiences...</p>
                        </div>
                      ) : aiSummary ? (
-                       <div className="prose prose-invert max-w-none text-white/95 font-medium text-xs md:text-sm leading-relaxed text-opacity-90 line-clamp-6 text-justify">
+                       <div className="prose prose-invert max-w-none text-white/90 font-medium text-sm md:text-base leading-relaxed text-opacity-90 max-w-4xl">
                           <ReactMarkdown>{aiSummary}</ReactMarkdown>
                        </div>
                      ) : (
-                       <div className="flex flex-col items-start mt-2">
-                         <p className="text-xs font-medium text-white/80 mb-4">
-                           Get an AI-generated summary of recent public reviews.
+                       <div className="flex flex-col items-start mt-4 bg-white/5 p-5 md:p-6 rounded-2xl border border-white/5 backdrop-blur-sm">
+                         <p className="text-sm md:text-base font-medium text-white/80 mb-5 leading-relaxed max-w-2xl">
+                           Discover what guests love most. Generate an AI-powered summary of thousands of customer reviews to reveal top dishes, ambiance, and service highlights in seconds.
                          </p>
                          <button 
                            onClick={handleGenerateSummary}
-                           className="bg-white text-brand px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white/90 active:scale-95 transition-all shadow-sm"
+                           className="bg-white text-brand px-6 py-3 rounded-xl text-sm font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white/90 active:scale-95 transition-all shadow-xl hover:shadow-white/20"
                          >
-                           <Sparkles size={14} /> Generate
+                           <Sparkles size={16} className="fill-brand/20" /> Generate Culinary Insight
                          </button>
                        </div>
                      )}
@@ -1398,7 +1496,7 @@ export default function RestaurantDetailsView() {
                 </div>
 
                 {/* Leave Review */}
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
                   <h3 className="text-xl font-bold text-slate-900 mb-4 block">Rate your experience</h3>
                   
                   <div className="flex gap-2 mb-4">
@@ -1682,27 +1780,177 @@ export default function RestaurantDetailsView() {
                   <span className="text-base font-black text-slate-900 tracking-tighter">₹{restaurant.avgPrice} <span className="text-[10px] font-bold text-slate-400">/ 2</span></span>
                </div>
                
-               <button 
-                onClick={() => {
-                  if (restaurant.isBookingEnabled !== false) {
-                    navigate(getRestaurantBookUrl(restaurant));
-                  }
-                }}
-                className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-               >
-                 {restaurant.isBookingEnabled !== false ? (
-                   <>
-                    <CalendarIcon size={18} />
-                    Book a Table
-                   </>
-                 ) : (
-                   'Booking Unavailable'
-                 )}
-               </button>
+               {user && (
+                 <button 
+                  onClick={() => {
+                    if (restaurant.isBookingEnabled !== false) {
+                      navigate(getRestaurantBookUrl(restaurant));
+                    }
+                  }}
+                  className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                 >
+                   {restaurant.isBookingEnabled !== false ? (
+                     <>
+                      <CalendarIcon size={18} />
+                      Book a Table
+                     </>
+                   ) : (
+                     'Booking Unavailable'
+                   )}
+                 </button>
+               )}
             </div>
           </motion.div>
        
       </AnimatePresence>
-    </div>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOverlayOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white z-[200] flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
+              <button 
+                onClick={() => setIsSearchOverlayOpen(false)}
+                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <div className="flex-1 relative border-none">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brand" size={18} />
+                <div className="flex flex-col w-full">
+                  <input 
+                    autoFocus
+                    type="text" 
+                    placeholder="Search for restaurants by name, location, or cuisine"
+                    className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-2.5 md:text-base text-sm font-bold focus:ring-0 outline-none h-11"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Viewport content */}
+            <div className="flex-1 overflow-y-auto w-full max-w-4xl mx-auto">
+              {searchQuery.length > 0 ? (
+                <div className="p-4 md:p-6 divide-y divide-gray-100">
+                  {searchSuggestions.length > 0 ? (
+                    <>
+                      <div className="pb-3 pt-1">
+                        <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Restaurants</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {searchSuggestions.map(res => (
+                          <Link 
+                            key={res.id} 
+                            to={getRestaurantUrl(res)}
+                            onClick={() => {
+                              setIsSearchOverlayOpen(false);
+                              saveRecentSearch({
+                                type: 'restaurant',
+                                id: `res-${res.id}`,
+                                name: res.name,
+                                image: res.image || '',
+                                city: res.city || res.location,
+                                restaurantId: res.id,
+                                subtitle: 'Restaurant'
+                              });
+                            }}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100"
+                          >
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
+                              <img src={res.image || RESTAURANT_IMAGE_FALLBACK} alt="" className="w-full h-full object-cover" onError={handleImageError} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">
+                                {Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine} • {res.location}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5 md:mt-1">
+                                <div className="flex">
+                                  {[1,2,3,4,5].map(i => (
+                                    <Star key={i} size={10} fill={i <= res.rating ? "#FF4D00" : "none"} stroke={i <= res.rating ? "#FF4D00" : "#CBD5E1"} />
+                                  ))}
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold text-brand ml-1">{res.rating}</span>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => setIsSearchOverlayOpen(false)}
+                        className="w-full mt-6 py-4 bg-brand/5 text-brand font-black text-xs md:text-sm rounded-xl flex items-center justify-center gap-2 hover:bg-brand/10 transition-colors"
+                      >
+                        SEE ALL RESULTS <ArrowRight size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="py-20 text-center">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                        <Search size={32} className="md:w-10 md:h-10" />
+                      </div>
+                      <p className="text-vibrant-gray font-bold md:text-lg">No results found for "{searchQuery}"</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 md:p-6">
+                  {recentSearches.length > 0 && (
+                    <div className="mb-10 md:mb-16">
+                      <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">Recent Searches</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {recentSearches.map(res => (
+                          <div 
+                            key={`rs-${res.id}`} 
+                            onClick={() => {
+                              setIsSearchOverlayOpen(false);
+                              if (res.type === 'city') {
+                                navigate(`/city/${res.name.toLowerCase()}`);
+                              } else if (res.type === 'restaurant') {
+                                navigate(`/restaurant/${res.restaurantId || res.id.replace('res-', '')}`);
+                              }
+                            }}
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left cursor-pointer"
+                          >
+                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
+                              {res.image ? (
+                                <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                  {res.type === 'city' ? <MapPin size={24} /> : <Search size={24} />}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                              <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

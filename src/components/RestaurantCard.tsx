@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Zap, ArrowRight } from 'lucide-react';
 import { Restaurant } from '../types';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRestaurantStatus } from '../lib/utils';
 
 interface RestaurantCardProps {
   restaurant: Restaurant & { distance?: number | null };
@@ -11,6 +11,8 @@ interface RestaurantCardProps {
 }
 
 export function RestaurantCard({ restaurant, className, showFullOffer }: RestaurantCardProps) {
+  const status = getRestaurantStatus(restaurant);
+
   return (
     <Link to={getRestaurantUrl(restaurant)} className={cn("group flex flex-col h-full bg-white rounded-lg shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-2", className)}>
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -23,13 +25,24 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           onError={handleImageError}
         />
         
+        {/* Status Badge */}
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+           <div className={cn(
+             "w-2 h-2 rounded-full",
+             status.isOpen ? "bg-vibrant-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500"
+           )} />
+           <span className={cn("text-[10px] font-black uppercase tracking-wider", status.color)}>
+             {status.isOpen ? 'Open Now' : 'Closed'}
+           </span>
+        </div>
+
         {/* Offer Ribbon */}
         {restaurant.offers && restaurant.offers.length > 0 && (
           <div className="absolute bottom-4 left-0 right-0 px-4 pointer-events-none">
             <div className="bg-brand/90 backdrop-blur-md px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg border border-white/20 w-fit max-w-[95%]">
               <Zap size={14} className="text-white fill-white" />
               <span className="text-[10px] md:text-xs font-black text-white tracking-tight truncate leading-none uppercase">
-                {restaurant.offers[0]}
+                {restaurant.offers[0].title}
               </span>
             </div>
           </div>

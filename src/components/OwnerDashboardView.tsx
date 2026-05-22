@@ -77,7 +77,11 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     const unsubscribeRest = onSnapshot(qRest, (snapshot) => {
       if (!snapshot.empty) {
         const data = snapshot.docs[0].data();
-        const fullData = { id: snapshot.docs[0].id, ...data } as any;
+        const fullData = { 
+          id: snapshot.docs[0].id, 
+          ...data,
+          signatureDishes: data.signatureDishes || data.menu || []
+        } as any;
         setRestaurant(fullData);
         setEditForm({
           ...fullData,
@@ -902,33 +906,68 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 </div>
              </div>
 
-             <div className="space-y-6">
-                {(editForm.offers || []).map((offer: string, idx: number) => (
-                  <div key={idx} className="flex items-center gap-4 bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm">
-                     <div className="w-12 h-12 bg-orange-50/50 rounded-[20px] flex items-center justify-center text-orange-500 shadow-inner shrink-0">
+              <div className="space-y-6">
+                {(editForm.offers || []).map((offer: any, idx: number) => (
+                  <div key={offer.id || idx} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-orange-50/50 rounded-[20px] flex items-center justify-center text-orange-500 shadow-inner shrink-0">
                         <Gift size={20} />
-                     </div>
-                     <input 
-                        className="flex-grow bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-base outline-none"
-                        value={offer}
-                        placeholder="Offer details... e.g. 20% off on weekends"
-                        onChange={e => {
-                           const next = [...(editForm.offers || [])];
-                           next[idx] = e.target.value;
-                           setEditForm({...editForm, offers: next});
-                        }}
-                     />
-                     <button 
-                       type="button"
-                       onClick={() => {
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Offer Title</label>
+                        <input 
+                          className="w-full bg-transparent border-none font-black text-slate-900 focus:ring-0 p-0 text-xl outline-none"
+                          value={offer.title || offer}
+                          placeholder="e.g. 20% Off on Weekends"
+                          onChange={e => {
+                            const next = [...(editForm.offers || [])];
+                            const updatedOffer = typeof offer === 'string' ? { id: Date.now().toString(), title: e.target.value } : { ...offer, title: e.target.value };
+                            next[idx] = updatedOffer;
+                            setEditForm({...editForm, offers: next});
+                          }}
+                        />
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
                           const next = [...(editForm.offers || [])];
                           next.splice(idx, 1);
                           setEditForm({...editForm, offers: next});
-                       }}
-                       className="w-12 h-12 bg-red-50 text-red-500 rounded-[20px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 shadow-sm"
-                     >
+                        }}
+                        className="w-12 h-12 bg-red-50 text-red-500 rounded-[20px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 shadow-sm"
+                      >
                         <Trash2 size={20} />
-                     </button>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Promo Code</label>
+                        <input 
+                          className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-orange-500/20"
+                          value={offer.promoCode || ''}
+                          placeholder="e.g. SAVE20"
+                          onChange={e => {
+                            const next = [...(editForm.offers || [])];
+                            next[idx] = { ...offer, promoCode: e.target.value.toUpperCase() };
+                            setEditForm({...editForm, offers: next});
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Short Description</label>
+                        <input 
+                          className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-xs font-bold focus:ring-2 focus:ring-orange-500/20"
+                          value={offer.description || ''}
+                          placeholder="e.g. Valid on minimum bill of ₹2000"
+                          onChange={e => {
+                            const next = [...(editForm.offers || [])];
+                            next[idx] = { ...offer, description: e.target.value };
+                            setEditForm({...editForm, offers: next});
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
 
@@ -936,14 +975,14 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   type="button"
                   onClick={() => {
                      const next = [...(editForm.offers || [])];
-                     next.push('');
+                     next.push({ id: Date.now().toString(), title: '', description: '', terms: '', promoCode: '' });
                      setEditForm({...editForm, offers: next});
                   }}
                   className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[28px] text-slate-400 hover:border-orange-500 hover:text-orange-500 transition-all font-black uppercase tracking-[0.2em] text-[10px] flex justify-center items-center gap-2 bg-white/50"
                 >
                    <Plus size={16} /> Add New Offer
                 </button>
-             </div>
+              </div>
           </motion.div>
         );
       default:
