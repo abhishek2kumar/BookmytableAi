@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from './AuthProvider';
-import { useBookings, useFavoriteRestaurants } from '../hooks/useFirebase';
+import { useBookings, useFavoriteRestaurants, useRestaurants } from '../hooks/useFirebase';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
@@ -13,6 +13,7 @@ export default function DashboardView() {
   const { user, profile } = useAuth();
   const { bookings, loading: bookingsLoading } = useBookings(user?.uid, profile?.role);
   const { favorites, loading: favoritesLoading } = useFavoriteRestaurants(profile?.favorites);
+  const { restaurants } = useRestaurants();
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'bookings' | 'favorites'>('bookings');
 
@@ -147,7 +148,7 @@ export default function DashboardView() {
                             <span className="text-sm">{booking.guests} Guests</span>
                           </div>
                           <Link 
-                            to={getRestaurantUrl(null, booking.restaurantId, booking.restaurantName)}
+                            to={getRestaurantUrl(restaurants.find(r => r.id === booking.restaurantId) || null, booking.restaurantId, booking.restaurantName)}
                             className="flex items-center gap-2 text-slate-500 hover:text-brand transition-all text-sm font-black uppercase tracking-tighter"
                           >
                             <MapPin size={16} className="text-brand" />
@@ -174,7 +175,7 @@ export default function DashboardView() {
                             if (booking.status === 'confirmed' && d < new Date()) {
                               return (
                                 <Link
-                                  to={`${getRestaurantUrl(null, booking.restaurantId, booking.restaurantName)}#review`}
+                                  to={`${getRestaurantUrl(restaurants.find(r => r.id === booking.restaurantId) || null, booking.restaurantId, booking.restaurantName)}#review`}
                                   className="ml-auto flex items-center gap-2 text-brand hover:text-brand/80 transition-colors text-sm font-black uppercase tracking-widest"
                                 >
                                   <Star size={16} />

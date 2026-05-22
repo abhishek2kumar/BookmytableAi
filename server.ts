@@ -305,14 +305,17 @@ async function startServer() {
         if (resData.name && resData.city) {
           const citySlug = resData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           const nameSlug = resData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const locationSlug = (resData.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+
           sitemap += `
   <url>
-    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}</loc>
+    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${combinedSlug}</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${nameSlug}/${id}/book</loc>
+    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${combinedSlug}/book</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>`;

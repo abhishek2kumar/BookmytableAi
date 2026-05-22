@@ -17,13 +17,14 @@ import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
 
 export default function RestaurantDetailsView() {
-  const { id, tab, city, name } = useParams<{ id: string, tab?: string, city?: string, name?: string }>();
+  const { slug, tab, city } = useParams<{ slug: string, tab?: string, city?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile, signInWithGoogle } = useAuth();
   const { coords: userCoords } = useLocationContext();
   const { restaurants: allRestaurants, loading: restaurantsLoading } = useRestaurants(true);
   
+  const [id, setId] = useState<string | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -318,37 +319,52 @@ export default function RestaurantDetailsView() {
   }, []);
 
   useEffect(() => {
-    async function fetchRestaurant() {
-      if (!id) return;
-      try {
-        const docRef = doc(db, 'restaurants', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const fetchedRestaurant = { 
-            id: docSnap.id, 
-            ...data,
-            signatureDishes: data.signatureDishes || data.menu || [] 
-          } as Restaurant;
-          setRestaurant(fetchedRestaurant);
-          
-          // Auto-redirect to SEO friendly URL if necessary
-          if (!city || !name) {
-            const seoCity = (fetchedRestaurant.city || 'city').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            const seoName = (fetchedRestaurant.name || 'restaurant').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            navigate(`/restaurant/${seoCity}/${seoName}/${id}${tab ? `/${tab}` : ''}${location.hash}`, { replace: true });
-          }
-        } else {
-          setError('Restaurant not found');
-        }
-      } catch (err) {
-        setError('Failed to fetch restaurant details');
-      } finally {
+    async function resolveRestaurant() {
+      if (restaurantsLoading) return;
+      if (!slug) {
+        setError('No restaurant specified');
         setLoading(false);
+        return;
       }
-    }
-    fetchRestaurant();
 
+      let found = allRestaurants.find(r => r.id === slug);
+      if (!found) {
+        found = allRestaurants.find(r => {
+          const rNameSlug = (r.name || 'restaurant').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const rLocSlug = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
+          return combined === slug;
+        });
+      }
+
+      if (found) {
+        const fetchedRestaurant = { 
+          ...found,
+          signatureDishes: found.signatureDishes || found.menu || [] 
+        } as Restaurant;
+        setRestaurant(fetchedRestaurant);
+        setId(found.id!);
+        
+        // Auto-redirect to SEO friendly URL if necessary
+        if (!city) {
+          const seoCity = (fetchedRestaurant.city || 'city').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const seoName = (fetchedRestaurant.name || 'restaurant').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const seoLoc = (fetchedRestaurant.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+          const targetUrl = `/restaurant/${seoCity}/${combined}${tab ? `/${tab}` : ''}${location.hash}`;
+          if (location.pathname !== `/restaurant/${seoCity}/${combined}` && location.pathname !== `/restaurant/${seoCity}/${combined}/${tab}`) {
+             navigate(targetUrl, { replace: true });
+          }
+        }
+      } else {
+        setError('Restaurant not found');
+      }
+      setLoading(false);
+    }
+    resolveRestaurant();
+  }, [slug, city, allRestaurants, restaurantsLoading, tab, navigate, location.hash, location.pathname]);
+
+  useEffect(() => {
     // Fetch Reviews
     if (id) {
       const q = query(

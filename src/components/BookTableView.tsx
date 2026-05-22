@@ -11,7 +11,7 @@ import { doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/fi
 import { db } from '../lib/firebase';
 
 export default function BookTableView() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   
@@ -19,8 +19,17 @@ export default function BookTableView() {
 
   // Find current restaurant
   const restaurant = useMemo(() => {
-    return restaurants.find(r => r.id === id);
-  }, [id, restaurants]);
+    let found = restaurants.find(r => r.id === slug);
+    if (!found) {
+      found = restaurants.find(r => {
+        const rNameSlug = (r.name || 'restaurant').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const rLocSlug = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
+        return combined === slug;
+      });
+    }
+    return found;
+  }, [slug, restaurants]);
 
   const [selectedDate, setSelectedDate] = useState(startOfToday());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);

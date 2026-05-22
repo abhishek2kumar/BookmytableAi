@@ -23,9 +23,12 @@ export function getRestaurantUrl(restaurant: { id?: string, name?: string, city?
   const id = restaurant?.id || fallbackId;
   if (!id) return '/';
 
-  const citySlug = slugify(restaurant?.city || restaurant?.location || fallbackLocation || 'ind');
+  const citySlug = slugify(restaurant?.city || 'ind');
   const nameSlug = slugify(restaurant?.name || fallbackName || 'restaurant');
-  return `/restaurant/${citySlug}/${nameSlug}/${id}`;
+  const locationSlug = slugify(restaurant?.location || fallbackLocation || '');
+  const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+  
+  return `/restaurant/${citySlug}/${combinedSlug}`;
 }
 
 export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, fallbackId?: string, fallbackName?: string, fallbackLocation?: string): string {
@@ -34,17 +37,23 @@ export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, c
   const id = restaurant?.id || fallbackId;
   if (!id) return '/';
 
-  const citySlug = slugify(restaurant?.city || restaurant?.location || fallbackLocation || 'ind');
+  const citySlug = slugify(restaurant?.city || 'ind');
   const nameSlug = slugify(restaurant?.name || fallbackName || 'restaurant');
-  return `/restaurant/${citySlug}/${nameSlug}/${id}/book`;
+  const locationSlug = slugify(restaurant?.location || fallbackLocation || '');
+  const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+
+  return `/restaurant/${citySlug}/${combinedSlug}/book`;
 }
 
 export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, tab: string): string {
   if (!restaurant || !restaurant.id) return '/';
   
-  const citySlug = slugify(restaurant?.city || restaurant?.location || 'ind');
+  const citySlug = slugify(restaurant?.city || 'ind');
   const nameSlug = slugify(restaurant?.name || 'restaurant');
-  return `/restaurant/${citySlug}/${nameSlug}/${restaurant.id}/${tab}`;
+  const locationSlug = slugify(restaurant?.location || '');
+  const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+  
+  return `/restaurant/${citySlug}/${combinedSlug}/${tab}`;
 }
 
 export function formatDate(date: any) {
