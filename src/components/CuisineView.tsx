@@ -15,7 +15,7 @@ export default function CuisineView() {
   const { coords: userCoords, city: selectedCity } = useLocationContext();
   const [visibleCount, setVisibleCount] = useState(8);
 
-  const cuisineInfo = cuisines.find(c => c.id === cuisineId || c.name.toLowerCase().replace(/ /g, '-') === cuisineId);
+  const cuisineInfo = cuisines.find(c => c.id === cuisineId || c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === cuisineId);
   const cuisineName = cuisineInfo?.name || cuisineId?.replace(/-/g, ' ');
 
   // Distance calculator

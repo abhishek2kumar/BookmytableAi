@@ -285,7 +285,7 @@ export default function CityView() {
                 cuisines.map((cuisine) => (
                   <Link 
                     key={cuisine.id}
-                  to={`/cuisine/${cuisine.id || cuisine.name.toLowerCase().replace(/ /g, '-')}`}
+                  to={`/cuisine/${cuisine.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`}
                   className="flex flex-col items-center gap-2 md:gap-3 shrink-0 snap-start group"
                 >
                   <div className="w-16 md:w-32 h-16 md:h-32 rounded-full overflow-hidden shadow-vibrant group-hover:shadow-2xl transition-all duration-300 group-hover:-translate-y-1 relative ring-4 ring-transparent group-hover:ring-brand/10">
