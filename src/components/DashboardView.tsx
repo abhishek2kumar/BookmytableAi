@@ -3,7 +3,7 @@ import { useAuth } from './AuthProvider';
 import { useBookings, useFavoriteRestaurants, useRestaurants } from '../hooks/useFirebase';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
+import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
 import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -249,8 +249,8 @@ export default function DashboardView() {
 
                         <div className="absolute bottom-6 left-6 right-6 text-white">
                           <div className="flex items-center gap-1.5 mb-2">
-                             <div className="bg-emerald-500 px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1">
-                                {res.rating} <Star size={10} className="fill-white" />
+                             <div className={cn("px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1", getRatingColor(res.rating || 0))}>
+                                {res.rating} <Star size={10} className="fill-current" />
                              </div>
                              <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">{res.cuisine}</span>
                           </div>

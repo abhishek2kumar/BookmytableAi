@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, ChevronLeft, Clock, X, UtensilsCrossed, CheckCircle, Sparkles } from 'lucide-react';
+import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, ChevronLeft, Clock, X, UtensilsCrossed, CheckCircle, Sparkles, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
@@ -274,13 +274,13 @@ export default function HomeLandingView() {
       {/* Features / Why Bookmytable */}
       <section className="bg-slate-50 py-24 md:py-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-6xl mx-auto text-center">
             <h2 className="text-4xl md:text-5xl font-display font-black text-vibrant-dark mb-16 leading-tight">
               Your <span className="text-brand">Fine Dining</span> Experience<br />
               Starts Right Here.
             </h2>
             
-            <div className="grid md:grid-cols-3 gap-12">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
               {[
                 { 
                   icon: Zap, 
@@ -299,6 +299,12 @@ export default function HomeLandingView() {
                   title: 'Flexible Bookings', 
                   desc: 'Modify or cancel your bookings on the go. Planning a last-minute dinner was never this easy.',
                   color: 'text-amber-500 bg-amber-500/10'
+                },
+                { 
+                  icon: QrCode, 
+                  title: 'Seamless QR Orders', 
+                  desc: 'Scan the table QR code to browse the menu and place your order instantly for a seamless experience.',
+                  color: 'text-purple-500 bg-purple-500/10'
                 },
               ].map((item, i) => (
                 <motion.div 

@@ -326,16 +326,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer */}
-      <footer className={cn("bg-vibrant-dark py-12 text-vibrant-gray pb-32 md:pb-12")}>
-        <div className="max-w-7xl mx-auto px-4 text-center">
+      <footer className={cn("bg-vibrant-dark py-10 md:py-12 text-vibrant-gray pb-24 md:pb-12")}>
+        <div className="max-w-7xl mx-auto px-6 md:px-4">
           <div className="flex items-center justify-center gap-3 mb-6 opacity-80 filter grayscale brightness-200">
             <AppIcon size={32} />
             <span className="text-2xl font-display font-bold">Bookmytable</span>
           </div>
-          <p className="text-sm mb-6">
+          <p className="text-sm mb-10 max-w-sm mx-auto text-center">
             The best way to book a table at your favorite restaurants.
           </p>
-          <div className="flex justify-center gap-8 mb-8 text-sm font-medium">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-6 mb-10 text-sm font-medium mx-auto max-w-3xl text-left pl-4 md:pl-0">
             <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
@@ -344,7 +344,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="flex justify-center gap-6 mb-8">
-            <a href="https://www.facebook.com/bookmytableIN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2">
+            <a href="https://www.facebook.com/bookmytableIN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2 -ml-2">
               <Facebook size={24} />
             </a>
             <a href="https://twitter.com/bookmytableIN/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-brand transition-colors p-2">
@@ -355,7 +355,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </a>
           </div>
 
-          <p className="text-xs opacity-50">
+          <p className="text-xs opacity-50 text-center">
             &copy; {new Date().getFullYear()} Bookmytable. All rights reserved.
           </p>
         </div>

@@ -8,10 +8,10 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useLocationContext } from './LocationContext';
 import { RestaurantCard } from './RestaurantCard';
 import { Restaurant, Booking, Review } from '../types';
-import { Search, Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu, Megaphone, Play, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, Navigation, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu, Megaphone, Play, ArrowLeft, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday, parseISO } from 'date-fns';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl, getRestaurantStatus, getRestaurantTabUrl } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl, getRestaurantStatus, getRestaurantTabUrl, getRatingColor } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
@@ -161,12 +161,46 @@ export default function RestaurantDetailsView() {
   // Menu Carousel & Popup State
   const [menuSlideIndex, setMenuSlideIndex] = useState(0);
   const menuScrollRef = useRef<HTMLDivElement>(null);
+  const offersScrollRef = useRef<HTMLDivElement>(null);
+  const adsScrollRef = useRef<HTMLDivElement>(null);
+  
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = window.innerWidth > 768 ? 600 : 300;
+      ref.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (restaurant?.advertisements && restaurant.advertisements.filter(ad => ad.active).length > 1) {
+      interval = setInterval(() => {
+        if (adsScrollRef.current) {
+          const { scrollLeft, scrollWidth, clientWidth } = adsScrollRef.current;
+          if (scrollLeft + clientWidth >= scrollWidth - 10) {
+            adsScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+          } else {
+            adsScrollRef.current.scrollBy({ left: clientWidth, behavior: 'smooth' });
+          }
+        }
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [restaurant?.advertisements]);
+
   const [activeMenuCategory, setActiveMenuCategory] = useState<string | null>(null);
+  const [activeAdIndex, setActiveAdIndex] = useState(0);
+  const [activeOfferIndex, setActiveOfferIndex] = useState(0);
+  const [enlargedAdImage, setEnlargedAdImage] = useState<string | null>(null);
   const [reviewSlideIndex, setReviewSlideIndex] = useState(0);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [isTimingsOpen, setIsTimingsOpen] = useState(false);
   const [activePhotoTab, setActivePhotoTab] = useState<'food' | 'ambience' | 'exterior'>('food');
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [bookingMode, setBookingMode] = useState<'table' | 'takeaway'>('table');
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
@@ -340,7 +374,7 @@ export default function RestaurantDetailsView() {
       if (found) {
         const fetchedRestaurant = { 
           ...found,
-          signatureDishes: found.signatureDishes || found.menu || [] 
+          signatureDishes: found.signatureDishes || (found as any).menu || [] 
         } as Restaurant;
         setRestaurant(fetchedRestaurant);
         setId(found.id!);
@@ -539,13 +573,6 @@ export default function RestaurantDetailsView() {
   }, [restaurant?.blackoutDates]);
 
   const slotData = useMemo(() => {
-    if (restaurant?.slotCategories && restaurant.slotCategories.length > 0) {
-      return {
-        categorized: true,
-        categories: restaurant.slotCategories
-      };
-    }
-
     const parseTimeForGrouping = (timeStr: string) => {
       if (!timeStr) return 0;
       const parts = timeStr.trim().split(' ');
@@ -558,59 +585,63 @@ export default function RestaurantDetailsView() {
     };
 
     let rawSlots: string[] = [];
-    const manualSlots = restaurant?.bookingSlots || [];
     
-    if (manualSlots.length > 0) {
-      rawSlots = manualSlots;
+    // Always use outlet timings per the user instruction
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const selectedDayName = dayNames[selectedDate.getDay()];
+    const daily = restaurant?.dailyTimings?.[selectedDayName];
+    
+    let rangesToProcess: any[] = [];
+    if (daily?.closed) {
+      rangesToProcess = [];
+    } else if (daily?.ranges && daily.ranges.length > 0) {
+      rangesToProcess = daily.ranges;
     } else {
-      // Fallback slots if not detailed: Generate 30min intervals based on current day timings
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const selectedDayName = dayNames[selectedDate.getDay()];
-      const getTimingsForDay = (day: string) => {
-        const daily = restaurant?.dailyTimings?.[day];
-        let openStr = restaurant?.openingHours?.open || '11:00 AM';
-        let closeStr = restaurant?.openingHours?.close || '11:00 PM';
-        let isClosed = false;
-
-        if (daily) {
-          if (daily.closed) isClosed = true;
-          else if (daily.ranges && daily.ranges.length > 0) {
-            openStr = daily.ranges[0].open;
-            closeStr = daily.ranges[0].close;
-          }
-        }
-        return { openStr, closeStr, isClosed };
-      };
-
-      const timings = getTimingsForDay(selectedDayName);
-      if (!timings.isClosed) {
-        const openMin = parseTimeForGrouping(timings.openStr);
-        const closeMin = parseTimeForGrouping(timings.closeStr);
-        
-        let endMin = closeMin;
-        if (closeMin <= openMin) endMin = closeMin + (24 * 60);
-
-        for (let m = openMin; m < endMin; m += 30) {
-          const hour = Math.floor((m % (24 * 60)) / 60);
-          const min = m % 60;
-          rawSlots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
-        }
-      }
+      rangesToProcess = [{
+        open: restaurant?.openingHours?.open || '11:00 AM',
+        close: restaurant?.openingHours?.close || '11:00 PM'
+      }];
     }
+
+    rangesToProcess.forEach(r => {
+      const openMin = parseTimeForGrouping(r.open);
+      const closeMin = parseTimeForGrouping(r.close);
+      
+      let endMin = closeMin;
+      if (closeMin <= openMin) endMin = closeMin + (24 * 60);
+
+      for (let m = openMin; m < endMin; m += 30) {
+        let hour24 = Math.floor((m % (24 * 60)) / 60);
+        const min = m % 60;
+        const period = hour24 >= 12 ? 'PM' : 'AM';
+        let hour12 = hour24 % 12;
+        if (hour12 === 0) hour12 = 12;
+        rawSlots.push(`${hour12.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')} ${period}`);
+      }
+    });
 
     const lunchSlots: string[] = [];
     const dinnerSlots: string[] = [];
+    const breakfastSlots: string[] = [];
 
     for (const timeStr of rawSlots) {
       const timeVal = parseTimeForGrouping(timeStr);
-      if (timeVal < 18 * 60) {
+      // Anything > 6:00 AM and < 12:00 PM is breakfast
+      if (timeVal > 6 * 60 && timeVal < 12 * 60) {
+        breakfastSlots.push(timeStr);
+      } 
+      // 12:00 PM to 5:30 PM is lunch
+      else if (timeVal >= 12 * 60 && timeVal <= 17.5 * 60) {
         lunchSlots.push(timeStr);
-      } else {
+      } 
+      // 6:00 PM till closing time is dinner
+      else if (timeVal >= 18 * 60) {
         dinnerSlots.push(timeStr);
       }
     }
 
     const categories = [];
+    if (breakfastSlots.length > 0) categories.push({ id: 'breakfast', name: 'Breakfast', slots: breakfastSlots });
     if (lunchSlots.length > 0) categories.push({ id: 'lunch', name: 'Lunch', slots: lunchSlots });
     if (dinnerSlots.length > 0) categories.push({ id: 'dinner', name: 'Dinner', slots: dinnerSlots });
 
@@ -659,8 +690,32 @@ export default function RestaurantDetailsView() {
     }
   }, [slotData, activeTimeCategory]);
 
+  useEffect(() => {
+    if (restaurant?.id) {
+      try {
+        const stored = localStorage.getItem('recently_viewed_restaurants');
+        let parsed: string[] = [];
+        if (stored) parsed = JSON.parse(stored);
+        
+        const updated = [restaurant.id, ...parsed.filter(id => id !== restaurant.id)].slice(0, 10);
+        localStorage.setItem('recently_viewed_restaurants', JSON.stringify(updated));
+      } catch (e) {}
+    }
+  }, [restaurant?.id]);
+
   const recommendations = useMemo(() => {
-    if (!restaurant || !allRestaurants.length) return { similar: [], nearby: [], youMayLike: [] };
+    if (!restaurant || !allRestaurants.length) return { similar: [], nearby: [], youMayLike: [], recentlyViewed: [] };
+
+    let recentIds: string[] = [];
+    try {
+      const stored = localStorage.getItem('recently_viewed_restaurants');
+      if (stored) recentIds = JSON.parse(stored);
+    } catch(e) {}
+
+    const recentlyViewed = recentIds
+      .filter(id => id !== restaurant.id)
+      .map(id => allRestaurants.find(r => r.id === id))
+      .filter(Boolean) as Restaurant[];
 
     // STRICT city-based filtering for recommendations
     const cityNorm = (restaurant.city || '').toLowerCase();
@@ -691,7 +746,7 @@ export default function RestaurantDetailsView() {
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 4);
 
-    return { similar, nearby, youMayLike };
+    return { similar, nearby, youMayLike, recentlyViewed };
   }, [restaurant, allRestaurants]);
 
   const isTimeInPast = (timeStr: string) => {
@@ -864,8 +919,8 @@ export default function RestaurantDetailsView() {
               <div className="space-y-3">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-slate-800 font-display flex-wrap">
-                    <div className="bg-emerald-600 p-1 rounded-full text-white shrink-0">
-                      <Star size={12} className="fill-white" />
+                    <div className={cn("p-1 rounded-full shrink-0", getRatingColor(restaurant.rating || 0))}>
+                      <Star size={12} className="fill-current" />
                     </div>
                     <span className="text-sm font-bold shrink-0">{restaurant.rating} • {reviews.length} reviews</span>
                     <span className="text-slate-400 mx-1 shrink-0">|</span>
@@ -900,20 +955,27 @@ export default function RestaurantDetailsView() {
 
                 {/* Horizontal Action Bar */}
                 <div className="flex items-center flex-wrap gap-2 pt-4 border-t border-slate-100 w-full mt-auto">
-                  {user && (
                     <button 
-                      onClick={() => {
-                        if (restaurant.isBookingEnabled) {
-                          navigate(getRestaurantBookUrl(restaurant));
+                      onClick={async () => {
+                        if (restaurant.isBookingEnabled !== false) {
+                          if (!user) {
+                            try {
+                              await signInWithGoogle();
+                              navigate(getRestaurantBookUrl(restaurant));
+                            } catch (e) {
+                              console.error('Failed to sign in:', e);
+                            }
+                          } else {
+                            navigate(getRestaurantBookUrl(restaurant));
+                          }
                         }
                       }}
-                      disabled={!restaurant.isBookingEnabled}
+                      disabled={restaurant.isBookingEnabled === false}
                       className="flex items-center gap-2 text-brand bg-brand/5 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm"
                     >
                       <CalendarIcon size={16} />
-                      Book Table
+                      {restaurant.isBookingEnabled !== false ? 'Book Table' : 'Booking Unavailable'}
                     </button>
-                  )}
                   
                   <a 
                     href="tel:+919876543210" 
@@ -931,7 +993,7 @@ export default function RestaurantDetailsView() {
                       className="flex items-center justify-center text-brand bg-brand/5 hover:bg-brand/10 font-bold w-[38px] h-[38px] rounded-xl transition-colors shrink-0"
                       aria-label="Get Directions"
                     >
-                      <Compass size={18} />
+                      <Navigation size={18} className="fill-current -ml-0.5 mt-0.5" />
                     </a>
 
                     <button 
@@ -986,9 +1048,9 @@ export default function RestaurantDetailsView() {
                       </div>
                       
                       <div className="flex flex-col items-center shrink-0">
-                        <div className="bg-[#0b8a4a] px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm text-white">
+                        <div className={cn("px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm", getRatingColor(restaurant.rating || 0))}>
                           <span className="font-bold text-[15px]">{restaurant.rating}</span>
-                          <Star size={12} className="fill-white text-white" />
+                          <Star size={12} className="fill-current" />
                         </div>
                         <div className="mt-1 pb-0.5 border-b border-dashed border-slate-300">
                            <div className="text-[10px] font-bold text-slate-500">{reviews.length} ratings</div>
@@ -1014,7 +1076,7 @@ export default function RestaurantDetailsView() {
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
                             className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100" target="_blank" rel="noopener noreferrer"
                           >
-                            <Compass size={18} />
+                            <Navigation size={18} className="fill-current -ml-0.5 mt-0.5" />
                           </a>
                           <a href="tel:+919876543210" className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100">
                             <Phone size={18} />
@@ -1025,39 +1087,22 @@ export default function RestaurantDetailsView() {
                </div>
             </div>
 
-            {/* Mobile Offers Card - Outside the banner image wrapper */}
-            {activeOffers.length > 0 && (
-              <div className="md:hidden mx-4 mt-2 relative z-10 bg-white/80 backdrop-blur-xl rounded-[24px] p-4 border border-white shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-                <div className="flex items-center gap-1.5 mb-2 text-[#0b8a4a]">
-                  <Gift size={16} />
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#0b8a4a]">Exclusive Offers</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {activeOffers.map((offer, i) => (
-                    <div key={i} className="flex items-start gap-2.5 bg-gradient-to-r from-emerald-50/80 to-white/80 p-3 rounded-xl border border-emerald-100">
-                      <Zap className="text-[#0b8a4a] shrink-0 mt-0.5" size={14} />
-                      <div className="flex flex-col gap-0.5">
-                        <p className="text-[12px] font-bold text-slate-800 leading-tight">{offer.title}</p>
-                        {offer.description && <p className="text-[10px] text-slate-500 font-medium leading-tight">{offer.description}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Active Offers was here */}
           </div>
         </div>
       </div>
 
-      {/* Content Navigation Tabs (Desktop) */}
-      <div className="hidden md:flex sticky top-0 bg-white/95 backdrop-blur-md z-40 border-b border-slate-300 mt-8 px-4 md:px-12 lg:px-16 w-full transition-all">
-        <div className="max-w-6xl mx-auto w-full flex gap-8">
+      {/* Content Navigation Tabs (Desktop & Mobile) */}
+      <div className="flex sticky top-[72px] md:top-0 bg-white/95 backdrop-blur-md z-40 border-b border-slate-300 mt-0 md:mt-8 px-4 md:px-12 lg:px-16 w-full transition-all overflow-x-auto scrollbar-hide">
+        <div className="max-w-6xl mx-auto w-full flex gap-6 md:gap-8 min-w-max">
           {[
             { id: 'offers', label: 'Offers', show: activeOffers.length > 0 },
             { id: 'menu', label: 'Menu', show: true },
-            { id: 'photos', label: 'Photos', show: (restaurant.secondaryImages?.length || restaurant.foodImages?.length || restaurant.ambienceImages?.length) },
+            { id: 'photos', label: 'Photos', show: !!((restaurant.secondaryImages?.length || 0) > 0 || (restaurant.foodImages?.length || 0) > 0 || (restaurant.ambienceImages?.length || 0) > 0) },
             { id: 'overview', label: 'Story', show: true },
-            { id: 'reviews', label: 'Reviews', show: true }
+            { id: 'reviews', label: 'Reviews', show: true },
+            { id: 'book', label: 'Table Booking', show: restaurant.isBookingEnabled !== false },
+            { id: 'takeaway', label: 'Take Away', show: true }
           ].filter(tab => tab.show).map((t) => {
             const isActive = tab === t.id || (!tab && !location.hash && t.id === (activeOffers.length ? 'offers' : 'menu'));
             return (
@@ -1065,7 +1110,7 @@ export default function RestaurantDetailsView() {
                 key={t.id}
                 to={getRestaurantTabUrl(restaurant, t.id)}
                 className={cn(
-                  "relative py-4 text-base font-bold transition-colors", 
+                  "relative py-4 text-sm md:text-base font-bold transition-colors whitespace-nowrap", 
                   isActive ? "text-brand" : "text-slate-500 hover:text-slate-900"
                 )}
               >
@@ -1091,19 +1136,30 @@ export default function RestaurantDetailsView() {
             <div id="offers" className="scroll-mt-24">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-black text-slate-900">Offers</h2>
-                <div className="hidden md:flex gap-3">
-                   <div className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
-                     <ArrowLeft size={20} strokeWidth={2} />
-                   </div>
-                   <div className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
-                     <ArrowRight size={20} strokeWidth={2} />
-                   </div>
-                </div>
+                {activeOffers.length > 1 && (
+                  <div className="hidden md:flex gap-3">
+                     <div onClick={() => scrollContainer(offersScrollRef, 'left')} className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                       <ArrowLeft size={20} strokeWidth={2} />
+                     </div>
+                     <div onClick={() => scrollContainer(offersScrollRef, 'right')} className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                       <ArrowRight size={20} strokeWidth={2} />
+                     </div>
+                  </div>
+                )}
               </div>
               
-              <div className="flex gap-4 md:gap-5 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+              <div 
+                ref={offersScrollRef} 
+                className="flex gap-4 md:gap-5 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 snap-x scroll-smooth"
+                onScroll={() => {
+                  if (offersScrollRef.current) {
+                    const { scrollLeft, clientWidth } = offersScrollRef.current;
+                    setActiveOfferIndex(Math.round(scrollLeft / clientWidth));
+                  }
+                }}
+              >
                 {activeOffers.map((offer, i) => (
-                  <div key={i} className="shrink-0 w-[260px] md:w-[280px] bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
+                  <div key={i} className="snap-start shrink-0 w-full md:w-[280px] bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
                     <div className="p-5 bg-white pb-6">
                       <h4 className="font-black text-slate-900 leading-tight text-[20px] md:text-[22px] tracking-tight mb-1">
                         {offer.title}
@@ -1139,39 +1195,111 @@ export default function RestaurantDetailsView() {
                   </div>
                 ))}
               </div>
+              
+              {/* Offer Carousel Dots (Mobile Only) */}
+              {!isDesktop && activeOffers.length > 1 && (
+                <div className="flex md:hidden justify-center items-center gap-2 mt-2 pb-2">
+                  {activeOffers.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        if (offersScrollRef.current) {
+                          offersScrollRef.current.scrollTo({ left: i * offersScrollRef.current.clientWidth, behavior: 'smooth' });
+                          setActiveOfferIndex(i);
+                        }
+                      }}
+                      className={cn(
+                        "h-2 rounded-full transition-all duration-300",
+                        i === activeOfferIndex ? "bg-brand w-6" : "bg-slate-200 hover:bg-slate-300 w-2"
+                      )}
+                      aria-label={`Go to offer slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Advertisements / Featured Promos */}
           {restaurant.advertisements && restaurant.advertisements.filter(ad => ad.active).length > 0 && (
             <div className="scroll-mt-24 pt-8 border-t border-slate-200">
-               <div className="flex items-center gap-3 mb-6">
-                 <Megaphone size={20} className="text-brand" />
-                 <h2 className="text-2xl font-bold text-slate-900">Featured Spotlights</h2>
+               <div className="flex items-center justify-between mb-6">
+                 <div className="flex items-center gap-3">
+                   <Megaphone size={20} className="text-brand" />
+                   <h2 className="text-2xl font-bold text-slate-900">Featured Spotlights</h2>
+                 </div>
+                 {restaurant.advertisements.filter(ad => ad.active).length > 1 && (
+                   <div className="hidden md:flex gap-3">
+                     <div onClick={() => scrollContainer(adsScrollRef, 'left')} className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                       <ArrowLeft size={20} strokeWidth={2} />
+                     </div>
+                     <div onClick={() => scrollContainer(adsScrollRef, 'right')} className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer">
+                       <ArrowRight size={20} strokeWidth={2} />
+                     </div>
+                   </div>
+                 )}
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div 
+                 ref={adsScrollRef} 
+                 className="flex gap-8 overflow-x-auto pb-2 scrollbar-hide snap-x scroll-smooth"
+                 onScroll={() => {
+                   if (adsScrollRef.current) {
+                     const { scrollLeft, clientWidth } = adsScrollRef.current;
+                     setActiveAdIndex(Math.round(scrollLeft / clientWidth));
+                   }
+                 }}
+               >
                  {restaurant.advertisements.filter(ad => ad.active).map((ad) => (
-                   <div key={ad.id} className="relative aspect-video rounded-[32px] overflow-hidden group shadow-2xl">
-                     <img src={ad.image || RESTAURANT_IMAGE_FALLBACK} alt={ad.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent p-8 flex flex-col justify-end text-white">
-                        <div className="space-y-2">
-                           <h3 className="text-xl font-black tracking-tight">{ad.title}</h3>
-                           <p className="text-sm text-white/70 font-medium line-clamp-2 max-w-sm">{ad.description}</p>
-                           {ad.videoUrl && (
-                             <a 
-                               href={ad.videoUrl} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-white rounded-xl text-[10px] font-black uppercase tracking-widest mt-4 hover:shadow-lg hover:shadow-brand/20 transition-all active:scale-95"
-                             >
-                               <Play size={14} fill="currentColor" /> Watch Video
-                             </a>
-                           )}
-                        </div>
+                   <div key={ad.id} className="snap-start shrink-0 w-full bg-white rounded-[24px] border border-slate-200 shadow-sm hover:shadow-xl hover:border-brand/50 transition-all overflow-hidden flex flex-col md:flex-row group">
+                     <div 
+                       className="relative shrink-0 w-full md:w-5/12 lg:w-2/5 overflow-hidden border-b md:border-b-0 md:border-r border-slate-100 flex bg-slate-50 cursor-pointer"
+                       onClick={() => {
+                         setEnlargedAdImage(ad.image || RESTAURANT_IMAGE_FALLBACK);
+                       }}
+                     >
+                       <img src={ad.image || RESTAURANT_IMAGE_FALLBACK} alt={ad.title} className="block w-full h-48 md:h-full md:absolute md:inset-0 object-cover object-top group-hover:scale-105 transition-transform duration-700" />
+                     </div>
+                     <div className="p-6 md:p-8 flex flex-col flex-grow bg-white justify-center">
+                        <h3 className="font-bold text-slate-900 text-sm group-hover:text-brand transition-colors mb-3">{ad.title}</h3>
+                        <p className="text-xs text-slate-500 mt-1 mb-8 flex-grow whitespace-pre-wrap">{ad.description}</p>
+                        {ad.videoUrl && (
+                          <div className="mt-auto md:mt-0">
+                            <a 
+                              href={ad.videoUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-2 w-full md:w-auto md:px-8 py-3.5 bg-brand text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-brand-dark transition-all active:scale-[0.98] shadow-md shadow-brand/20"
+                            >
+                              <Play size={14} fill="currentColor" /> Watch Video
+                            </a>
+                          </div>
+                        )}
                      </div>
                    </div>
                  ))}
                </div>
+               
+               {/* Ad Carousel Dots */}
+               {restaurant.advertisements.filter(ad => ad.active).length > 1 && (
+                 <div className="flex justify-center items-center gap-2 mt-2 pb-1">
+                   {restaurant.advertisements.filter(ad => ad.active).map((_, i) => (
+                     <button
+                       key={i}
+                       onClick={() => {
+                         if (adsScrollRef.current) {
+                           adsScrollRef.current.scrollTo({ left: i * adsScrollRef.current.clientWidth, behavior: 'smooth' });
+                           setActiveAdIndex(i);
+                         }
+                       }}
+                       className={cn(
+                         "h-2 rounded-full transition-all duration-300",
+                         i === activeAdIndex ? "bg-brand w-6" : "bg-slate-200 hover:bg-slate-300 w-2"
+                       )}
+                       aria-label={`Go to slide ${i + 1}`}
+                     />
+                   ))}
+                 </div>
+               )}
             </div>
           )}
 
@@ -1197,7 +1325,7 @@ export default function RestaurantDetailsView() {
                     <div key={i} className="flex justify-between items-start group">
                       <div className="pr-4">
                         <h4 className="font-bold text-slate-900 text-sm group-hover:text-brand transition-colors">{item.name}</h4>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 md:line-clamp-1">{item.description}</p>
+                        <p className="text-xs text-slate-500 mt-1">{item.description}</p>
                       </div>
                       {item.price > 0 && <span className="font-black text-slate-900 shrink-0">₹{item.price}</span>}
                     </div>
@@ -1580,6 +1708,23 @@ export default function RestaurantDetailsView() {
                    </div>
                 </div>
               )}
+          {/* Take Away Section */}
+          <div id="takeaway" className="scroll-mt-24 pt-8 border-t border-slate-300">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6">Take Away</h2>
+            <div className="bg-slate-50/50 rounded-3xl p-8 border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
+                <Utensils size={28} className="text-slate-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-lg mb-1">Take Away Orders</h3>
+                <p className="text-slate-500 text-sm max-w-sm mx-auto">This restaurant hasn't enabled online take away orders yet. Please contact them directly.</p>
+              </div>
+               <a href="tel:+919876543210" className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl active:scale-95 transition-transform mt-2">
+                 <Phone size={18} />
+                 Call Restaurant
+               </a>
+            </div>
+          </div>
             </div>
           </div>
         </div>
@@ -1587,6 +1732,27 @@ export default function RestaurantDetailsView() {
 
       {/* Recommended Restaurants Sections */}
       <div className="max-w-7xl mx-auto px-4 mt-16 space-y-20">
+        {/* Recently Viewed Restaurants */}
+        {recommendations.recentlyViewed.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
+                <Clock size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">Recently Viewed</h2>
+                <p className="text-vibrant-gray font-medium text-sm">Restaurants you visited recently</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recommendations.recentlyViewed.slice(0, 4).map((res) => (
+                <RestaurantCard key={res.id} restaurant={res} className="shadow-vibrant-sm" />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Similar Restaurants */}
         {recommendations.similar.length > 0 && (
           <section>
@@ -1660,61 +1826,82 @@ export default function RestaurantDetailsView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6"
+            className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-6"
           >
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsTimingsOpen(false)}></div>
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 250 }}
+              className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between p-6 md:p-8 border-b border-slate-50 shrink-0">
-                <h2 className="text-2xl font-display font-black text-slate-900 tracking-tight">Outlet Timings</h2>
+                <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight">Outlet Timings</h2>
                 <button 
                   onClick={() => setIsTimingsOpen(false)}
-                  className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors"
+                  className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} className="md:w-5 md:h-5" />
                 </button>
               </div>
               
-              <div className="p-6 md:p-8 space-y-4 overflow-y-auto w-full">
+              <div className="p-6 md:p-8 space-y-1 overflow-y-auto w-full">
                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
                   const daily = restaurant.dailyTimings?.[day];
                   const isToday = format(new Date(), 'EEEE') === day;
                   return (
                     <div key={day} className={cn(
-                      "flex items-center justify-between py-3 border-b border-slate-50 last:border-0",
+                      "grid grid-cols-[1fr_auto] gap-4 py-3 md:py-3.5 border-b border-slate-50 last:border-0",
                       isToday && "bg-brand/5 -mx-4 px-4 rounded-xl"
                     )}>
                       <div className="flex items-center gap-2">
-                        <span className={cn("font-bold text-lg", isToday ? "text-brand" : "text-slate-700")}>{day}</span>
-                        {isToday && <span className="bg-brand text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Today</span>}
+                        <span className={cn("font-sans text-[13px] md:text-[15px] leading-[18px] tracking-[-0.35px]", isToday ? "text-brand font-medium" : "text-[rgba(2,6,12,0.75)] font-light")}>{isToday ? 'Today' : day}</span>
                       </div>
-                      <span className={cn(
-                        "font-medium text-lg",
-                        daily?.closed ? "text-red-500" : "text-slate-900"
+                      <div className={cn(
+                        "font-sans text-[13px] md:text-[15px] leading-[18px] tracking-[-0.35px] text-right",
+                        daily?.closed ? "text-red-500 font-medium" : "text-[rgba(2,6,12,0.75)] font-light"
                       )}>
                         {daily ? (
                           daily.closed ? 'Closed' : daily.ranges.map(r => `${r.open} - ${r.close}`).join(', ')
                         ) : `${restaurant.openingHours?.open || '12:30 PM'} - ${restaurant.openingHours?.close || '11:59 PM'}`}
-                      </span>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              
-              <div className="p-6 md:p-8 bg-slate-50/50 flex justify-center shrink-0">
-                <button 
-                  onClick={() => setIsTimingsOpen(false)}
-                  className="bg-slate-900 text-white w-full md:w-auto md:px-8 py-3.5 rounded-2xl font-bold transition-transform active:scale-95 flex items-center justify-center"
-                >
-                  Close
-                </button>
-              </div>
             </motion.div>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md -z-10" onClick={() => setIsTimingsOpen(false)} />
+          </motion.div>
+        )}
+
+        {enlargedAdImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center overscroll-none touch-none p-4"
+            onClick={() => setEnlargedAdImage(null)}
+          >
+            <div className="absolute top-6 right-6">
+              <button 
+                onClick={() => setEnlargedAdImage(null)}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors backdrop-blur-md"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              src={enlargedAdImage}
+              alt="Enlarged Advertisement"
+              className="w-full max-w-lg max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </motion.div>
         )}
 
@@ -1796,14 +1983,24 @@ export default function RestaurantDetailsView() {
                   <span className="text-base font-black text-slate-900 tracking-tighter">₹{restaurant.avgPrice} <span className="text-[10px] font-bold text-slate-400">/ 2</span></span>
                </div>
                
-               {user && (
+               
                  <button 
-                  onClick={() => {
+                  onClick={async () => {
                     if (restaurant.isBookingEnabled !== false) {
-                      navigate(getRestaurantBookUrl(restaurant));
+                      if (!user) {
+                        try {
+                          await signInWithGoogle();
+                          navigate(getRestaurantBookUrl(restaurant));
+                        } catch (e) {
+                          console.error('Failed to sign in:', e);
+                        }
+                      } else {
+                        navigate(getRestaurantBookUrl(restaurant));
+                      }
                     }
                   }}
-                  className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  disabled={restaurant.isBookingEnabled === false}
+                  className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 disabled:shadow-none disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2"
                  >
                    {restaurant.isBookingEnabled !== false ? (
                      <>
@@ -1814,7 +2011,6 @@ export default function RestaurantDetailsView() {
                      'Booking Unavailable'
                    )}
                  </button>
-               )}
             </div>
           </motion.div>
        
@@ -1897,12 +2093,9 @@ export default function RestaurantDetailsView() {
                                 {Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine} • {res.location}
                               </p>
                               <div className="flex items-center gap-1 mt-0.5 md:mt-1">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(i => (
-                                    <Star key={i} size={10} fill={i <= res.rating ? "#FF4D00" : "none"} stroke={i <= res.rating ? "#FF4D00" : "#CBD5E1"} />
-                                  ))}
+                                <div className={cn("px-1.5 py-0.5 rounded text-[10px] md:text-xs font-black flex items-center gap-1", getRatingColor(res.rating || 0))}>
+                                   {res.rating} <Star size={10} className="fill-current" />
                                 </div>
-                                <span className="text-[10px] md:text-xs font-bold text-brand ml-1">{res.rating}</span>
                               </div>
                             </div>
                           </Link>

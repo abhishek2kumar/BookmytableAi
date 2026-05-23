@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format, addDays, startOfToday, isSameDay } from 'date-fns';
 import { ArrowLeft, Clock, Users, CalendarIcon, ChevronRight, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, getRestaurantUrl } from '../lib/utils';
 import { useAuth } from './AuthProvider';
 import { useRestaurants } from '../hooks/useFirebase';
 
@@ -34,6 +34,7 @@ export default function BookTableView() {
   const [selectedDate, setSelectedDate] = useState(startOfToday());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [activeTimeCategory, setActiveTimeCategory] = useState<string | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<number>(0);
   const [guests, setGuests] = useState(2);
   const [userPhone, setUserPhone] = useState(profile?.phone || '');
   
@@ -57,60 +58,9 @@ export default function BookTableView() {
   }, [restaurant]);
 
   const slotData = useMemo(() => {
-    if (restaurant?.slotCategories && restaurant.slotCategories.length > 0) {
-      return { categories: restaurant.slotCategories };
-    }
-
-    // Generate 30min intervals
-    let rawSlots = restaurant?.bookingSlots || [];
-    
-    const getTimingsForDay = (day: string) => {
-      const daily = restaurant?.dailyTimings?.[day];
-      let openStr = restaurant?.openingHours?.open || '11:00 AM';
-      let closeStr = restaurant?.openingHours?.close || '11:00 PM';
-      let isClosed = false;
-
-      if (daily) {
-        if (daily.closed) isClosed = true;
-        else if (daily.ranges && daily.ranges.length > 0) {
-          openStr = daily.ranges[0].open;
-          closeStr = daily.ranges[0].close;
-        }
-      }
-      return { openStr, closeStr, isClosed };
-    };
-
-    if (rawSlots.length === 0) {
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const timings = getTimingsForDay(dayNames[selectedDate.getDay()]);
-      
-      const parseTimeForGrouping = (timeStr: string) => {
-        if (!timeStr) return 0;
-        const p = timeStr.trim().split(' ');
-        const period = p.length > 1 ? p[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
-        const timeParts = p[0].replace(/AM|PM/i, '').split(':');
-        const h = parseInt(timeParts[0], 10) || 0;
-        const m = timeParts.length > 1 ? parseInt(timeParts[1], 10) : 0;
-        let hour = h;
-        if (period === 'PM' && hour !== 12) hour += 12;
-        if (period === 'AM' && hour === 12) hour = 0;
-        return hour * 60 + (m || 0);
-      };
-
-      if (!timings.isClosed) {
-        const openMin = parseTimeForGrouping(timings.openStr);
-        const closeMin = parseTimeForGrouping(timings.closeStr);
-        let endMin = closeMin <= openMin ? closeMin + 24 * 60 : closeMin;
-
-        for (let m = openMin; m < endMin; m += 30) {
-          const hour = Math.floor((m % (24 * 60)) / 60);
-          const min = m % 60;
-          rawSlots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
-        }
-      }
-    }
-
+    // Always use outlet timings
     const parseTimeForGrouping = (timeStr: string) => {
+      if (!timeStr) return 0;
       const p = timeStr.trim().split(' ');
       const period = p.length > 1 ? p[1].toUpperCase() : (timeStr.toUpperCase().includes('PM') ? 'PM' : 'AM');
       const timeParts = p[0].replace(/AM|PM/i, '').split(':');
@@ -122,17 +72,54 @@ export default function BookTableView() {
       return hour * 60 + (m || 0);
     };
 
+    let rawSlots: string[] = [];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const selectedDayName = dayNames[selectedDate.getDay()];
+    const daily = restaurant?.dailyTimings?.[selectedDayName];
+    
+    let rangesToProcess: any[] = [];
+    if (daily?.closed) {
+      rangesToProcess = [];
+    } else if (daily?.ranges && daily.ranges.length > 0) {
+      rangesToProcess = daily.ranges;
+    } else {
+      rangesToProcess = [{
+        open: restaurant?.openingHours?.open || '11:00 AM',
+        close: restaurant?.openingHours?.close || '11:00 PM'
+      }];
+    }
+
+    rangesToProcess.forEach(r => {
+      const openMin = parseTimeForGrouping(r.open);
+      const closeMin = parseTimeForGrouping(r.close);
+      let endMin = closeMin <= openMin ? closeMin + 24 * 60 : closeMin;
+
+      for (let m = openMin; m < endMin; m += 30) {
+        let hour24 = Math.floor((m % (24 * 60)) / 60);
+        const min = m % 60;
+        const period = hour24 >= 12 ? 'PM' : 'AM';
+        let hour12 = hour24 % 12;
+        if (hour12 === 0) hour12 = 12;
+        rawSlots.push(`${hour12.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')} ${period}`);
+      }
+    });
+
     const lunchSlots: string[] = [];
     const dinnerSlots: string[] = [];
     const breakfastSlots: string[] = [];
 
     rawSlots.forEach(timeStr => {
       const timeVal = parseTimeForGrouping(timeStr);
-      if (timeVal < 12 * 60) { // < 12:00 PM
+      // Anything > 6:00 AM and < 12:00 PM is breakfast
+      if (timeVal > 6 * 60 && timeVal < 12 * 60) {
         breakfastSlots.push(timeStr);
-      } else if (timeVal < 18 * 60) { // < 6:00 PM
+      } 
+      // 12:00 PM to 5:30 PM is lunch
+      else if (timeVal >= 12 * 60 && timeVal <= 17.5 * 60) {
         lunchSlots.push(timeStr);
-      } else {
+      } 
+      // 6:00 PM till closing time is dinner
+      else if (timeVal >= 18 * 60) {
         dinnerSlots.push(timeStr);
       }
     });
@@ -154,6 +141,27 @@ export default function BookTableView() {
       setActiveTimeCategory(null);
     }
   }, [slotData, activeTimeCategory]);
+
+  const activeOffers = useMemo(() => {
+    if (!restaurant?.offers) return [];
+    
+    const todayStr = format(startOfToday(), 'yyyy-MM-dd');
+    
+    return restaurant.offers.filter(offer => {
+      if (!offer.validFrom && !offer.validUntil) return true;
+      
+      try {
+        const fromStr = offer.validFrom ? offer.validFrom.split('T')[0] : null;
+        const untilStr = offer.validUntil ? offer.validUntil.split('T')[0] : null;
+        
+        if (fromStr && todayStr < fromStr) return false;
+        if (untilStr && todayStr > untilStr) return false;
+      } catch (e) {
+        return true;
+      }
+      return true;
+    });
+  }, [restaurant?.offers]);
 
   const isTimeInPast = (timeStr: string) => {
     if (!isSameDay(selectedDate, new Date())) return false;
@@ -288,7 +296,7 @@ export default function BookTableView() {
       {/* Mobile/Desktop App Header */}
       <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center px-4 h-16 md:h-20 shadow-sm">
          <div className="max-w-4xl mx-auto flex items-center w-full">
-           <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full active:scale-95 transition-transform text-slate-700 hover:bg-slate-100">
+           <button onClick={() => navigate(getRestaurantUrl(restaurant))} className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full active:scale-95 transition-transform text-slate-700 hover:bg-slate-100">
              <ArrowLeft size={24} />
            </button>
            <div className="ml-3 flex-1 overflow-hidden">
@@ -410,17 +418,45 @@ export default function BookTableView() {
           <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-100">
              <h3 className="font-bold text-slate-900 text-lg mb-4">Select offer to proceed</h3>
              
-             <div className="border border-amber-200 rounded-[20px] p-5 relative overflow-hidden bg-[#fffdf5]">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
-                <div className="flex items-center gap-3 mb-1">
-                   <div className="w-4 h-4 rounded-full border-[5px] border-amber-500 bg-white"></div>
-                   <h4 className="font-bold text-slate-900 text-base">Flat 10% off on total bill</h4>
-                </div>
-                <div className="pl-7 text-sm font-medium text-slate-600">
-                   Booking Fee: FREE
-                </div>
-             </div>
-             <p className="mt-4 text-xs text-slate-500">Coupons & additional offers available during bill payment</p>
+             {activeOffers.length > 0 ? (
+               <div className="space-y-3">
+                 {activeOffers.map((offer, idx) => (
+                   <button
+                     key={idx}
+                     onClick={() => setSelectedOffer(idx)}
+                     className={cn(
+                       "w-full text-left border rounded-[20px] p-5 relative overflow-hidden transition-all",
+                       selectedOffer === idx 
+                         ? "border-amber-500 bg-[#fffdf5] ring-1 ring-amber-500" 
+                         : "border-slate-200 bg-white hover:border-amber-200"
+                     )}
+                   >
+                      {selectedOffer === idx && (
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+                      )}
+                      
+                      <div className="flex items-center gap-3 mb-1 relative z-10">
+                         <div className={cn(
+                           "flex-shrink-0 w-4 h-4 rounded-full border-[5px]",
+                           selectedOffer === idx ? "border-amber-500 bg-white" : "border-slate-300 bg-transparent"
+                         )}></div>
+                         <h4 className="font-bold text-slate-900 text-base">{offer.title}</h4>
+                      </div>
+                      <div className="pl-7 text-sm font-medium text-slate-600 relative z-10">
+                         {offer.description || 'Offers available during bill payment'}
+                      </div>
+                   </button>
+                 ))}
+               </div>
+             ) : (
+               <div className="border border-slate-200 rounded-[20px] p-5 bg-slate-50 relative overflow-hidden text-center">
+                 <p className="text-sm font-medium text-slate-600">No active offers available</p>
+               </div>
+             )}
+             
+             <p className="mt-4 text-xs text-slate-500">
+               Coupons & additional offers available during bill payment. These offers are managed by the restaurant and Bookmytable is not responsible for any discrepancies.
+             </p>
           </div>
 
           {(!user || !profile?.phone) && (

@@ -232,6 +232,18 @@ export function getRestaurantStatus(restaurant: any) {
 
 export const RESTAURANT_IMAGE_FALLBACK = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800";
 
+export function getRatingColor(rating: number): string {
+  if (rating < 3) return 'bg-red-500 text-white border-red-500';
+  if (rating < 4) return 'bg-amber-500 text-white border-amber-500';
+  return 'bg-[#0b8a4a] text-white border-[#0b8a4a]'; // green color
+}
+
+export function getRatingTextColor(rating: number): string {
+  if (rating < 3) return 'text-red-500';
+  if (rating < 4) return 'text-amber-500';
+  return 'text-[#25D366]'; // green color
+}
+
 export function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>) {
   e.currentTarget.src = RESTAURANT_IMAGE_FALLBACK;
 }

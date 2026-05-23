@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, Zap, ArrowRight } from 'lucide-react';
 import { Restaurant } from '../types';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRestaurantStatus } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRestaurantStatus, getRatingColor } from '../lib/utils';
 
 interface RestaurantCardProps {
   restaurant: Restaurant & { distance?: number | null };
@@ -12,6 +12,7 @@ interface RestaurantCardProps {
 
 export function RestaurantCard({ restaurant, className, showFullOffer }: RestaurantCardProps) {
   const status = getRestaurantStatus(restaurant);
+  const ratingBg = getRatingColor(restaurant.rating || 0);
 
   return (
     <Link to={getRestaurantUrl(restaurant)} className={cn("group flex flex-col h-full bg-white rounded-lg shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-2", className)}>
@@ -48,9 +49,9 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           </div>
         )}
 
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-2 py-1 rounded-xl flex items-center gap-1 shadow-md">
-           <span className="text-xs font-black text-brand">{restaurant.rating}</span>
-           <Star size={10} className="fill-brand text-brand" />
+        <div className={cn("absolute top-4 right-4 backdrop-blur-md px-2 py-1 rounded-xl flex items-center gap-1 shadow-md", ratingBg)}>
+           <span className="text-xs font-black">{restaurant.rating}</span>
+           <Star size={10} className="fill-current" />
         </div>
       </div>
       

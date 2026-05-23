@@ -8,7 +8,7 @@ import { useMasterData } from './MasterDataContext';
 import { useAuth } from './AuthProvider';
 import { Star, MapPin, Search, Filter, Navigation, Zap, ChevronRight, ChevronLeft, TrendingUp, Percent, ArrowRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -595,12 +595,9 @@ export default function CityView() {
                                 {Array.isArray(res.cuisine) ? res.cuisine.join(', ') : res.cuisine} • {res.location}
                               </p>
                               <div className="flex items-center gap-1 mt-0.5 md:mt-1">
-                                <div className="flex">
-                                  {[1,2,3,4,5].map(i => (
-                                    <Star key={i} size={10} fill={i <= res.rating ? "#FF4D00" : "none"} stroke={i <= res.rating ? "#FF4D00" : "#CBD5E1"} />
-                                  ))}
+                                <div className={cn("px-1.5 py-0.5 rounded text-[10px] md:text-xs font-black flex items-center gap-1", getRatingColor(res.rating || 0))}>
+                                   {res.rating} <Star size={10} className="fill-current" />
                                 </div>
-                                <span className="text-[10px] md:text-xs font-bold text-brand ml-1">{res.rating}</span>
                               </div>
                             </div>
                           </Link>

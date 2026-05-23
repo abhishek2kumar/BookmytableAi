@@ -4,7 +4,7 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useMasterData } from './MasterDataContext';
 import { Star, MapPin, ChevronLeft, Zap, Info } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
 
 export default function CuisineView() {
@@ -185,9 +185,9 @@ export default function CuisineView() {
                       <h3 className="text-lg font-display font-bold text-slate-900 group-hover:text-brand transition-colors line-clamp-1 flex-1 leading-tight">
                         {restaurant.name}
                       </h3>
-                      <div className="shrink-0 bg-vibrant-success px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm border border-white/10">
-                        <span className="text-xs font-black text-white">{restaurant.rating}</span>
-                        <Star size={10} className="fill-white text-white" />
+                      <div className={cn("shrink-0 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm border border-white/10", getRatingColor(restaurant.rating || 0))}>
+                        <span className="text-xs font-black">{restaurant.rating}</span>
+                        <Star size={10} className="fill-current text-white" />
                       </div>
                     </div>
                     
