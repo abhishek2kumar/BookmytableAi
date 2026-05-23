@@ -11,6 +11,7 @@ import CityView from './components/CityView';
 import CuisineView from './components/CuisineView';
 import RestaurantDetailsView from './components/RestaurantDetailsView';
 import BookTableView from './components/BookTableView';
+import TakeawayView from './components/TakeawayView';
 import DashboardView from './components/DashboardView';
 import OwnerDashboardView from './components/OwnerDashboardView';
 import AdminDashboardView from './components/AdminDashboardView';
@@ -74,6 +75,9 @@ export default function App() {
                   <Route path="/restaurant/:city/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:city/:slug/book" element={<BookTableView />} />
                   <Route path="/restaurant/:slug/book" element={<BookTableView />} />
+                  <Route path="/restaurant/:city/:slug/takeaway" element={<TakeawayView />} />
+                  <Route path="/restaurant/:slug/takeaway" element={<TakeawayView />} />
+                  <Route path="/takeaway/:slug" element={<TakeawayView />} />
                   <Route path="/restaurant/:city/:slug/:tab" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/book/:slug" element={<BookTableView />} />

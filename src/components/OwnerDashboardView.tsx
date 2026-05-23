@@ -40,7 +40,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
   
   const [restaurant, setRestaurant] = useState<any>(null);
   const [bookings, setBookings] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'management' | 'menu'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'management' | 'menu' | 'liveMenu'>('overview');
   const [activeMgmtTab, setActiveMgmtTab] = useState<'general' | 'operational' | 'visuals' | 'offers' | 'reservations'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,7 +123,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
       'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'bookingSlots', 
-      'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories'
+      'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
     ];
 
     const updateData: any = {};
@@ -990,6 +990,132 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     }
   };
 
+  const renderLiveMenuTab = () => (
+    <motion.div
+      key="liveMenu"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="bg-white rounded-[40px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden"
+    >
+      <div className="h-40 bg-orange-50 absolute top-0 inset-x-0 -z-0" />
+      <div className="p-12 pt-16 relative z-10">
+        <div className="flex flex-col md:flex-row gap-12">
+          <div className="md:w-1/3">
+            <h3 className="text-3xl font-display font-black text-slate-900 tracking-tight leading-none mb-4">Live Menu</h3>
+            <p className="text-slate-400 font-bold leading-relaxed mb-8">Manage your online takeaway orders menu including pricing and availability.</p>
+            <button 
+              onClick={() => {
+                const newItem = { id: Date.now().toString(), name: '', price: 0, isAvailable: true };
+                setEditForm({...editForm, liveMenu: [...(editForm.liveMenu || []), newItem]});
+              }}
+              className="w-full flex items-center justify-center gap-3 bg-orange-500 text-white py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              <Plus size={16} /> Add Item
+            </button>
+          </div>
+          
+          <div className="md:w-2/3 space-y-6">
+            {(!editForm.liveMenu || editForm.liveMenu.length === 0) && (
+              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100">
+                 <UtensilsCrossed size={64} className="mx-auto text-slate-200 mb-6" />
+                 <p className="text-slate-400 font-bold">Start adding takeaway menu items.</p>
+              </div>
+            )}
+            
+            {(editForm.liveMenu || []).map((item: any, idx: number) => (
+               <div key={item.id} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm relative group hover:shadow-md transition-all">
+                 <button 
+                   onClick={() => {
+                     const nextMenu = [...(editForm.liveMenu || [])];
+                     nextMenu.splice(idx, 1);
+                     setEditForm({...editForm, liveMenu: nextMenu});
+                   }}
+                   className="absolute top-6 right-6 w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                 >
+                   <Trash2 size={18} />
+                 </button>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pr-12">
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Item Name</label>
+                     <input 
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       value={item.name}
+                       placeholder="E.g., Margherita Pizza"
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, name: e.target.value };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     />
+                   </div>
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Price (₹)</label>
+                     <input 
+                       type="number"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       value={item.price || ''}
+                       placeholder="E.g., 299"
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, price: parseFloat(e.target.value) || 0 };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     />
+                   </div>
+                   <div className="md:col-span-2">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Description</label>
+                     <textarea 
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none h-24"
+                       value={item.description || ''}
+                       placeholder="Short description of the item..."
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, description: e.target.value };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     />
+                   </div>
+                   <div className="md:col-span-2">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Image URL</label>
+                     <input 
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       value={item.image || ''}
+                       placeholder="https://..."
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, image: e.target.value };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     />
+                     {item.image && (
+                       <img src={item.image} alt={item.name} className="mt-4 w-32 h-32 object-cover rounded-2xl border border-slate-100" />
+                     )}
+                   </div>
+                 </div>
+
+                 <div className="flex items-center gap-4 bg-slate-50 p-6 rounded-[24px]">
+                   <span className="text-sm font-black text-slate-700">Available to Order</span>
+                   <button 
+                     onClick={() => {
+                        const nextMenu = [...(editForm.liveMenu || [])];
+                        nextMenu[idx] = { ...item, isAvailable: !item.isAvailable };
+                        setEditForm({...editForm, liveMenu: nextMenu});
+                     }}
+                     className={`w-14 h-8 rounded-full transition-colors relative ${item.isAvailable ? 'bg-orange-500' : 'bg-slate-300'}`}
+                   >
+                     <div className={`w-6 h-6 rounded-full bg-white absolute top-1 transition-all ${item.isAvailable ? 'left-7' : 'left-1'}`} />
+                   </button>
+                 </div>
+               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[600px]">
@@ -1021,7 +1147,8 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
                     { id: 'bookings', label: 'Bookings List', icon: Calendar },
                     { id: 'management', label: 'Restaurant Setup', icon: Settings },
-                    { id: 'menu', label: 'Visual Menu', icon: Menu }
+                    { id: 'menu', label: 'Visual Menu', icon: Menu },
+                    { id: 'liveMenu', label: 'Live Menu', icon: UtensilsCrossed }
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -1103,6 +1230,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             {activeTab === 'overview' && renderOverviewTab()}
             {activeTab === 'bookings' && renderBookingsTab()}
             {activeTab === 'menu' && renderMenuTab()}
+            {activeTab === 'liveMenu' && renderLiveMenuTab()}
             {activeTab === 'management' && (
               <motion.div
                 key="management"

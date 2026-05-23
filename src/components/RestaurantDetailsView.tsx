@@ -8,10 +8,10 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useLocationContext } from './LocationContext';
 import { RestaurantCard } from './RestaurantCard';
 import { Restaurant, Booking, Review } from '../types';
-import { Search, Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, Navigation, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu, Megaphone, Play, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Star, MapPin, Clock, Users, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle, MessageSquare, Sparkles, Send, Loader2, Utensils, Zap, Gift, Info, Check, Heart, Share2, X, Maximize2, Phone, Compass, Navigation, ChevronDown, TrendingUp, Wifi, Car, Wind, Music, Wine, Baby, UserCheck, Gamepad2, Tv, Settings2, Menu, Megaphone, Play, ArrowLeft, ArrowRight, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, addDays, startOfToday, parseISO } from 'date-fns';
-import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl, getRestaurantStatus, getRestaurantTabUrl, getRatingColor } from '../lib/utils';
+import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, formatDate, calculateDistance, getRestaurantUrl, getRestaurantBookUrl, getRestaurantTakeawayUrl, getRestaurantStatus, getRestaurantTabUrl, getRatingColor } from '../lib/utils';
 import { summarizeGoogleReviews } from '../services/aiService';
 import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
@@ -976,6 +976,16 @@ export default function RestaurantDetailsView() {
                       <CalendarIcon size={16} />
                       {restaurant.isBookingEnabled !== false ? 'Book Table' : 'Booking Unavailable'}
                     </button>
+                    
+                    {restaurant.liveMenu && restaurant.liveMenu.length > 0 && (
+                      <button 
+                        onClick={() => navigate(getRestaurantTakeawayUrl(restaurant))}
+                        className="flex items-center gap-2 text-white bg-slate-900 hover:bg-black font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm shadow-sm"
+                      >
+                        <ShoppingBag size={16} />
+                        Order Takeaway
+                      </button>
+                    )}
                   
                   <a 
                     href="tel:+919876543210" 
@@ -1108,7 +1118,7 @@ export default function RestaurantDetailsView() {
             return (
               <Link 
                 key={t.id}
-                to={getRestaurantTabUrl(restaurant, t.id)}
+                to={t.id === 'book' ? getRestaurantBookUrl(restaurant) : t.id === 'takeaway' ? getRestaurantTakeawayUrl(restaurant) : getRestaurantTabUrl(restaurant, t.id)}
                 className={cn(
                   "relative py-4 text-sm md:text-base font-bold transition-colors whitespace-nowrap", 
                   isActive ? "text-brand" : "text-slate-500 hover:text-slate-900"
@@ -1708,23 +1718,6 @@ export default function RestaurantDetailsView() {
                    </div>
                 </div>
               )}
-          {/* Take Away Section */}
-          <div id="takeaway" className="scroll-mt-24 pt-8 border-t border-slate-300">
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">Take Away</h2>
-            <div className="bg-slate-50/50 rounded-3xl p-8 border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <Utensils size={28} className="text-slate-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-lg mb-1">Take Away Orders</h3>
-                <p className="text-slate-500 text-sm max-w-sm mx-auto">This restaurant hasn't enabled online take away orders yet. Please contact them directly.</p>
-              </div>
-               <a href="tel:+919876543210" className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-bold rounded-xl active:scale-95 transition-transform mt-2">
-                 <Phone size={18} />
-                 Call Restaurant
-               </a>
-            </div>
-          </div>
             </div>
           </div>
         </div>

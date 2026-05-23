@@ -33,6 +33,19 @@ export interface MenuCategory {
   images: string[];
 }
 
+export interface LiveMenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  image?: string;
+  rating?: number;
+  price: number;
+  isAvailable: boolean;
+  availableDays?: string[];
+  availableStartTime?: string;
+  availableEndTime?: string;
+}
+
 export interface Offer {
   id: string;
   title: string;
@@ -109,6 +122,7 @@ export interface Restaurant {
   ambienceImages?: string[];
   popularDishes?: string[];
   menuCategories?: MenuCategory[];
+  liveMenu?: LiveMenuItem[];
   gallery?: { [category: string]: string[] };
   contactNumber?: string;
   contactEmail?: string;

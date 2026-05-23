@@ -152,6 +152,7 @@ export default function AdminDashboardView() {
     | "operational"
     | "visuals"
     | "menu"
+    | "liveMenu"
     | "offers"
     | "ads"
     | "reservations"
@@ -506,6 +507,7 @@ export default function AdminDashboardView() {
         "slotCategories",
         "categorySlots",
         "menuCategories",
+        "liveMenu",
       ];
 
       const updateData: any = {};
@@ -2658,6 +2660,136 @@ export default function AdminDashboardView() {
                   </div>
                 </div>
               ))}
+            </div>
+          </motion.div>
+        );
+      case "liveMenu":
+        return (
+          <motion.div
+            key="liveMenu"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className="space-y-8"
+          >
+            <div className="flex flex-col gap-6">
+              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-[24px] border border-slate-100">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-1">Takeaway Menu</h3>
+                  <p className="text-slate-500 text-sm max-w-md">Manage your live takeaway items, pricing, and availability.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newItem = { id: Date.now().toString(), name: '', price: 0, isAvailable: true };
+                    setEditingRestaurant({ ...editingRestaurant, liveMenu: [...(editingRestaurant.liveMenu || []), newItem] });
+                  }}
+                  className="flex items-center gap-2 bg-brand text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-transform"
+                >
+                  <Plus size={16} /> Add Item
+                </button>
+              </div>
+
+              {(!editingRestaurant.liveMenu || editingRestaurant.liveMenu.length === 0) ? (
+                <div className="py-24 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-100">
+                   <UtensilsCrossed size={48} className="mx-auto text-slate-200 mb-4" />
+                   <p className="text-slate-400 font-bold">No takeaway menu items added yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {editingRestaurant.liveMenu.map((item: any, idx: number) => (
+                    <div key={item.id} className="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm relative group hover:shadow-md transition-all">
+                      <button 
+                         type="button"
+                         onClick={() => {
+                           const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                           nextMenu.splice(idx, 1);
+                           setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                         }}
+                         className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                      >
+                         <Trash2 size={14} />
+                      </button>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Item Name</label>
+                           <input 
+                             type="text"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             value={item.name}
+                             placeholder="E.g. Chicken Burger"
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, name: e.target.value };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           />
+                        </div>
+                        <div>
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Price (₹)</label>
+                           <input 
+                             type="number"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             value={item.price || ''}
+                             placeholder="E.g. 199"
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, price: parseFloat(e.target.value) || 0 };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           />
+                        </div>
+                        <div className="md:col-span-2">
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label>
+                           <textarea 
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all resize-none h-20 text-sm"
+                             value={item.description || ''}
+                             placeholder="Item details..."
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, description: e.target.value };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           />
+                        </div>
+                        <div className="md:col-span-2">
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Image URL</label>
+                           <input 
+                             type="text"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             value={item.image || ''}
+                             placeholder="https://..."
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, image: e.target.value };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           />
+                           {item.image && (
+                             <img src={item.image} alt={item.name} className="mt-3 w-20 h-20 object-cover rounded-xl border border-slate-100" />
+                           )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                        <span className="text-sm font-bold text-slate-700">Available to Order</span>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                             const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                             nextMenu[idx] = { ...item, isAvailable: !item.isAvailable };
+                             setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                          }}
+                          className={`w-12 h-7 rounded-full transition-colors relative ${item.isAvailable ? 'bg-brand' : 'bg-slate-300'}`}
+                        >
+                          <div className={`w-5 h-5 rounded-full bg-white absolute top-1 transition-all ${item.isAvailable ? 'left-6' : 'left-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         );
@@ -5288,6 +5420,7 @@ export default function AdminDashboardView() {
                         icon: Image,
                       },
                       { id: "menu", label: "Digital Menu", icon: Soup },
+                      { id: "liveMenu", label: "Takeaway Menu", icon: UtensilsCrossed },
                       { id: "offers", label: "Promotions", icon: Gift },
                       { id: "ads", label: "Ads", icon: Megaphone },
                       { id: "system", label: "System Control", icon: Settings },
@@ -5424,6 +5557,7 @@ export default function AdminDashboardView() {
                       { id: "operational", label: "Operating", icon: Clock },
                       { id: "visuals", label: "Media", icon: Image },
                       { id: "menu", label: "Menu", icon: Soup },
+                      { id: "liveMenu", label: "Live Menu", icon: UtensilsCrossed },
                       { id: "offers", label: "Offers", icon: Gift },
                       { id: "ads", label: "Ads", icon: Megaphone },
                       { id: "system", label: "System", icon: Settings },

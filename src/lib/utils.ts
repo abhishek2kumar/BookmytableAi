@@ -45,6 +45,17 @@ export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, c
   return `/restaurant/${citySlug}/${combinedSlug}/book`;
 }
 
+export function getRestaurantTakeawayUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null): string {
+  if (!restaurant || !restaurant.id) return '/';
+  
+  const citySlug = slugify(restaurant?.city || 'ind');
+  const nameSlug = slugify(restaurant?.name || 'restaurant');
+  const locationSlug = slugify(restaurant?.location || '');
+  const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+  
+  return `/restaurant/${citySlug}/${combinedSlug}/takeaway`;
+}
+
 export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, tab: string): string {
   if (!restaurant || !restaurant.id) return '/';
   
