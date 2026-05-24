@@ -39,8 +39,11 @@ export interface LiveMenuItem {
   description?: string;
   image?: string;
   rating?: number;
+  ratingCount?: number;
   price: number;
   isAvailable: boolean;
+  category?: string;
+  isVeg?: boolean;
   availableDays?: string[];
   availableStartTime?: string;
   availableEndTime?: string;

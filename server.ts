@@ -256,6 +256,82 @@ async function startServer() {
     }
   });
 
+  // API Route for Paytm Initiate Transaction
+  app.post('/api/paytm/initiate', async (req, res) => {
+    const { amount, orderId, customerId } = req.body;
+
+    // We use dynamic import for CommonJS module if needed, or straight require.
+    // In tsx/esbuild it mostly works as import.
+    try {
+      const PaytmChecksum = (await import('paytmchecksum')).default || await import('paytmchecksum');
+      const https = await import('https');
+
+      const paytmParams: any = {
+        body: {
+          requestType: "Payment",
+          mid: process.env.PAYTM_MID || "ZZUTMz05213521592016",
+          websiteName: "WEBSTAGING",
+          orderId: orderId,
+          callbackUrl: "https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=" + orderId,
+          txnAmount: {
+            value: Number(amount).toFixed(2),
+            currency: "INR",
+          },
+          userInfo: {
+            custId: customerId || "CUST_001",
+          },
+          channelId: "WEB",
+          industryTypeId: "Retail"
+        }
+      };
+
+      const merchantKey = process.env.PAYTM_MERCHANT_KEY || "z%b4_fEHUHkW&nZy";
+      const checksum = await PaytmChecksum.generateSignature(JSON.stringify(paytmParams.body), merchantKey);
+      
+      paytmParams.head = {
+        signature: checksum
+      };
+
+      const post_data = JSON.stringify(paytmParams);
+
+      const options = {
+        hostname: 'securegw-stage.paytm.in',
+        port: 443,
+        path: `/theia/api/v1/initiateTransaction?mid=${paytmParams.body.mid}&orderId=${orderId}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': post_data.length
+        }
+      };
+
+      let response = "";
+      const post_req = https.request(options, function(post_res) {
+        post_res.on('data', function (chunk) {
+          response += chunk;
+        });
+
+        post_res.on('end', function() {
+           try {
+             res.json(JSON.parse(response));
+           } catch(e) {
+             res.status(500).json({ error: "Invalid JSON from Paytm" });
+           }
+        });
+      });
+
+      post_req.on('error', (e) => {
+        res.status(500).json({ error: e.message });
+      });
+
+      post_req.write(post_data);
+      post_req.end();
+    } catch (error: any) {
+      console.error('Paytm Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // SEO: dynamic sitemap.xml
   app.get('/sitemap.xml', async (req, res) => {
     try {
