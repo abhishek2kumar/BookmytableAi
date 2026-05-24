@@ -1034,7 +1034,7 @@ export default function RestaurantDetailsView() {
         <div className="flex items-center gap-4">
           <button
             onClick={() =>
-              navigate(`/city/${(restaurant.city || "").toLowerCase()}`)
+              navigate(`/${(restaurant.city || "").toLowerCase()}`)
             }
             className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800 active:scale-95 transition-all"
           >
@@ -1096,7 +1096,7 @@ export default function RestaurantDetailsView() {
         <div className="relative z-10 max-w-6xl mx-auto px-0 sm:px-4 md:px-12 lg:px-16 md:py-8 py-0">
           <button
             onClick={() =>
-              navigate(`/city/${(restaurant.city || "").toLowerCase()}`)
+              navigate(`/${(restaurant.city || "").toLowerCase()}`)
             }
             className="hidden md:flex items-center gap-2 text-vibrant-gray hover:text-brand mb-6 transition-colors font-semibold"
           >
@@ -2780,7 +2780,7 @@ export default function RestaurantDetailsView() {
                             onClick={() => {
                               setIsSearchOverlayOpen(false);
                               if (res.type === "city") {
-                                navigate(`/city/${res.name.toLowerCase()}`);
+                                navigate(`/${res.name.toLowerCase()}`);
                               } else if (res.type === "restaurant") {
                                 navigate(
                                   `/restaurant/${res.restaurantId || res.id.replace("res-", "")}`,

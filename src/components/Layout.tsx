@@ -86,13 +86,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setCoords({ lat, lng });
     setIsLocationModalOpen(false);
     setCitySearchQuery('');
-    navigate(`/city/${cityName.toLowerCase()}`);
+    navigate(`/${cityName.toLowerCase()}`);
   };
 
   const handleDetectLocation = async () => {
     await detectLocation();
     setIsLocationModalOpen(false);
-    navigate('/city/nearby');
+    navigate('/nearby');
   };
 
   const navItems = [

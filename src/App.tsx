@@ -70,7 +70,8 @@ export default function App() {
               <Layout>
                 <Routes>
                   <Route path="/" element={<HomeLandingView />} />
-                  <Route path="/city/:cityId" element={<CityView />} />
+                  <Route path="/:cityId" element={<CityView />} />
+                  <Route path="/:cityId/:locationSlug" element={<CityView />} />
                   <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
                   <Route path="/:city/restaurant/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/:city/restaurant/:slug/book" element={<BookTableView />} />

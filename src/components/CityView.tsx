@@ -34,7 +34,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function CityView() {
-  const { cityId } = useParams();
+  const { cityId, locationSlug } = useParams();
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { cities, cuisines, loading: masterDataLoading } = useMasterData();
@@ -79,6 +79,7 @@ export default function CityView() {
     cuisines: [] as string[],
     minRating: 0,
     onlyWithOffers: false,
+    onlyTakeaway: false,
   });
 
   // Validate cityId on mount
@@ -212,16 +213,22 @@ export default function CityView() {
   }, [cityRestaurants]);
 
   const takeawayRestaurants = useMemo(() => {
-    const list = [...cityRestaurants].filter(
+    let list = [...cityRestaurants].filter(
       (r) => r.liveMenu && r.liveMenu.length > 0,
     );
+    if (locationSlug) {
+      list = list.filter((r) => {
+        const locSlugFormat = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        return locSlugFormat === locationSlug;
+      });
+    }
     const withDistance = list
       .filter((r) => r.distance !== null)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0));
     return withDistance.length > 0
       ? withDistance.slice(0, 5)
       : list.slice(0, 5);
-  }, [cityRestaurants]);
+  }, [cityRestaurants, locationSlug]);
 
   const famousLocations = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -267,6 +274,11 @@ export default function CityView() {
 
         if (!matchesSearch && searchQuery.length > 0) return false;
 
+        if (locationSlug) {
+          const locSlugFormat = (res.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          if (locSlugFormat !== locationSlug) return false;
+        }
+
         // Filter matches
         const matchesCuisine =
           activeFilters.cuisines.length === 0 ||
@@ -277,8 +289,11 @@ export default function CityView() {
         const matchesOffers =
           !activeFilters.onlyWithOffers ||
           (res.offers && res.offers.length > 0);
+        const matchesTakeaway = 
+          !activeFilters.onlyTakeaway || 
+          (res.liveMenu && res.liveMenu.length > 0);
 
-        return matchesCuisine && matchesRating && matchesOffers;
+        return matchesCuisine && matchesRating && matchesOffers && matchesTakeaway;
       })
       .sort((a, b) => {
         if (
@@ -388,6 +403,7 @@ export default function CityView() {
         )}
 
       {/* Categories & Cuisines */}
+      {!locationSlug && (
       <section className="relative bg-white pt-4 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           {/* Welcome Banner */}
@@ -452,10 +468,62 @@ export default function CityView() {
           </div>
         </div>
       </section>
+      )}
+
+      {locationSlug && (
+        <div className="max-w-7xl mx-auto px-6 mt-6 md:mt-8 mb-6 md:mb-8">
+          <div className="pt-4 pb-0 md:pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <button 
+                onClick={() => navigate(`/${cityId}`)}
+                className="flex items-center gap-1 text-slate-500 hover:text-brand font-medium text-sm mb-3 transition-colors"
+              >
+                <ChevronLeft size={16} /> Back to {cityName}
+              </button>
+              <h1 className="text-3xl md:text-4xl font-display font-black text-vibrant-dark mb-2">
+                Restaurants in {famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}
+              </h1>
+              <div className="flex items-center gap-2 text-slate-500 font-medium">
+                <MapPin size={20} className="text-brand" />
+                <span>{filteredListing.length} places to explore</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsFilterOpen(true)}
+                className={cn(
+                  "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
+                  activeFilters.cuisines.length > 0 ||
+                    activeFilters.minRating > 0 ||
+                    activeFilters.onlyWithOffers ||
+                    activeFilters.onlyTakeaway
+                    ? "bg-brand text-white border-brand border"
+                    : "bg-white border-gray-200 text-vibrant-dark border hover:border-brand shadow-sm",
+                )}
+              >
+                <Filter size={16} />
+                Filters
+                {(activeFilters.cuisines.length > 0 ||
+                  activeFilters.minRating > 0 ||
+                  activeFilters.onlyWithOffers ||
+                  activeFilters.onlyTakeaway) && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px] leading-tight">
+                    {(activeFilters.cuisines.length > 0 ? 1 : 0) +
+                      (activeFilters.minRating > 0 ? 1 : 0) +
+                      (activeFilters.onlyTakeaway ? 1 : 0) +
+                      (activeFilters.onlyWithOffers ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 mt-8 md:mt-12 space-y-12 md:space-y-20">
+
         {/* Featured Section */}
-        {(loading || featuredRestaurants.length > 0) && (
+        {!locationSlug && (loading || featuredRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -512,7 +580,7 @@ export default function CityView() {
         )}
 
         {/* Spotlight Section */}
-        {!loading && spotlightRestaurants.length > 0 && (
+        {!locationSlug && !loading && spotlightRestaurants.length > 0 && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -546,23 +614,56 @@ export default function CityView() {
               ref={spotlightRef}
               className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
             >
-              {spotlightRestaurants.map((restaurant) => (
+              {spotlightRestaurants.map((restaurant) => {
+                const activeAd = restaurant.advertisements?.find(ad => ad.active);
+                return (
                 <div
                   key={restaurant.id}
-                  className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start"
+                  onClick={() => navigate(getRestaurantUrl(restaurant))}
+                  className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start cursor-pointer group rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-100 h-[280px]"
                 >
-                  <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] uppercase font-black tracking-widest px-2 py-1 rounded shadow-md z-10">
+                  <div className="absolute top-3 left-3 bg-white text-slate-900 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded shadow-sm z-20">
                     Ad
                   </div>
-                  <RestaurantCard restaurant={restaurant} />
+                  <img 
+                    src={restaurant.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600'} 
+                    alt={restaurant.name} 
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                    onError={handleImageError}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 transition-opacity duration-300"></div>
+                  
+                  <div className="absolute inset-0 p-5 pt-12 flex flex-col justify-end z-20">
+                    <div className="mt-auto flex flex-col">
+                      {activeAd && (
+                        <div className="mb-3">
+                          <p className="font-bold text-white text-base md:text-lg line-clamp-2 leading-tight drop-shadow-md">
+                            {activeAd.title}
+                          </p>
+                          {activeAd.description && (
+                            <p className="text-sm text-white/90 line-clamp-1 mt-1 drop-shadow-md">
+                              {activeAd.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <div className={activeAd ? "border-t border-white/20 pt-3 flex flex-col gap-0.5" : "flex flex-col gap-0.5"}>
+                        <h3 className="font-display font-medium text-base text-white line-clamp-1 drop-shadow-md">{restaurant.name}</h3>
+                        <div className="flex items-center gap-1.5 text-white/80 drop-shadow-md">
+                          <MapPin size={14} className="shrink-0" />
+                          <p className="text-xs line-clamp-1">{restaurant.location}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )})}
             </div>
           </section>
         )}
 
         {/* Famous Locations */}
-        {!loading && famousLocations.length > 0 && (
+        {!locationSlug && !loading && famousLocations.length > 0 && (
           <section className="relative group/section">
             <div className="mb-6">
               <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
@@ -577,10 +678,12 @@ export default function CityView() {
                 <div
                   key={idx}
                   onClick={() => {
-                    setSearchQuery(locationName);
-                    document
-                      .getElementById("all-restaurants")
-                      ?.scrollIntoView({ behavior: "smooth" });
+                    navigate(`/${cityId}/${locationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`);
+                    setTimeout(() => {
+                      document
+                        .getElementById("all-restaurants")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }, 100);
                   }}
                   className="snap-start bg-white border border-gray-100 hover:border-brand rounded-2xl p-6 cursor-pointer min-w-[140px] md:min-w-[160px] shadow-sm hover:shadow transition-all group flex flex-col items-center justify-center shrink-0"
                 >
@@ -603,10 +706,10 @@ export default function CityView() {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
-                  Takeaway restaurants near You
+                  {locationSlug ? `Take Away Restaurants in ${famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}` : "Takeaway restaurants near You"}
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
-                  Order online & pick up quickly
+                  {locationSlug ? "Quick bites ready for pickup" : "Order online & pick up quickly"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -645,7 +748,7 @@ export default function CityView() {
         )}
 
         {/* Top Discount Section */}
-        {(loading || discountedRestaurants.length > 0) && (
+        {!locationSlug && (loading || discountedRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -706,7 +809,7 @@ export default function CityView() {
         )}
 
         {/* Nearby Section */}
-        {(loading || nearbyRestaurants.length > 0) && (
+        {!locationSlug && (loading || nearbyRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -765,8 +868,9 @@ export default function CityView() {
         {/* Main Listing Section */}
         <section
           id="all-restaurants"
-          className="pt-8 md:pt-12 border-t border-gray-100"
+          className={cn("pt-8 md:pt-12", !locationSlug && "border-t border-gray-100")}
         >
+          {!locationSlug && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
             <h2 className="text-2xl md:text-3xl font-display font-black text-vibrant-dark">
               {searchQuery
@@ -800,6 +904,7 @@ export default function CityView() {
               </button>
             </div>
           </div>
+          )}
 
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -849,6 +954,44 @@ export default function CityView() {
             </div>
           )}
         </section>
+
+        {/* Famous Locations on Location Page */}
+        {locationSlug && !loading && famousLocations.length > 0 && (
+          <section className="relative group/section mt-8 md:mt-12 pt-8 md:pt-12 border-t border-gray-100">
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                Browse by Famous locations
+              </h2>
+              <p className="text-vibrant-gray font-medium text-sm">
+                Explore top areas in {cityName}
+              </p>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 snap-x">
+              {famousLocations.map((locationName, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    navigate(`/${cityId}/${locationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`);
+                    setTimeout(() => {
+                      document
+                        .getElementById("all-restaurants")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }, 100);
+                  }}
+                  className="snap-start bg-white border border-gray-100 hover:border-brand rounded-2xl p-6 cursor-pointer min-w-[140px] md:min-w-[160px] shadow-sm hover:shadow transition-all group flex flex-col items-center justify-center shrink-0"
+                >
+                  <MapPin
+                    size={28}
+                    className="text-brand mb-3 group-hover:scale-110 transition-transform"
+                  />
+                  <span className="font-bold text-sm md:text-base text-vibrant-dark text-center">
+                    {locationName}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Filter Drawer */}
@@ -987,7 +1130,7 @@ export default function CityView() {
                             onClick={() => {
                               setIsSearchOverlayOpen(false);
                               if (res.type === "city") {
-                                navigate(`/city/${res.name.toLowerCase()}`);
+                                navigate(`/${res.name.toLowerCase()}`);
                               } else if (res.type === "restaurant") {
                                 const rData = restaurants.find(
                                   (r) =>
@@ -1242,6 +1385,32 @@ export default function CityView() {
                       }
                     />
                   </label>
+                  <label className="flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 cursor-pointer hover:border-gray-200 transition-colors mt-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                        <ShoppingBag size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-vibrant-dark text-sm">
+                          Takeaway Available
+                        </p>
+                        <p className="text-xs text-vibrant-gray font-medium">
+                          Show only restaurants equipped for takeaway
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="w-6 h-6 rounded-lg text-brand focus:ring-brand accent-brand border-gray-300"
+                      checked={activeFilters.onlyTakeaway}
+                      onChange={(e) =>
+                        setActiveFilters((prev) => ({
+                          ...prev,
+                          onlyTakeaway: e.target.checked,
+                        }))
+                      }
+                    />
+                  </label>
                 </section>
               </div>
 
@@ -1252,6 +1421,7 @@ export default function CityView() {
                       cuisines: [],
                       minRating: 0,
                       onlyWithOffers: false,
+                      onlyTakeaway: false,
                     });
                   }}
                   className="flex-1 py-4 text-sm font-black text-vibrant-gray hover:text-vibrant-dark transition-colors"

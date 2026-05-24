@@ -62,7 +62,7 @@ export default function HomeLandingView() {
       // Valid & Supported
       setCity(cityData.name);
       setCoords({ lat: lat || cityData.lat, lng: lng || cityData.lng });
-      navigate(`/city/${cityData.name.toLowerCase()}`);
+      navigate(`/${cityData.name.toLowerCase()}`);
     } else {
       // Check if it's a known city but unsupported
       const isKnown = cities.some(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
@@ -86,7 +86,7 @@ export default function HomeLandingView() {
       if (cityData) {
         setCity(cityData.name);
         setCoords({ lat: cityData.lat, lng: cityData.lng });
-        navigate(`/city/${cityData.name.toLowerCase()}`);
+        navigate(`/${cityData.name.toLowerCase()}`);
       }
     } else if (suggestion.type === 'restaurant') {
       // If we select a restaurant, we usually need the city context if there's any state relying on it,
@@ -174,7 +174,7 @@ export default function HomeLandingView() {
     // After detection, the context city is updated. 
     // We can either stay here or navigate to a generic page that shows the detected city.
     // navigated to /city/nearby which will now display the detected city name thanks to our CityView fix.
-    navigate('/city/nearby');
+    navigate('/nearby');
   };
 
   return (
