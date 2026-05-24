@@ -11,7 +11,7 @@ export default function CuisineView() {
   const { cuisineId } = useParams();
   const navigate = useNavigate();
   const { cuisines } = useMasterData();
-  const { restaurants, loading } = useRestaurants();
+  const { restaurants, loading } = useRestaurants(true);
   const { coords: userCoords, city: selectedCity } = useLocationContext();
   const [visibleCount, setVisibleCount] = useState(8);
 

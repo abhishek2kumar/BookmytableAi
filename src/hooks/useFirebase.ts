@@ -1,37 +1,64 @@
-import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+import { useState, useEffect } from "react";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
   onSnapshot,
   doc,
-  getDocs
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { Restaurant, Booking } from '../types';
+  getDocs,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
+import { Restaurant, Booking } from "../types";
+
+// Global cache to prevent UI flickering on route transitions
+let cachedAllRestaurants: Restaurant[] = [];
+let isAllCached = false;
+let cachedApprovedRestaurants: Restaurant[] = [];
+let isApprovedCached = false;
 
 export function useRestaurants(onlyApproved = false) {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>(
+    onlyApproved ? cachedApprovedRestaurants : cachedAllRestaurants,
+  );
+  const [loading, setLoading] = useState(
+    onlyApproved ? !isApprovedCached : !isAllCached,
+  );
 
   useEffect(() => {
-    let q = query(collection(db, 'restaurants'), orderBy('createdAt', 'desc'));
-    
+    let q = query(collection(db, "restaurants"), orderBy("createdAt", "desc"));
+
     if (onlyApproved) {
-      q = query(collection(db, 'restaurants'), where('approved', '==', true), orderBy('createdAt', 'desc'));
+      q = query(
+        collection(db, "restaurants"),
+        where("approved", "==", true),
+        orderBy("createdAt", "desc"),
+      );
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => {
+      const docs = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
           ...data,
-          signatureDishes: data.signatureDishes || data.menu || []
+          signatureDishes: data.signatureDishes || data.menu || [],
         } as Restaurant;
       });
-      setRestaurants(docs);
+
+      if (onlyApproved) {
+        cachedApprovedRestaurants = docs;
+        isApprovedCached = true;
+      } else {
+        cachedAllRestaurants = docs;
+        isAllCached = true;
+      }
+
+      // Update restaurants state only if needed to avoid re-renders on every connection
+      setRestaurants((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(docs)) return prev;
+        return docs;
+      });
       setLoading(false);
     });
 
@@ -49,22 +76,30 @@ export function useBookings(uid: string | undefined, role: string | undefined) {
     if (!uid || !role) return;
 
     let q;
-    if (role === 'user') {
-      q = query(collection(db, 'bookings'), where('userId', '==', uid), orderBy('dateTime', 'desc'));
-    } else if (role === 'owner') {
+    if (role === "user") {
+      q = query(
+        collection(db, "bookings"),
+        where("userId", "==", uid),
+        orderBy("dateTime", "desc"),
+      );
+    } else if (role === "owner") {
       // For owners, we'll need to fetch bookings where restaurant.ownerId == uid
       // This is slightly complex for a single query. We'll fetch all and filter or use a better schema.
       // Better schema: Booking has restaurantOwnerId.
-      q = query(collection(db, 'bookings'), where('restaurantOwnerId', '==', uid), orderBy('dateTime', 'desc'));
+      q = query(
+        collection(db, "bookings"),
+        where("restaurantOwnerId", "==", uid),
+        orderBy("dateTime", "desc"),
+      );
     } else {
       // Admin
-      q = query(collection(db, 'bookings'), orderBy('dateTime', 'desc'));
+      q = query(collection(db, "bookings"), orderBy("dateTime", "desc"));
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({
+      const docs = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Booking[];
       setBookings(docs);
       setLoading(false);
@@ -87,29 +122,32 @@ export function useFavoriteRestaurants(favoriteIds: string[] | undefined) {
       return;
     }
 
-    // Firestore 'in' query has a limit of 10-30 items depending on version, 
+    // Firestore 'in' query has a limit of 10-30 items depending on version,
     // but typically 10 for basic. If they have more, we might need multiple queries.
     // For now, we'll slice to 10 for safety or fetch all and filter.
     // Let's fetch all approved restaurants and filter client-side for simplicity if list is small,
     // OR use the 'in' query for better performance.
-    
+
     // Using 'documentId()' is possible but 'in' is more flexible if we have IDs.
     // However, usually we just fetch the ids.
-    
-    const q = query(collection(db, 'restaurants'), where('approved', '==', true));
-    
+
+    const q = query(
+      collection(db, "restaurants"),
+      where("approved", "==", true),
+    );
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs
-        .map(doc => {
+        .map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
             ...data,
-            signatureDishes: data.signatureDishes || data.menu || []
+            signatureDishes: data.signatureDishes || data.menu || [],
           } as Restaurant;
         })
-        .filter(r => favoriteIds.includes(r.id));
-        
+        .filter((r) => favoriteIds.includes(r.id));
+
       setFavorites(docs);
       setLoading(false);
     });

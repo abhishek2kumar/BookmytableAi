@@ -26,12 +26,7 @@ function getResend() {
 
 async function startServer() {
   const app = express();
-  // AI Studio environment strictly requires port 3000.
-  // For your external deployments via GitHub, set the EXTERNAL_DEPLOYMENT_PORT environment variable 
-  // on your server (e.g., EXTERNAL_DEPLOYMENT_PORT=8080).
-  const PORT = process.env.PORT 
-    ? parseInt(process.env.PORT, 10) 
-    : 3000;
+  const PORT = 3000;
 
   app.use(express.json());
 
@@ -301,7 +296,7 @@ async function startServer() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Content-Length': post_data.length
+          'Content-Length': Buffer.byteLength(post_data)
         }
       };
 

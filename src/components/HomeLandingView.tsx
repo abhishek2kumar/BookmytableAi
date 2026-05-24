@@ -4,7 +4,7 @@ import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, Chevro
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
-import { cn } from '../lib/utils';
+import { cn, getRestaurantUrl } from '../lib/utils';
 import { useRestaurants } from '../hooks/useFirebase';
 import { Helmet } from 'react-helmet-async';
 
@@ -91,7 +91,11 @@ export default function HomeLandingView() {
     } else if (suggestion.type === 'restaurant') {
       // If we select a restaurant, we usually need the city context if there's any state relying on it,
       // but navigating to restaurant directly should work independently.
-      navigate(`/restaurant/${suggestion.restaurantId}`);
+      if (suggestion.restaurantData) {
+        navigate(getRestaurantUrl(suggestion.restaurantData));
+      } else {
+        navigate(`/restaurant/${suggestion.restaurantId}`);
+      }
     }
     setShowSuggestions(false);
     setIsSearchOverlayOpen(false);
@@ -110,7 +114,7 @@ export default function HomeLandingView() {
 
     const exactRestaurant = restaurants.find(r => r.name.toLowerCase() === trimmedInput.toLowerCase());
     if (exactRestaurant) {
-      handleSuggestionSelect({ type: 'restaurant', restaurantId: exactRestaurant.id });
+      handleSuggestionSelect({ type: 'restaurant', restaurantId: exactRestaurant.id, restaurantData: exactRestaurant });
       return;
     }
 
@@ -158,7 +162,8 @@ export default function HomeLandingView() {
            image: r.image || '', 
            city: r.city || r.location, 
            restaurantId: r.id, 
-           subtitle: 'Restaurant' 
+           subtitle: 'Restaurant',
+           restaurantData: r
         }))
     : [];
 

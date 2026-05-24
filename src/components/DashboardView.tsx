@@ -13,7 +13,7 @@ export default function DashboardView() {
   const { user, profile } = useAuth();
   const { bookings, loading: bookingsLoading } = useBookings(user?.uid, profile?.role);
   const { favorites, loading: favoritesLoading } = useFavoriteRestaurants(profile?.favorites);
-  const { restaurants } = useRestaurants();
+  const { restaurants } = useRestaurants(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'bookings' | 'favorites'>('bookings');
 

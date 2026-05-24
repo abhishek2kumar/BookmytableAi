@@ -72,13 +72,13 @@ export default function App() {
                   <Route path="/" element={<HomeLandingView />} />
                   <Route path="/city/:cityId" element={<CityView />} />
                   <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
-                  <Route path="/restaurant/:city/:slug" element={<RestaurantDetailsView />} />
-                  <Route path="/restaurant/:city/:slug/book" element={<BookTableView />} />
+                  <Route path="/:city/restaurant/:slug" element={<RestaurantDetailsView />} />
+                  <Route path="/:city/restaurant/:slug/book" element={<BookTableView />} />
                   <Route path="/restaurant/:slug/book" element={<BookTableView />} />
-                  <Route path="/restaurant/:city/:slug/takeaway" element={<TakeawayView />} />
+                  <Route path="/:city/restaurant/:slug/takeaway" element={<TakeawayView />} />
                   <Route path="/restaurant/:slug/takeaway" element={<TakeawayView />} />
                   <Route path="/takeaway/:slug" element={<TakeawayView />} />
-                  <Route path="/restaurant/:city/:slug/:tab" element={<RestaurantDetailsView />} />
+                  <Route path="/:city/restaurant/:slug/:tab" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/book/:slug" element={<BookTableView />} />
                   <Route path="/dashboard" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />

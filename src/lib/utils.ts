@@ -28,7 +28,7 @@ export function getRestaurantUrl(restaurant: { id?: string, name?: string, city?
   const locationSlug = slugify(restaurant?.location || fallbackLocation || '');
   const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
   
-  return `/restaurant/${citySlug}/${combinedSlug}`;
+  return `/${citySlug}/restaurant/${combinedSlug}`;
 }
 
 export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, fallbackId?: string, fallbackName?: string, fallbackLocation?: string): string {
@@ -42,7 +42,7 @@ export function getRestaurantBookUrl(restaurant: { id?: string, name?: string, c
   const locationSlug = slugify(restaurant?.location || fallbackLocation || '');
   const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
 
-  return `/restaurant/${citySlug}/${combinedSlug}/book`;
+  return `/${citySlug}/restaurant/${combinedSlug}/book`;
 }
 
 export function getRestaurantTakeawayUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null): string {
@@ -53,7 +53,7 @@ export function getRestaurantTakeawayUrl(restaurant: { id?: string, name?: strin
   const locationSlug = slugify(restaurant?.location || '');
   const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
   
-  return `/restaurant/${citySlug}/${combinedSlug}/takeaway`;
+  return `/${citySlug}/restaurant/${combinedSlug}/takeaway`;
 }
 
 export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, city?: string, location?: string } | null, tab: string): string {
@@ -64,7 +64,7 @@ export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, ci
   const locationSlug = slugify(restaurant?.location || '');
   const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
   
-  return `/restaurant/${citySlug}/${combinedSlug}/${tab}`;
+  return `/${citySlug}/restaurant/${combinedSlug}/${tab}`;
 }
 
 export function formatDate(date: any) {
