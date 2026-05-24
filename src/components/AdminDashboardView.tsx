@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import AppIcon from "./AppIcon";
 import { db } from "../lib/firebase";
+import { uploadImageToStorage } from "../lib/storage";
 import {
   collection,
   query,
@@ -159,6 +160,7 @@ export default function AdminDashboardView() {
     | "system"
   >("general");
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
+  const [isUploadingGlobal, setIsUploadingGlobal] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [notification, setNotification] = useState<{
     type: "success" | "error";
@@ -474,6 +476,7 @@ export default function AdminDashboardView() {
         "avgPrice",
         "contactNumber",
         "contactEmail",
+        "partnerEmails",
         "image",
         "location",
         "address",
@@ -1018,7 +1021,7 @@ export default function AdminDashboardView() {
                     placeholder="+91..."
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 lg:col-span-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                     Contact Email
                   </label>
@@ -1032,6 +1035,22 @@ export default function AdminDashboardView() {
                       })
                     }
                     placeholder="contact@restaurant.com"
+                  />
+                </div>
+                <div className="space-y-2 lg:col-span-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                    Partner Emails (Comma Separated)
+                  </label>
+                  <input
+                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    value={(editingRestaurant.partnerEmails || []).join(", ")}
+                    onChange={(e) =>
+                      setEditingRestaurant({
+                        ...editingRestaurant,
+                        partnerEmails: e.target.value.split(',').map(s=>s.trim()).filter(Boolean),
+                      })
+                    }
+                    placeholder="owner@gmail.com, manager@gmail.com"
                   />
                 </div>
               </div>
@@ -1851,20 +1870,25 @@ export default function AdminDashboardView() {
                           type="file"
                           className="hidden"
                           accept="image/*"
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                const catSelect = document.getElementById(
-                                  "media-category-select",
-                                ) as HTMLSelectElement;
-                                handleMediaInjection(
-                                  catSelect.value,
-                                  reader.result as string,
-                                );
-                              };
-                              reader.readAsDataURL(file);
+                            if (!file) return;
+                            try {
+                              setIsUploadingGlobal(true);
+                              const url = await uploadImageToStorage(file, 'restaurants');
+                              const catSelect = document.getElementById(
+                                "media-category-select",
+                              ) as HTMLSelectElement;
+                              handleMediaInjection(
+                                catSelect.value,
+                                url,
+                              );
+                              setNotification({ type: 'success', message: 'Image uploaded!' });
+                            } catch (err) {
+                              setNotification({ type: 'error', message: 'Failed to upload image' });
+                              console.error(err);
+                            } finally {
+                              setIsUploadingGlobal(false);
                             }
                           }}
                         />
@@ -3222,25 +3246,30 @@ export default function AdminDashboardView() {
                                 id={`ad-image-upload-${idx}`}
                                 className="hidden"
                                 accept="image/*"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
-                                      const next = [
-                                        ...(editingRestaurant.advertisements ||
-                                          []),
-                                      ];
-                                      next[idx] = {
-                                        ...ad,
-                                        image: reader.result as string,
-                                      };
-                                      setEditingRestaurant({
-                                        ...editingRestaurant,
-                                        advertisements: next,
-                                      });
+                                  if (!file) return;
+                                  try {
+                                    setIsUploadingGlobal(true);
+                                    const url = await uploadImageToStorage(file, 'restaurants');
+                                    const next = [
+                                      ...(editingRestaurant.advertisements ||
+                                        []),
+                                    ];
+                                    next[idx] = {
+                                      ...ad,
+                                      image: url,
                                     };
-                                    reader.readAsDataURL(file);
+                                    setEditingRestaurant({
+                                      ...editingRestaurant,
+                                      advertisements: next,
+                                    });
+                                    setNotification({ type: 'success', message: 'Image uploaded!' });
+                                  } catch (err) {
+                                    setNotification({ type: 'error', message: 'Failed to upload image' });
+                                    console.error(err);
+                                  } finally {
+                                    setIsUploadingGlobal(false);
                                   }
                                 }}
                               />
@@ -3570,6 +3599,89 @@ export default function AdminDashboardView() {
             >
               <Database size={20} />
               <span>Seed Data</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (!confirm("This will find all base64 string images in restaurants and migrate them to Firebase Storage. This might take a minute and consume bandwidth. Proceed?")) return;
+                
+                try {
+                  setIsUploadingGlobal(true);
+                  setNotification({ type: 'success', message: 'Migrating images... Check console for progress.' });
+                  let count = 0;
+
+                  const dataUriToBlob = async (dataUri: string) => {
+                    const res = await fetch(dataUri);
+                    return await res.blob();
+                  };
+
+                  for (const r of restaurants) {
+                    let updated = false;
+                    const nextR = { ...r };
+
+                    const migrateField = async (field: string) => {
+                      const val = nextR[field as keyof Restaurant];
+                      if (typeof val === 'string' && val.startsWith('data:image')) {
+                        const blob = await dataUriToBlob(val);
+                        const file = new File([blob], 'migrated.jpg', { type: blob.type });
+                        const url = await uploadImageToStorage(file, 'restaurants');
+                        (nextR as any)[field] = url;
+                        updated = true;
+                        count++;
+                      }
+                    }
+                    const migrateArray = async (field: keyof Restaurant) => {
+                      const arr = nextR[field] as string[] | undefined;
+                      if (Array.isArray(arr)) {
+                        for (let i = 0; i < arr.length; i++) {
+                          if (typeof arr[i] === 'string' && arr[i].startsWith('data:image')) {
+                            const blob = await dataUriToBlob(arr[i]);
+                            const file = new File([blob], 'migrated.jpg', { type: blob.type });
+                            const url = await uploadImageToStorage(file, 'restaurants');
+                            arr[i] = url;
+                            updated = true;
+                            count++;
+                          }
+                        }
+                      }
+                    }
+
+                    await migrateField('image');
+                    await migrateArray('foodImages');
+                    await migrateArray('ambienceImages');
+                    await migrateArray('secondaryImages');
+                    await migrateArray('menuImages');
+
+                    if (nextR.advertisements) {
+                      for (const ad of nextR.advertisements) {
+                        if (ad.image.startsWith('data:image')) {
+                          const blob = await dataUriToBlob(ad.image);
+                          const file = new File([blob], 'migrated.jpg', { type: blob.type });
+                          const url = await uploadImageToStorage(file, 'restaurants');
+                          ad.image = url;
+                          updated = true;
+                          count++;
+                        }
+                      }
+                    }
+                    
+                    if (updated && nextR.id) {
+                      console.log(`Updating ${nextR.name} with new storage urls...`);
+                      await updateDoc(doc(db, "restaurants", nextR.id), { ...nextR });
+                    }
+                  }
+                  
+                  setNotification({ type: 'success', message: `Migrated ${count} images to Cloud Storage successfully!` });
+                } catch (e: any) {
+                  setNotification({ type: 'error', message: 'Migration failed: ' + e.message });
+                  console.error(e);
+                } finally {
+                  setIsUploadingGlobal(false);
+                }
+              }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black hover:bg-brand/10 hover:text-brand transition-all"
+            >
+              <Upload size={20} className={isUploadingGlobal ? "animate-bounce" : ""} />
+              <span>Migrate Base64</span>
             </button>
           </div>
         </div>

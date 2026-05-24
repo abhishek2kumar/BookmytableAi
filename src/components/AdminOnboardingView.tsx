@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { uploadImageToStorage } from '../lib/storage';
 
 const BANGALORE_COORDS = { lat: 12.9716, lng: 77.5946 };
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -45,6 +46,7 @@ export default function AdminOnboardingView() {
   const [step, setStep] = useState(1);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isCoordsValid, setIsCoordsValid] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -230,12 +232,20 @@ export default function AdminOnboardingView() {
         // Duplicate check before allowing to proceed
         const q = query(
           collection(db, 'restaurants'),
-          where('name', '==', form.name?.trim()),
-          where('area', '==', form.area?.trim()),
           where('city', '==', form.city)
         );
         const snap = await getDocs(q);
-        if (!snap.empty) {
+        const nameToMatch = form.name?.trim().toLowerCase();
+        const areaToMatch = form.area?.trim().toLowerCase();
+        
+        const duplicate = snap.docs.find((doc) => {
+          const data = doc.data();
+          const qName = data.name?.trim().toLowerCase();
+          const qArea = data.area?.trim().toLowerCase();
+          return qName === nameToMatch && qArea === areaToMatch;
+        });
+        
+        if (duplicate) {
           showNotification('error', 'A restaurant with this name already exists in this area!');
           setIsSaving(false);
           return;
@@ -272,13 +282,18 @@ export default function AdminOnboardingView() {
   const handleFinalSubmit = async () => {
     setIsSaving(true);
     try {
-      const finalData = {
+      const finalData: any = {
         ...form,
         status: 'Pending',
         approved: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      // Strip undefined properties to prevent Firestore SDK errors
+      Object.keys(finalData).forEach(key => {
+        if (finalData[key] === undefined) delete finalData[key];
+      });
 
       const docRef = await addDoc(collection(db, 'restaurants'), finalData);
       setRestaurantId(docRef.id);
@@ -321,11 +336,20 @@ export default function AdminOnboardingView() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setForm({ ...form, image: reader.result as string });
+    const upload = async () => {
+      try {
+        setIsUploading(true);
+        const url = await uploadImageToStorage(file, 'restaurants');
+        setForm({ ...form, image: url });
+        showNotification('success', 'Image uploaded successfully!');
+      } catch (err) {
+        showNotification('error', 'Failed to upload image.');
+        console.error(err);
+      } finally {
+        setIsUploading(false);
+      }
     };
-    reader.readAsDataURL(file);
+    upload();
   };
 
   return (
@@ -732,14 +756,17 @@ export default function AdminOnboardingView() {
                         accept=".jpeg,.jpg,.png"
                         className="hidden" 
                         id="imageUpload"
+                        disabled={isUploading}
                         onChange={handleFileUpload}
                        />
                        <label htmlFor="imageUpload" className="cursor-pointer flex flex-col items-center gap-4">
-                          <div className="w-16 h-16 bg-white rounded-3xl shadow-xl flex items-center justify-center text-slate-300 group-hover:text-brand transition-colors">
+                          <div className={cn("w-16 h-16 bg-white rounded-3xl shadow-xl flex items-center justify-center text-slate-300 group-hover:text-brand transition-colors", isUploading && "animate-pulse")}>
                              <ImageIcon size={32} />
                           </div>
                           <div>
-                             <p className="font-black text-slate-900 uppercase tracking-widest text-xs">Upload Cover Image</p>
+                             <p className="font-black text-slate-900 uppercase tracking-widest text-xs">
+                                {isUploading ? 'Uploading...' : 'Upload Cover Image'}
+                             </p>
                              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest leading-none">JPEG, PNG up to 5MB</p>
                           </div>
                        </label>

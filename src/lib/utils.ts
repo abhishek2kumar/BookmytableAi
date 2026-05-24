@@ -121,15 +121,19 @@ export function getRestaurantStatus(restaurant: any) {
     let openStr = restaurant?.openingHours?.open || '11:00 AM';
     let closeStr = restaurant?.openingHours?.close || '11:00 PM';
     let isClosed = false;
+    let ranges = [{ open: openStr, close: closeStr }];
 
     if (daily) {
-      if (daily.closed) isClosed = true;
-      else if (daily.ranges && daily.ranges.length > 0) {
+      if (daily.closed) {
+        isClosed = true;
+        ranges = [];
+      } else if (daily.ranges && daily.ranges.length > 0) {
         openStr = daily.ranges[0].open;
         closeStr = daily.ranges[0].close;
+        ranges = daily.ranges;
       }
     }
-    return { openStr, closeStr, isClosed };
+    return { openStr, closeStr, isClosed, ranges };
   };
 
   const parseTime = (timeStr: string) => {
@@ -153,25 +157,29 @@ export function getRestaurantStatus(restaurant: any) {
 
   const checkIsOpen = () => {
     // Check if it's currently open based on today's timings
-    if (!currentTimings.isClosed) {
-      const openMin = parseTime(currentTimings.openStr);
-      const closeMin = parseTime(currentTimings.closeStr);
+    if (!currentTimings.isClosed && currentTimings.ranges) {
+      for (const range of currentTimings.ranges) {
+        const openMin = parseTime(range.open);
+        const closeMin = parseTime(range.close);
 
-      if (closeMin > openMin) {
-        if (currentMin >= openMin && currentMin < closeMin) return { open: true, closeTime: currentTimings.closeStr };
-      } else {
-        // Overnight: open today from 'open' till EOD, and closes tomorrow morning
-        if (currentMin >= openMin) return { open: true, closeTime: currentTimings.closeStr };
+        if (closeMin > openMin) {
+          if (currentMin >= openMin && currentMin < closeMin) return { open: true, closeTime: range.close };
+        } else {
+          // Overnight: open today from 'open' till EOD, and closes tomorrow morning
+          if (currentMin >= openMin) return { open: true, closeTime: range.close };
+        }
       }
     }
 
     // Check if it's still open from yesterday's overnight session
-    if (!yesterdayTimings.isClosed) {
-      const yOpenMin = parseTime(yesterdayTimings.openStr);
-      const yCloseMin = parseTime(yesterdayTimings.closeStr);
+    if (!yesterdayTimings.isClosed && yesterdayTimings.ranges) {
+      for (const range of yesterdayTimings.ranges) {
+        const yOpenMin = parseTime(range.open);
+        const yCloseMin = parseTime(range.close);
 
-      if (yCloseMin < yOpenMin) {
-        if (currentMin < yCloseMin) return { open: true, closeTime: yesterdayTimings.closeStr };
+        if (yCloseMin < yOpenMin) {
+          if (currentMin < yCloseMin) return { open: true, closeTime: range.close };
+        }
       }
     }
 
@@ -206,21 +214,33 @@ export function getRestaurantStatus(restaurant: any) {
     };
   }
 
-  const openMin = parseTime(currentTimings.openStr);
-  const closeMin = parseTime(currentTimings.closeStr);
   let opensLaterToday = false;
+  let nextOpenStr = '';
 
-  if (!currentTimings.isClosed) {
-    if (closeMin > openMin) {
-      if (currentMin < openMin) opensLaterToday = true;
-    } else {
-      if (currentMin < openMin && currentMin >= closeMin) opensLaterToday = true;
+  if (!currentTimings.isClosed && currentTimings.ranges) {
+    for (const range of currentTimings.ranges) {
+      const openMin = parseTime(range.open);
+      const closeMin = parseTime(range.close);
+
+      if (closeMin > openMin) {
+        if (currentMin < openMin) {
+          opensLaterToday = true;
+          nextOpenStr = range.open;
+          break;
+        }
+      } else {
+        if (currentMin < openMin && currentMin >= closeMin) {
+          opensLaterToday = true;
+          nextOpenStr = range.open;
+          break;
+        }
+      }
     }
   }
 
   if (opensLaterToday) {
     return { 
-      displayText: `Closed, opens at ${currentTimings.openStr}`,
+      displayText: `Closed, opens at ${nextOpenStr}`,
       color: 'text-red-500',
       isClosed: true,
       isOpen: false

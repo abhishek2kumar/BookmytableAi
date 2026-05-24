@@ -1146,8 +1146,27 @@ export default function RestaurantDetailsView() {
 
             {/* Redesigned Details Section (Desktop & Tablet) */}
             <div className="hidden md:flex flex-col md:absolute md:right-10 lg:right-16 top-1/2 -translate-y-1/2 md:w-[360px] lg:w-[420px] z-20 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_40px_rgb(0,0,0,0.12)] border border-white/50 p-5 lg:p-6 shrink-0 transition-all">
-              <div className="space-y-3">
-                <div className="flex flex-col gap-2">
+              <div className="space-y-4 relative">
+                {/* Favourite Icon at Top Right */}
+                <button
+                  onClick={toggleBookmark}
+                  disabled={isBookmarking}
+                  className={cn(
+                    "absolute top-0 right-0 flex items-center justify-center font-bold w-[38px] h-[38px] rounded-full border transition-all shrink-0 z-10 bg-white shadow-sm",
+                    isBookmarked
+                      ? "text-red-600 border-red-100 bg-red-50 hover:bg-red-100"
+                      : "text-slate-400 border-slate-100 hover:bg-slate-50",
+                    isBookmarking && "opacity-50 animate-pulse",
+                  )}
+                  aria-label={isBookmarked ? "Saved" : "Save"}
+                >
+                  <Heart
+                    size={18}
+                    className={cn(isBookmarked && "fill-current")}
+                  />
+                </button>
+
+                <div className="flex flex-col gap-2 pr-12">
                   <div className="flex items-center gap-2 text-slate-800 font-display flex-wrap">
                     <div
                       className={cn(
@@ -1198,8 +1217,18 @@ export default function RestaurantDetailsView() {
                   </div>
                 </div>
 
-                {/* Horizontal Action Bar */}
-                <div className="flex items-center flex-wrap gap-2 pt-4 border-t border-slate-100 w-full mt-auto">
+                {/* Horizontal Action Bar: 4 Icons in a single row */}
+                <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-100 w-full mt-auto">
+                  <a
+                    href="tel:+919876543210"
+                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 transition-colors text-slate-700"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                      <Phone size={18} />
+                    </div>
+                    <span className="text-[11px] font-bold text-center">Call</span>
+                  </a>
+
                   <button
                     onClick={async () => {
                       if (restaurant.isBookingEnabled !== false) {
@@ -1216,66 +1245,41 @@ export default function RestaurantDetailsView() {
                       }
                     }}
                     disabled={restaurant.isBookingEnabled === false}
-                    className="flex items-center gap-2 text-brand bg-brand/5 hover:bg-brand/10 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm"
+                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <CalendarIcon size={16} />
-                    {restaurant.isBookingEnabled !== false
-                      ? "Book Table"
-                      : "Booking Unavailable"}
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                      <CalendarIcon size={18} />
+                    </div>
+                    <span className="text-[11px] font-bold text-center leading-tight">Book<br/>Table</span>
                   </button>
 
-                  {restaurant.liveMenu && restaurant.liveMenu.length > 0 && (
-                    <button
-                      onClick={() =>
-                        navigate(getRestaurantTakeawayUrl(restaurant))
-                      }
-                      className="flex items-center gap-2 text-white bg-slate-900 hover:bg-black font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm shadow-sm"
-                    >
-                      <ShoppingBag size={16} />
-                      Order Takeaway
-                    </button>
-                  )}
+                  <button
+                    onClick={() => navigate(getRestaurantTakeawayUrl(restaurant))}
+                    disabled={
+                      !restaurant.liveMenu ||
+                      restaurant.liveMenu.length === 0 ||
+                      !isTakeawayAvailable(restaurant)
+                    }
+                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                      <ShoppingBag size={18} />
+                    </div>
+                    <span className="text-[11px] font-bold text-center leading-tight">Takeaway</span>
+                  </button>
 
                   <a
-                    href="tel:+919876543210"
-                    className="flex items-center gap-2 text-slate-700 bg-slate-50 border border-slate-100 hover:bg-slate-100 font-bold px-3 py-2 rounded-xl transition-colors shrink-0 text-sm"
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700"
+                    aria-label="Get Directions"
                   >
-                    <Phone size={16} />
-                    Call
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
+                      <Navigation size={18} className="fill-current -ml-0.5 mt-0.5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-center leading-tight">Direction</span>
                   </a>
-
-                  <div className="ml-auto flex items-center gap-2">
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center text-brand bg-brand/5 hover:bg-brand/10 font-bold w-[38px] h-[38px] rounded-xl transition-colors shrink-0"
-                      aria-label="Get Directions"
-                    >
-                      <Navigation
-                        size={18}
-                        className="fill-current -ml-0.5 mt-0.5"
-                      />
-                    </a>
-
-                    <button
-                      onClick={toggleBookmark}
-                      disabled={isBookmarking}
-                      className={cn(
-                        "flex items-center justify-center font-bold w-[38px] h-[38px] rounded-xl border transition-all shrink-0",
-                        isBookmarked
-                          ? "text-red-600 bg-red-50 border-red-100 hover:bg-red-100"
-                          : "text-slate-700 bg-slate-50 border-slate-100 hover:bg-slate-100",
-                        isBookmarking && "opacity-50 animate-pulse",
-                      )}
-                      aria-label={isBookmarked ? "Saved" : "Save"}
-                    >
-                      <Heart
-                        size={18}
-                        className={cn(isBookmarked && "fill-current")}
-                      />
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1595,7 +1599,7 @@ export default function RestaurantDetailsView() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <Megaphone size={20} className="text-brand" />
-                    <h2 className="text-2xl font-bold text-slate-900">
+                    <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight">
                       Featured Spotlights
                     </h2>
                   </div>
@@ -1728,7 +1732,7 @@ export default function RestaurantDetailsView() {
               (restaurant.signatureDishes &&
                 restaurant.signatureDishes.length > 0)) && (
               <div className="mb-8">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
                   Signature Dishes & Bestsellers
                 </h3>
 
@@ -1778,7 +1782,7 @@ export default function RestaurantDetailsView() {
               restaurant.menuCategories.length > 0) ||
               (restaurant.menuImages && restaurant.menuImages.length > 0)) && (
               <div className="mt-8">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">
+                <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
                   Menu Pages
                 </h3>
                 {restaurant.menuCategories &&
@@ -1911,7 +1915,7 @@ export default function RestaurantDetailsView() {
               className="scroll-mt-24 pt-8 border-t border-slate-300"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight">
                   Photo Gallery
                 </h2>
 
@@ -2090,7 +2094,7 @@ export default function RestaurantDetailsView() {
             id="overview"
             className="scroll-mt-24 pt-8 border-t border-slate-300"
           >
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">
+            <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-6">
               {restaurant.name}'s Story
             </h2>
             {restaurant.description && (
@@ -2101,7 +2105,7 @@ export default function RestaurantDetailsView() {
 
             {/* Amenities Grid */}
             <div className="mb-8">
-              <h3 className="text-xl font-bold text-slate-900 mb-4">
+              <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
                 Facilities
               </h3>
               {restaurant.facilities && restaurant.facilities.length > 0 ? (
@@ -2130,7 +2134,7 @@ export default function RestaurantDetailsView() {
             id="reviews"
             className="scroll-mt-24 pt-8 border-t border-slate-300"
           >
-            <h2 className="text-2xl font-bold text-slate-900 mb-6">Reviews</h2>
+            <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-6">Reviews</h2>
 
             <div className="bg-slate-50/50 rounded-3xl p-6 md:p-8 space-y-8">
               {/* AI Summary and Leave Review Row */}
@@ -2202,7 +2206,7 @@ export default function RestaurantDetailsView() {
 
                 {/* Leave Review */}
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4 block">
+                  <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4 block">
                     Rate your experience
                   </h3>
 
@@ -2256,7 +2260,7 @@ export default function RestaurantDetailsView() {
               {/* User Reviews */}
               {reviews.length > 0 && (
                 <div className="pt-4 space-y-4">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4 block">
+                  <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4 block">
                     Recent Reviews
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2609,19 +2613,25 @@ export default function RestaurantDetailsView() {
           exit={{ y: 100 }}
           className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-4 pb-6 bg-white/95 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]"
         >
-          <div className="flex items-center gap-4">
-            {/* Small Price/Info */}
-            <div className="shrink-0 flex flex-col gap-0.5 min-w-[100px]">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                Avg Price
-              </span>
-              <span className="text-base font-black text-slate-900 tracking-tighter">
-                ₹{restaurant.avgPrice}{" "}
-                <span className="text-[10px] font-bold text-slate-400">
-                  / 2
-                </span>
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (isTakeawayAvailable(restaurant)) {
+                  navigate(getRestaurantTakeawayUrl(restaurant));
+                }
+              }}
+              disabled={
+                !restaurant.liveMenu ||
+                restaurant.liveMenu.length === 0 ||
+                !isTakeawayAvailable(restaurant)
+              }
+              className="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-slate-900/20 disabled:shadow-none disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-100 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5"
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingBag size={18} />
+                <span>Takeaway</span>
+              </div>
+            </button>
 
             <button
               onClick={async () => {
@@ -2639,16 +2649,12 @@ export default function RestaurantDetailsView() {
                 }
               }}
               disabled={restaurant.isBookingEnabled === false}
-              className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 disabled:shadow-none disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2"
+              className="flex-1 bg-brand text-white py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand/20 disabled:shadow-none disabled:bg-slate-200 disabled:text-slate-400 disabled:opacity-100 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5"
             >
-              {restaurant.isBookingEnabled !== false ? (
-                <>
-                  <CalendarIcon size={18} />
-                  Book a Table
-                </>
-              ) : (
-                "Booking Unavailable"
-              )}
+              <div className="flex items-center gap-2">
+                <CalendarIcon size={18} />
+                <span>Book Table</span>
+              </div>
             </button>
           </div>
         </motion.div>

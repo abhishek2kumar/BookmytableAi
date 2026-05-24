@@ -110,6 +110,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isBookPage = location.pathname.endsWith('/book') || location.pathname.startsWith('/book/');
   const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage;
   const isHomePage = location.pathname === '/';
+  const isPartnersPage = location.pathname.startsWith('/partners');
+
+  if (isPartnersPage) {
+    return <>{children}</>;
+  }
 
   if (masterLoading || authLoading) {
     return (

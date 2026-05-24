@@ -96,6 +96,7 @@ export interface Restaurant {
   lat?: number;
   lng?: number;
   ownerId: string;
+  partnerEmails?: string[];
   isOpen: boolean; // Live on Portal
   approved: boolean;
   openingHours?: {

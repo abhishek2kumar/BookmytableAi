@@ -16,6 +16,8 @@ import DashboardView from './components/DashboardView';
 import OwnerDashboardView from './components/OwnerDashboardView';
 import AdminDashboardView from './components/AdminDashboardView';
 import AdminOnboardingView from './components/AdminOnboardingView';
+import PartnerLoginView from './components/PartnerLoginView';
+import PartnerDashboardView from './components/PartnerDashboardView';
 import ContactView from './components/ContactView';
 import PrivacyView from './components/PrivacyView';
 import TermsView from './components/TermsView';
@@ -86,6 +88,8 @@ export default function App() {
                   <Route path="/owner" element={<ProtectedRoute role="owner"><OwnerDashboardView /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
                   <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
+                  <Route path="/partners/login" element={<PartnerLoginView />} />
+                  <Route path="/partners/dashboard" element={<PartnerDashboardView />} />
                   <Route path="/contact" element={<ContactView />} />
                   <Route path="/contact-us" element={<ContactView />} />
                   <Route path="/privacy" element={<PrivacyView />} />

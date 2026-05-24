@@ -39,9 +39,19 @@ service cloud.firestore {
       // Use resilient checks that allow optional fields and ensure base types
       return data.get('name', '') is string && data.get('name', '').size() <= 100
         && data.get('ownerId', '') is string
-        && data.get('cuisine', '') is string
+        && (!('cuisine' in data) || data.cuisine is list)
         && data.get('avgPrice', 0) is number
-        && data.get('location', '') is string
+        && (!('location' in data) || data.location is string)
+        && (!('lat' in data) || data.lat is number)
+        && (!('lng' in data) || data.lng is number)
+        && (!('country' in data) || data.country is string)
+        && (!('pincode' in data) || data.pincode is string)
+        && (!('state' in data) || data.state is string)
+        && (!('address' in data) || data.address is string)
+        && (!('area' in data) || data.area is string)
+        && (!('landmark' in data) || data.landmark is string)
+        && (!('floor' in data) || data.floor is string)
+        && (!('shopNo' in data) || data.shopNo is string)
         && (!('description' in data) || data.description is string)
         && (!('image' in data) || data.image is string)
         && (!('isOpen' in data) || data.isOpen is bool)
