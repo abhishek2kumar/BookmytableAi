@@ -182,19 +182,27 @@ export function getRestaurantStatus(restaurant: any) {
 
   if (currentStatus.open) {
     const closeMin = parseTime(currentStatus.closeTime!);
-    if (closeMin - currentMin <= 60 && closeMin > currentMin) {
+    let diff = closeMin - currentMin;
+    if (diff < 0) {
+      diff += 24 * 60; // handle overnight wrap-around correctly
+    }
+    if (diff <= 60 && diff > 0) {
       return { 
         displayText: `Closing soon at ${currentStatus.closeTime}`,
         color: 'text-amber-500',
         isClosed: false,
-        isOpen: true
+        isOpen: true,
+        closeTime: currentStatus.closeTime,
+        closeMinDiff: diff
       };
     }
     return { 
       displayText: `Open till ${currentStatus.closeTime}`,
       color: 'text-vibrant-success',
       isClosed: false,
-      isOpen: true
+      isOpen: true,
+      closeTime: currentStatus.closeTime,
+      closeMinDiff: diff > 0 ? diff : diff + 24 * 60
     };
   }
 
@@ -239,6 +247,15 @@ export function getRestaurantStatus(restaurant: any) {
   }
   
   return { displayText: `Closed`, color: 'text-red-500', isClosed: true, isOpen: false };
+}
+
+export function isTakeawayAvailable(restaurant: any): boolean {
+  if (!restaurant || (restaurant.liveMenu && restaurant.liveMenu.length === 0)) return false;
+  const status = getRestaurantStatus(restaurant);
+  if (!status.isOpen) return false;
+  // If closeMinDiff is available and <= 30 mins, takeaway ceases
+  if (status.closeMinDiff !== undefined && status.closeMinDiff <= 30) return false;
+  return true;
 }
 
 export const RESTAURANT_IMAGE_FALLBACK = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800";

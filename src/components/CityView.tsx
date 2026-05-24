@@ -28,6 +28,7 @@ import {
   RESTAURANT_IMAGE_FALLBACK,
   getRestaurantUrl,
   getRatingColor,
+  isTakeawayAvailable,
 } from "../lib/utils";
 import { useLocationContext } from "./LocationContext";
 import { useRef } from "react";
@@ -735,14 +736,27 @@ export default function CityView() {
               ref={takeawayRef}
               className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
             >
-              {takeawayRestaurants.map((restaurant) => (
-                <div
-                  key={restaurant.id}
-                  className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start"
-                >
-                  <RestaurantCard restaurant={restaurant} />
-                </div>
-              ))}
+              {takeawayRestaurants.map((restaurant) => {
+                const isAvailable = isTakeawayAvailable(restaurant);
+                return (
+                  <div
+                    key={restaurant.id}
+                    className={cn(
+                      "relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start",
+                      !isAvailable && "opacity-50 grayscale pointer-events-none"
+                    )}
+                  >
+                    <RestaurantCard restaurant={restaurant} />
+                    {!isAvailable && (
+                      <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
+                         <div className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md">
+                           Takeaway Closed
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

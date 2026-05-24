@@ -135,6 +135,7 @@ export interface Restaurant {
   lastModifiedBy?: string;
   lastModifiedByType?: 'admin' | 'owner';
   ownerEmail?: string;
+  gstPercentage?: number;
   createdAt: any;
   updatedAt?: any;
 }

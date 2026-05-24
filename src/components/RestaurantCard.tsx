@@ -55,9 +55,9 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
         </div>
       </div>
       
-      <div className="p-6 flex flex-col flex-grow gap-2">
+      <div className="p-4 md:p-5 flex flex-col flex-grow gap-1.5 md:gap-2">
         <div className="flex justify-between items-start gap-4">
-          <h3 className="text-xl font-display font-black text-slate-900 group-hover:text-brand transition-colors line-clamp-1 flex-1 leading-tight">
+          <h3 className="text-base md:text-lg font-display font-bold text-slate-900 group-hover:text-brand transition-colors line-clamp-1 flex-1 leading-tight">
             {restaurant.name}
           </h3>
           {restaurant.distance !== undefined && restaurant.distance !== null && (
@@ -67,11 +67,11 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           )}
         </div>
         
-        <div className="flex justify-between items-center text-slate-500 font-bold text-xs">
-          <span className="uppercase tracking-widest opacity-60">
+        <div className="flex justify-between items-center text-slate-500 font-medium text-[10px] md:text-[11px]">
+          <span className="uppercase tracking-widest opacity-60 line-clamp-1">
             {Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine}
           </span>
-          <span className="text-slate-800">₹{restaurant.avgPrice} for 2</span>
+          <span className="text-slate-800 shrink-0 ml-2">₹{restaurant.avgPrice} for 2</span>
         </div>
 
         <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">

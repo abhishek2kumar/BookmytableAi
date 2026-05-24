@@ -79,6 +79,7 @@ import {
   getRestaurantStatus,
   getRestaurantTabUrl,
   getRatingColor,
+  isTakeawayAvailable,
 } from "../lib/utils";
 import { summarizeGoogleReviews } from "../services/aiService";
 import ReactMarkdown from "react-markdown";
@@ -330,7 +331,7 @@ export default function RestaurantDetailsView() {
             adsScrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
           } else {
             adsScrollRef.current.scrollBy({
-              left: clientWidth,
+              left: clientWidth + 32,
               behavior: "smooth",
             });
           }
@@ -1429,10 +1430,10 @@ export default function RestaurantDetailsView() {
               label: "Table Booking",
               show: restaurant.isBookingEnabled !== false,
             },
-            { id: "takeaway", label: "Take Away", show: true },
+            { id: "takeaway", label: "Take Away", show: (restaurant.liveMenu && restaurant.liveMenu.length > 0), disabled: !isTakeawayAvailable(restaurant) },
           ]
             .filter((tab) => tab.show)
-            .map((t) => {
+            .map((t: any) => {
               const isActive =
                 tab === t.id ||
                 (!tab &&
@@ -1442,6 +1443,7 @@ export default function RestaurantDetailsView() {
                 <Link
                   key={t.id}
                   to={
+                    t.disabled ? "#" :
                     t.id === "book"
                       ? getRestaurantBookUrl(restaurant)
                       : t.id === "takeaway"
@@ -1450,12 +1452,14 @@ export default function RestaurantDetailsView() {
                   }
                   className={cn(
                     "relative py-4 text-sm md:text-base font-bold transition-colors whitespace-nowrap",
+                    t.disabled && "opacity-50 pointer-events-none",
                     isActive
                       ? "text-brand"
                       : "text-slate-500 hover:text-slate-900",
                   )}
                 >
                   {t.label}
+                  {t.id === 'takeaway' && t.disabled && <span className="ml-2 text-[10px] bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-bold">Closed</span>}
                   {isActive && (
                     <motion.div
                       layoutId="activeTabUnderline"
@@ -1599,13 +1603,21 @@ export default function RestaurantDetailsView() {
                     1 && (
                     <div className="hidden md:flex gap-3">
                       <div
-                        onClick={() => scrollContainer(adsScrollRef, "left")}
+                        onClick={() => {
+                          if (adsScrollRef.current) {
+                            adsScrollRef.current.scrollBy({ left: -(adsScrollRef.current.clientWidth + 32), behavior: "smooth" })
+                          }
+                        }}
                         className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
                       >
                         <ArrowLeft size={20} strokeWidth={2} />
                       </div>
                       <div
-                        onClick={() => scrollContainer(adsScrollRef, "right")}
+                        onClick={() => {
+                          if (adsScrollRef.current) {
+                            adsScrollRef.current.scrollBy({ left: (adsScrollRef.current.clientWidth + 32), behavior: "smooth" })
+                          }
+                        }}
                         className="w-10 h-10 rounded-full bg-slate-200/70 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors cursor-pointer"
                       >
                         <ArrowRight size={20} strokeWidth={2} />
@@ -1619,7 +1631,7 @@ export default function RestaurantDetailsView() {
                   onScroll={() => {
                     if (adsScrollRef.current) {
                       const { scrollLeft, clientWidth } = adsScrollRef.current;
-                      setActiveAdIndex(Math.round(scrollLeft / clientWidth));
+                      setActiveAdIndex(Math.round(scrollLeft / (clientWidth + 32)));
                     }
                   }}
                 >
@@ -1681,7 +1693,7 @@ export default function RestaurantDetailsView() {
                           onClick={() => {
                             if (adsScrollRef.current) {
                               adsScrollRef.current.scrollTo({
-                                left: i * adsScrollRef.current.clientWidth,
+                                left: i * (adsScrollRef.current.clientWidth + 32),
                                 behavior: "smooth",
                               });
                               setActiveAdIndex(i);
