@@ -71,14 +71,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     // Mix majorCities and allCities from master data
     const combined = [...majorCities];
     allCities.forEach(c => {
+      if (!c || !c.name) return;
       if (!combined.some(mc => mc.name.toLowerCase() === c.name.toLowerCase())) {
         combined.push({ name: c.name, lat: c.lat, lng: c.lng });
       }
     });
 
     return combined
-      .filter(c => c.name.toLowerCase().includes(query))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter(c => (c.name || '').toLowerCase().includes(query))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [citySearchQuery, allCities]);
 
   const handleCitySelect = (cityName: string, lat: number, lng: number) => {

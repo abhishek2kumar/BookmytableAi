@@ -56,7 +56,7 @@ export default function HomeLandingView() {
     const trimmedInput = cityName.trim();
     if (!trimmedInput) return;
 
-    const cityData = cities.find(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
+    const cityData = cities.find(c => (c.name || '').toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
     
     if (cityData) {
       // Valid & Supported
@@ -65,7 +65,7 @@ export default function HomeLandingView() {
       navigate(`/${cityData.name.toLowerCase()}`);
     } else {
       // Check if it's a known city but unsupported
-      const isKnown = cities.some(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
+      const isKnown = cities.some(c => (c.name || '').toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
       
       if (isKnown) {
         // Valid but Unsupported
@@ -106,13 +106,13 @@ export default function HomeLandingView() {
     if (!trimmedInput) return;
 
     // First try finding an exact match
-    const exactCity = cities.find(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
+    const exactCity = cities.find(c => (c.name || '').toLowerCase() === trimmedInput.toLowerCase() && c.lat !== 0);
     if (exactCity) {
       handleSuggestionSelect({ type: 'city', id: `city-${exactCity.name}`, name: exactCity.name, image: exactCity.image, subtitle: 'City' });
       return;
     }
 
-    const exactRestaurant = restaurants.find(r => r.name.toLowerCase() === trimmedInput.toLowerCase());
+    const exactRestaurant = restaurants.find(r => (r.name || '').toLowerCase() === trimmedInput.toLowerCase());
     if (exactRestaurant) {
       handleSuggestionSelect({ type: 'restaurant', restaurantId: exactRestaurant.id, restaurantData: exactRestaurant });
       return;
@@ -126,7 +126,7 @@ export default function HomeLandingView() {
     }
 
     // If nothing matches completely, do the default unsupported/invalid check for City
-    const isKnown = cities.some(c => c.name.toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
+    const isKnown = cities.some(c => (c.name || '').toLowerCase() === trimmedInput.toLowerCase() && c.isKnown);
     if (isKnown) {
       navigate(`/error?city=${encodeURIComponent(trimmedInput)}&type=unsupported`);
     } else {
@@ -139,8 +139,8 @@ export default function HomeLandingView() {
   
   const citySuggestions = normalizedSearch 
     ? cities
-        .filter(c => c.name.toLowerCase().includes(normalizedSearch) && c.lat !== 0)
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter(c => (c.name || '').toLowerCase().includes(normalizedSearch) && c.lat !== 0)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .map(c => ({ 
            type: 'city', 
            id: `city-${c.name}`, 
@@ -153,8 +153,8 @@ export default function HomeLandingView() {
 
   const restaurantSuggestions = normalizedSearch
     ? restaurants
-        .filter(r => r.name.toLowerCase().includes(normalizedSearch))
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter(r => (r.name || '').toLowerCase().includes(normalizedSearch))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .map(r => ({ 
            type: 'restaurant', 
            id: `res-${r.id}`, 
@@ -248,7 +248,7 @@ export default function HomeLandingView() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-6 md:gap-8">
           {[...cities]
             .filter(c => c.isPopular)
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
             .map((city, index) => (
             <motion.button
               key={city.name}
