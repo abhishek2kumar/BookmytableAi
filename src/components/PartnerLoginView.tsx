@@ -65,9 +65,9 @@ export default function PartnerLoginView() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center pt-8 md:pt-16 p-6 text-center">
-        {/* Illustration - Using a relevant placeholder or abstract culinary svg */}
-        <div className="w-80 h-48 mb-8 relative">
+      <main className="flex-1 flex flex-col items-center pt-2 md:pt-12 p-4 text-center">
+        {/* Illustration */}
+        <div className="w-80 h-48 mb-6 relative">
            <img 
             src="https://i.pinimg.com/736x/69/65/c6/6965c665a5ace34c69bdd6224d8ca9f1.jpg?w=800&auto=format&fit=crop&q=80" 
             alt="Chef Cooking" 
@@ -75,8 +75,8 @@ export default function PartnerLoginView() {
            />
         </div>
 
-        <h1 className="text-lg md:text-2xl font-bold md:font-black text-slate-800 mb-8 max-w-[280px] sm:max-w-none mx-auto leading-tight">
-          Bookmytable Restaurant Partner dashboard
+        <h1 className="text-xl md:text-3xl font-semibold md:font-black text-slate-800 mb-8 max-w-[280px] sm:max-w-none mx-auto leading-tight">
+          Bookmytable partner dashboard
         </h1>
 
         <div className="w-full max-w-sm space-y-4">

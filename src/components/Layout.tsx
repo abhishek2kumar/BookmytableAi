@@ -66,19 +66,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const filteredCities = useMemo(() => {
     if (!citySearchQuery) return majorCities;
-    const query = citySearchQuery.toLowerCase();
+    const query = citySearchQuery?.toLowerCase() || '';
     
     // Mix majorCities and allCities from master data
     const combined = [...majorCities];
     allCities.forEach(c => {
       if (!c || !c.name) return;
-      if (!combined.some(mc => mc.name.toLowerCase() === c.name.toLowerCase())) {
+      if (!combined.some(mc => mc.name?.toLowerCase() === c.name?.toLowerCase())) {
         combined.push({ name: c.name, lat: c.lat, lng: c.lng });
       }
     });
 
     return combined
-      .filter(c => (c.name || '').toLowerCase().includes(query))
+      .filter(c => (c.name || '')?.toLowerCase().includes(query))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [citySearchQuery, allCities]);
 
