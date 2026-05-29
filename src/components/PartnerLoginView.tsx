@@ -10,8 +10,15 @@ import AppIcon from './AppIcon';
 
 export default function PartnerLoginView() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!authLoading && user && user.email) {
+      navigate('/partners/dashboard');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleLogin = async () => {
     try {
