@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Users, MapPin, Building2, Calendar, Award, Heart, UtensilsCrossed, Globe2 } from 'lucide-react';
 import AppIcon from './AppIcon';
 

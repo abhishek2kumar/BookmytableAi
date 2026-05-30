@@ -403,10 +403,22 @@ async function startServer() {
     }
   });
 
-  const isProduction = process.env.NODE_ENV === 'production' || process.argv[1]?.endsWith('server.cjs');
+  let isProduction = process.env.NODE_ENV === 'production' || process.argv[1]?.endsWith('server.cjs');
+
+  // Check if we should use vite or static serving
+  let useVite = false;
+  if (!isProduction) {
+    try {
+       await import('vite');
+       useVite = true;
+    } catch(e) {
+       console.warn('Vite module not found. Falling back to production static serving.');
+       isProduction = true;
+    }
+  }
 
   // Vite middleware for development
-  if (!isProduction) {
+  if (useVite) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
