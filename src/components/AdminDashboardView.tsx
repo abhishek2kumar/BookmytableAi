@@ -781,7 +781,7 @@ export default function AdminDashboardView() {
             className="space-y-8"
           >
             {/* Consolidated Legal Identity Section */}
-            <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-8">
+            <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-8">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="text-brand" size={18} />
@@ -793,7 +793,7 @@ export default function AdminDashboardView() {
                   type="button"
                   onClick={handleGeocode}
                   disabled={isGeocoding || !editingRestaurant.address}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[9px] font-black text-brand uppercase tracking-wider hover:border-brand transition-all disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 rounded-xl text-[9px] font-black text-brand uppercase tracking-wider hover:border-brand transition-all disabled:opacity-50 shadow-sm"
                 >
                   {isGeocoding ? (
                     <Loader2 size={10} className="animate-spin" />
@@ -811,7 +811,7 @@ export default function AdminDashboardView() {
                     Legal Entity Name *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.name}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -828,7 +828,7 @@ export default function AdminDashboardView() {
                     Floor / Tower
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.floor || ""}
                     onChange={(e) =>
                       updateEditingLocationField("floor", e.target.value)
@@ -841,7 +841,7 @@ export default function AdminDashboardView() {
                     Shop / Building No.
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.shopNo || ""}
                     onChange={(e) =>
                       updateEditingLocationField("shopNo", e.target.value)
@@ -854,7 +854,7 @@ export default function AdminDashboardView() {
                     Area / Locality *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={
                       editingRestaurant.area || editingRestaurant.location || ""
                     }
@@ -870,7 +870,7 @@ export default function AdminDashboardView() {
                     City *
                   </label>
                   <select
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.city}
                     onChange={(e) =>
                       updateEditingLocationField("city", e.target.value)
@@ -889,7 +889,7 @@ export default function AdminDashboardView() {
                     State *
                   </label>
                   <select
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.state || ""}
                     onChange={(e) =>
                       updateEditingLocationField("state", e.target.value)
@@ -909,7 +909,7 @@ export default function AdminDashboardView() {
                     Pincode *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.pincode || ""}
                     onChange={(e) =>
                       updateEditingLocationField("pincode", e.target.value)
@@ -922,7 +922,7 @@ export default function AdminDashboardView() {
                     Landmark
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.landmark || ""}
                     onChange={(e) =>
                       updateEditingLocationField("landmark", e.target.value)
@@ -936,7 +936,7 @@ export default function AdminDashboardView() {
                   <input
                     type="number"
                     step="any"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.lat || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -953,7 +953,7 @@ export default function AdminDashboardView() {
                   <input
                     type="number"
                     step="any"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.lng || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -975,7 +975,7 @@ export default function AdminDashboardView() {
                   </label>
                   <input
                     type="number"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.avgPrice}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -994,7 +994,7 @@ export default function AdminDashboardView() {
                     step="0.1"
                     min="0"
                     max="5"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.rating || 0}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1010,7 +1010,7 @@ export default function AdminDashboardView() {
                     Contact Number
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.contactNumber || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1026,7 +1026,7 @@ export default function AdminDashboardView() {
                     Contact Email
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.contactEmail || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1042,7 +1042,7 @@ export default function AdminDashboardView() {
                     Partner Emails (Comma Separated)
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={(editingRestaurant.partnerEmails || []).join(", ")}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1060,7 +1060,7 @@ export default function AdminDashboardView() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                 Cuisine Classification (Multiple)
               </label>
-              <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-300">
                 {cuisines.map((c) => {
                   const isSelected = Array.isArray(editingRestaurant.cuisine)
                     ? editingRestaurant.cuisine.includes(c.name)
@@ -1088,7 +1088,7 @@ export default function AdminDashboardView() {
                         "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border",
                         isSelected
                           ? "bg-brand text-white border-brand shadow-sm"
-                          : "bg-white text-slate-400 border-slate-200 hover:border-slate-300",
+                          : "bg-white text-slate-400 border-slate-300 hover:border-slate-300",
                       )}
                     >
                       {c.name}
@@ -1103,7 +1103,7 @@ export default function AdminDashboardView() {
                 Brand Description / Story
               </label>
               <textarea
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[200px]"
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[200px]"
                 value={editingRestaurant.description}
                 onChange={(e) =>
                   setEditingRestaurant({
@@ -1118,7 +1118,7 @@ export default function AdminDashboardView() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                 Facilities
               </label>
-              <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-100">
+              <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-300">
                 {[
                   "Fine Dine",
                   "Bar",
@@ -1132,31 +1132,6 @@ export default function AdminDashboardView() {
                   "Luxury",
                   "WiFi",
                   "Digital Menu",
-                ].map((fac) => (
-                  <button
-                    key={fac}
-                    type="button"
-                    onClick={() => {
-                      const current = editingRestaurant.facilities || [];
-                      const next = current.includes(fac)
-                        ? current.filter((f) => f !== fac)
-                        : [...current, fac];
-                      setEditingRestaurant({
-                        ...editingRestaurant,
-                        facilities: next,
-                      });
-                    }}
-                    className={cn(
-                      "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all",
-                      editingRestaurant.facilities?.includes(fac)
-                        ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10"
-                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm",
-                    )}
-                  >
-                    {fac}
-                  </button>
-                ))}
-                {[
                   "Wheelchair Accessible",
                   "Kid Friendly",
                   "Pet Friendly",
@@ -1171,30 +1146,33 @@ export default function AdminDashboardView() {
                   "UPI Accepted",
                   "Takeaway",
                   "Delivery",
-                ].map((fac) => (
-                  <button
-                    key={fac}
-                    type="button"
-                    onClick={() => {
-                      const current = editingRestaurant.facilities || [];
-                      const next = current.includes(fac)
-                        ? current.filter((f) => f !== fac)
-                        : [...current, fac];
-                      setEditingRestaurant({
-                        ...editingRestaurant,
-                        facilities: next,
-                      });
-                    }}
-                    className={cn(
-                      "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all",
-                      editingRestaurant.facilities?.includes(fac)
-                        ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10"
-                        : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm",
-                    )}
-                  >
-                    {fac}
-                  </button>
-                ))}
+                ].map((fac) => {
+                  const facArray = Array.isArray(editingRestaurant.facilities) ? editingRestaurant.facilities : typeof editingRestaurant.facilities === 'string' ? (editingRestaurant.facilities as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                  const isSelected = facArray.includes(fac);
+                  return (
+                    <button
+                      key={fac}
+                      type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? facArray.filter((f: any) => f !== fac)
+                          : [...facArray, fac];
+                        setEditingRestaurant({
+                          ...editingRestaurant,
+                          facilities: next,
+                        });
+                      }}
+                      className={cn(
+                        "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all",
+                        isSelected
+                          ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10"
+                          : "bg-white text-slate-400 border-slate-300 hover:border-slate-300 shadow-sm",
+                      )}
+                    >
+                      {fac}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
@@ -1257,7 +1235,7 @@ export default function AdminDashboardView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-6">
+              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6">
                 <div className="flex items-center gap-3 px-1">
                   <Clock className="text-brand" size={18} />
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
@@ -1273,7 +1251,7 @@ export default function AdminDashboardView() {
                   </p>
                   <input
                     type="number"
-                    className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-4 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.instantBookingLimit || 10}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1285,7 +1263,7 @@ export default function AdminDashboardView() {
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-6">
+              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-3 text-red-500">
                     <PowerOff size={18} />
@@ -1296,21 +1274,14 @@ export default function AdminDashboardView() {
                 </div>
                 <div className="space-y-4">
                   <div className="flex gap-2">
-                    <input
-                      type="date"
-                      className="flex-grow px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-xs"
-                      id="blackout-date-input"
-                    />
+                    <input type="date" id="blackout-date-input" className="flex-grow px-4 py-3 bg-white border border-slate-300 rounded-xl font-bold text-xs" min={new Date().toISOString().split('T')[0]} />
                     <button
                       type="button"
                       onClick={() => {
                         const input = document.getElementById(
                           "blackout-date-input",
                         ) as HTMLInputElement;
-                        if (
-                          input.value &&
-                          !blackoutDates.includes(input.value)
-                        ) {
+                        if(input.value && !isNaN(new Date(input.value).getTime()) && !blackoutDates.includes(input.value)) {
                           setEditingRestaurant({
                             ...editingRestaurant,
                             blackoutDates: [
@@ -1330,7 +1301,7 @@ export default function AdminDashboardView() {
                     {blackoutDates.map((date) => (
                       <div
                         key={date}
-                        className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"
+                        className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm"
                       >
                         <span className="text-[10px] font-bold text-slate-600">
                           {date}
@@ -1361,9 +1332,9 @@ export default function AdminDashboardView() {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-8">
+            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-8">
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black text-brand uppercase tracking-[0.2em] bg-white px-4 py-1.5 rounded-full border border-slate-100 shadow-sm">
+                <span className="text-[10px] font-black text-brand uppercase tracking-[0.2em] bg-white px-4 py-1.5 rounded-full border border-slate-300 shadow-sm">
                   Standard Weekly Cadence
                 </span>
                 <div className="h-px flex-grow bg-slate-200" />
@@ -1414,7 +1385,7 @@ export default function AdminDashboardView() {
                   return (
                     <div
                       key={day}
-                      className="flex flex-col md:flex-row md:items-center gap-6 p-6 bg-white rounded-[28px] border border-slate-100 shadow-sm transition-all hover:border-brand"
+                      className="flex flex-col md:flex-row md:items-center gap-6 p-6 bg-white rounded-[28px] border border-slate-300 shadow-sm transition-all hover:border-brand"
                     >
                       <div className="w-24 shrink-0">
                         <span className="text-xs font-black text-slate-900 uppercase tracking-widest">
@@ -1433,7 +1404,7 @@ export default function AdminDashboardView() {
                             {(dayData.ranges || []).map((range, rIdx) => (
                               <div
                                 key={rIdx}
-                                className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200 shadow-sm relative group/range"
+                                className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-300 shadow-sm relative group/range"
                               >
                                 <input
                                   type="time"
@@ -1503,7 +1474,7 @@ export default function AdminDashboardView() {
                                       },
                                     });
                                   }}
-                                  className="w-7 h-7 bg-white text-red-500 rounded-xl flex items-center justify-center opacity-0 group-hover/range:opacity-100 transition-all shadow-sm border border-slate-100 hover:bg-red-500 hover:text-white"
+                                  className="w-7 h-7 bg-white text-red-500 rounded-xl flex items-center justify-center opacity-0 group-hover/range:opacity-100 transition-all shadow-sm border border-slate-300 hover:bg-red-500 hover:text-white"
                                 >
                                   <X size={12} />
                                 </button>
@@ -1607,7 +1578,7 @@ export default function AdminDashboardView() {
             </div>
 
             {/* Window Configurations (Slot Categories) */}
-            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-6">
+            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-6">
               <div className="flex items-center justify-between px-1">
                 <div>
                   <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">
@@ -1639,9 +1610,9 @@ export default function AdminDashboardView() {
                 {(editingRestaurant.slotCategories || []).map((cat, catIdx) => (
                   <div
                     key={cat.id}
-                    className="bg-white border border-slate-100 p-6 rounded-[32px] shadow-sm space-y-6 transition-all hover:border-brand/30"
+                    className="bg-white border border-slate-300 p-6 rounded-[32px] shadow-sm space-y-6 transition-all hover:border-brand/30"
                   >
-                    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-300 pb-4">
                       <input
                         className="bg-transparent text-lg font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full uppercase tracking-tight"
                         value={cat.name}
@@ -1678,7 +1649,7 @@ export default function AdminDashboardView() {
                       {(cat.slots || []).map((s, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-50 px-4 py-2 border border-slate-100 shadow-sm rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 text-slate-600 transition-all hover:bg-white hover:border-brand"
+                          className="bg-slate-50 px-4 py-2 border border-slate-300 shadow-sm rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 text-slate-600 transition-all hover:bg-white hover:border-brand"
                         >
                           {convertTo12Hour(s)}
                           <button
@@ -1704,7 +1675,7 @@ export default function AdminDashboardView() {
                       <div className="relative group/time">
                         <input
                           type="time"
-                          className="bg-white border-2 border-slate-100 outline-none rounded-xl px-4 py-2 text-[10px] font-black uppercase transition-all focus:border-brand shadow-sm text-slate-700 w-[140px] appearance-none"
+                          className="bg-white border-2 border-slate-300 outline-none rounded-xl px-4 py-2 text-[10px] font-black uppercase transition-all focus:border-brand shadow-sm text-slate-700 w-[140px] appearance-none"
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val) {
@@ -1731,7 +1702,7 @@ export default function AdminDashboardView() {
                 ))}
 
                 {!(editingRestaurant.slotCategories || []).length && (
-                  <div className="md:col-span-2 py-20 bg-white border-2 border-dashed border-slate-100 rounded-[48px] text-center opacity-60">
+                  <div className="md:col-span-2 py-20 bg-white border-2 border-dashed border-slate-300 rounded-[48px] text-center opacity-60">
                     <Calendar
                       size={48}
                       className="mx-auto text-slate-100 mb-4"
@@ -1899,7 +1870,7 @@ export default function AdminDashboardView() {
               </div>
             </div>
             {/* Primary Asset Group */}
-            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 flex flex-col md:flex-row gap-8">
+            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 flex flex-col md:flex-row gap-8">
               <div className="w-full md:w-1/3 aspect-[4/3] md:aspect-square rounded-[32px] overflow-hidden border-4 border-white shadow-xl bg-slate-200">
                 <img
                   src={editingRestaurant.image || RESTAURANT_IMAGE_FALLBACK}
@@ -1924,7 +1895,7 @@ export default function AdminDashboardView() {
                       Source URL
                     </label>
                     <input
-                      className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none transition-all shadow-sm text-sm"
+                      className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none transition-all shadow-sm text-sm"
                       value={editingRestaurant.image}
                       onChange={(e) =>
                         setEditingRestaurant({
@@ -2012,7 +1983,7 @@ export default function AdminDashboardView() {
                           ],
                         })
                       }
-                      className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-brand hover:text-brand transition-all shadow-sm flex items-center gap-2"
+                      className="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-brand hover:text-brand transition-all shadow-sm flex items-center gap-2"
                     >
                       <Plus size={14} /> Add Asset
                     </button>
@@ -2086,7 +2057,7 @@ export default function AdminDashboardView() {
                           ],
                         })
                       }
-                      className="px-5 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-brand hover:text-brand transition-all shadow-sm flex items-center gap-2"
+                      className="px-5 py-2.5 bg-white border border-slate-300 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-brand hover:text-brand transition-all shadow-sm flex items-center gap-2"
                     >
                       <Plus size={14} /> Add Asset
                     </button>
@@ -2257,7 +2228,7 @@ export default function AdminDashboardView() {
                                 gallery: nextGallery,
                               });
                             }}
-                            className="aspect-[4/3] rounded-[32px] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-3 text-slate-400 hover:border-brand hover:text-brand transition-all group"
+                            className="aspect-[4/3] rounded-[32px] border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-3 text-slate-400 hover:border-brand hover:text-brand transition-all group"
                           >
                             <Plus
                               size={32}
@@ -2382,10 +2353,10 @@ export default function AdminDashboardView() {
                 {(editingRestaurant.signatureDishes || []).map((dish, idx) => (
                   <div
                     key={idx}
-                    className="flex flex-col gap-3 bg-slate-50 p-6 rounded-[32px] border border-slate-100 group transition-all hover:bg-white hover:border-brand/30 shadow-sm"
+                    className="flex flex-col gap-3 bg-slate-50 p-6 rounded-[32px] border border-slate-300 group transition-all hover:bg-white hover:border-brand/30 shadow-sm"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-brand shadow-sm border border-slate-100 group-hover:scale-110 transition-transform shrink-0">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-brand shadow-sm border border-slate-300 group-hover:scale-110 transition-transform shrink-0">
                         <Sparkles size={20} />
                       </div>
                       <div className="flex-grow space-y-3">
@@ -2421,14 +2392,14 @@ export default function AdminDashboardView() {
                         />
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-200/50">
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-300/50">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           Price (₹)
                         </span>
                         <input
                           type="number"
-                          className="w-20 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 outline-none focus:border-brand shadow-sm"
+                          className="w-20 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 outline-none focus:border-brand shadow-sm"
                           value={dish.price || ""}
                           onChange={(e) => {
                             const next = [
@@ -2461,7 +2432,7 @@ export default function AdminDashboardView() {
                   </div>
                 ))}
                 {(editingRestaurant.signatureDishes || []).length === 0 && (
-                  <div className="col-span-full py-12 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] opacity-60">
+                  <div className="col-span-full py-12 text-center bg-slate-50 border-2 border-dashed border-slate-300 rounded-[32px] opacity-60">
                     <UtensilsCrossed
                       size={32}
                       className="mx-auto text-slate-100 mb-2"
@@ -2473,7 +2444,7 @@ export default function AdminDashboardView() {
                 )}
               </div>
 
-              <div className="mt-12 pt-12 border-t border-slate-100 space-y-6">
+              <div className="mt-12 pt-12 border-t border-slate-300 space-y-6">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xl font-display font-black text-slate-950 uppercase tracking-tight">
                     Popular Dishes
@@ -2498,7 +2469,7 @@ export default function AdminDashboardView() {
                   {(editingRestaurant.popularDishes || []).map((tag, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2 group hover:border-brand shadow-sm transition-all text-left"
+                      className="flex items-center gap-2 bg-white border border-slate-300 rounded-2xl px-4 py-2 group hover:border-brand shadow-sm transition-all text-left"
                     >
                       <input
                         className="bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none placeholder:text-slate-300 w-32"
@@ -2536,7 +2507,7 @@ export default function AdminDashboardView() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-1 pt-6 border-t border-slate-100">
+            <div className="flex items-center justify-between px-1 pt-6 border-t border-slate-300">
               <div>
                 <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
                   Digital Menu Ecosystem
@@ -2569,9 +2540,9 @@ export default function AdminDashboardView() {
               {(editingRestaurant.menuCategories || []).map((cat, catIdx) => (
                 <div
                   key={cat.id}
-                  className="bg-slate-50 rounded-[40px] border border-slate-100 p-8 space-y-8 relative group/cat"
+                  className="bg-slate-50 rounded-[40px] border border-slate-300 p-8 space-y-8 relative group/cat"
                 >
-                  <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-6">
+                  <div className="flex items-center justify-between gap-6 border-b border-slate-300 pb-6">
                     <div className="flex-grow">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">
                         Category Title
@@ -2643,7 +2614,7 @@ export default function AdminDashboardView() {
                           </div>
                         </div>
                         <input
-                          className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-[10px] font-bold outline-none focus:border-brand shadow-sm"
+                          className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-[10px] font-bold outline-none focus:border-brand shadow-sm"
                           value={img}
                           placeholder="Source URL"
                           onChange={(e) => {
@@ -2674,7 +2645,7 @@ export default function AdminDashboardView() {
                           menuCategories: next,
                         });
                       }}
-                      className="aspect-[3/4.2] border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand hover:bg-white transition-all gap-4 bg-white/30"
+                      className="aspect-[3/4.2] border-2 border-dashed border-slate-300 rounded-[32px] flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand hover:bg-white transition-all gap-4 bg-white/30"
                     >
                       <Plus size={40} className="opacity-40" />
                       <span className="text-[10px] font-black uppercase tracking-[0.2em]">
@@ -2697,7 +2668,7 @@ export default function AdminDashboardView() {
             className="space-y-8"
           >
             <div className="flex flex-col gap-6">
-              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-[24px] border border-slate-100">
+              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-[24px] border border-slate-300">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 mb-1">Takeaway Menu</h3>
                   <p className="text-slate-500 text-sm max-w-md">Manage your live takeaway items, pricing, and availability.</p>
@@ -2715,14 +2686,14 @@ export default function AdminDashboardView() {
               </div>
 
               {(!editingRestaurant.liveMenu || editingRestaurant.liveMenu.length === 0) ? (
-                <div className="py-24 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-100">
+                <div className="py-24 text-center bg-white rounded-[32px] border-2 border-dashed border-slate-300">
                    <UtensilsCrossed size={48} className="mx-auto text-slate-200 mb-4" />
                    <p className="text-slate-400 font-bold">No takeaway menu items added yet.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {editingRestaurant.liveMenu.map((item: any, idx: number) => (
-                    <div key={item.id} className="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm relative group hover:shadow-md transition-all">
+                    <div key={item.id} className="bg-white p-6 rounded-[24px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
                       <button 
                          type="button"
                          onClick={() => {
@@ -2749,6 +2720,35 @@ export default function AdminDashboardView() {
                                setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
                              }}
                            />
+                        </div>
+                        <div>
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Category</label>
+                           <input 
+                             type="text"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             value={item.category || ''}
+                             placeholder="E.g. Starter"
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, category: e.target.value };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           />
+                        </div>
+                        <div>
+                           <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
+                           <select 
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             value={item.isVeg === false ? 'false' : 'true'}
+                             onChange={(e) => {
+                               const nextMenu = [...(editingRestaurant.liveMenu || [])];
+                               nextMenu[idx] = { ...item, isVeg: e.target.value === 'true' };
+                               setEditingRestaurant({ ...editingRestaurant, liveMenu: nextMenu });
+                             }}
+                           >
+                             <option value="true">Veg</option>
+                             <option value="false">Non-Veg</option>
+                           </select>
                         </div>
                         <div>
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Price (₹)</label>
@@ -2791,12 +2791,12 @@ export default function AdminDashboardView() {
                              }}
                            />
                            {item.image && (
-                             <img src={item.image} alt={item.name} className="mt-3 w-20 h-20 object-cover rounded-xl border border-slate-100" />
+                             <img src={item.image} alt={item.name} className="mt-3 w-20 h-20 object-cover rounded-xl border border-slate-300" />
                            )}
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-300 pt-4">
                         <span className="text-sm font-bold text-slate-700">Available to Order</span>
                         <button 
                           type="button"
@@ -2827,7 +2827,7 @@ export default function AdminDashboardView() {
             exit={{ opacity: 0, x: -10 }}
             className="space-y-8"
           >
-            <div className="flex items-center justify-between px-1 border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between px-1 border-b border-slate-300 pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-brand/10 text-brand rounded-2xl">
                   <Gift size={24} />
@@ -2865,9 +2865,9 @@ export default function AdminDashboardView() {
               {offers.map((offer, idx) => (
                 <div
                   key={offer.id}
-                  className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-6 group transition-all hover:bg-white hover:border-brand/40 shadow-sm relative overflow-hidden"
+                  className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-6 group transition-all hover:bg-white hover:border-brand/40 shadow-sm relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-6">
+                  <div className="flex items-center justify-between gap-6 border-b border-slate-300 pb-6">
                     <div className="flex-grow space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
                         Promotion Title
@@ -2896,7 +2896,7 @@ export default function AdminDashboardView() {
                           offers: next,
                         });
                       }}
-                      className="w-12 h-12 bg-white text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 border border-slate-100 shadow-sm"
+                      className="w-12 h-12 bg-white text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 border border-slate-300 shadow-sm"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -2909,7 +2909,7 @@ export default function AdminDashboardView() {
                           <Database size={10} /> Description & Hook
                         </label>
                         <textarea
-                          className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm min-h-[80px] resize-none"
+                          className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm min-h-[80px] resize-none"
                           value={offer.description || ""}
                           placeholder="Describe the offer value..."
                           onChange={(e) => {
@@ -2932,7 +2932,7 @@ export default function AdminDashboardView() {
                             Promo Code
                           </label>
                           <input
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-black text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm uppercase tracking-widest"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-black text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm uppercase tracking-widest"
                             value={offer.promoCode || ""}
                             placeholder="e.g. BMT20"
                             onChange={(e) => {
@@ -2954,7 +2954,7 @@ export default function AdminDashboardView() {
                           </label>
                           <input
                             type="date"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
                             value={offer.validFrom || ""}
                             onChange={(e) => {
                               const next = [...offers];
@@ -2975,7 +2975,7 @@ export default function AdminDashboardView() {
                           </label>
                           <input
                             type="date"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
                             value={offer.validUntil || ""}
                             onChange={(e) => {
                               const next = [...offers];
@@ -3021,7 +3021,7 @@ export default function AdminDashboardView() {
                                 "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex-grow",
                                 offer[meal.id as keyof typeof offer]
                                   ? "bg-brand text-white border-brand shadow-md"
-                                  : "bg-white text-slate-400 border-slate-100 hover:border-slate-300 shadow-sm",
+                                  : "bg-white text-slate-400 border-slate-300 hover:border-slate-300 shadow-sm",
                               )}
                             >
                               {meal.label}
@@ -3036,7 +3036,7 @@ export default function AdminDashboardView() {
                           Fine Print / Terms
                         </label>
                         <textarea
-                          className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-500 outline-none focus:border-brand transition-all text-[10px] shadow-sm min-h-[220px] leading-relaxed resize-none"
+                          className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-500 outline-none focus:border-brand transition-all text-[10px] shadow-sm min-h-[220px] leading-relaxed resize-none"
                           value={offer.terms || ""}
                           placeholder="Terms and conditions..."
                           onChange={(e) => {
@@ -3062,7 +3062,7 @@ export default function AdminDashboardView() {
                             });
                           }
                         }}
-                        className="w-full py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand hover:border-brand transition-all shadow-sm flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-white border border-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand hover:border-brand transition-all shadow-sm flex items-center justify-center gap-2"
                       >
                         <Image size={16} />
                         {offer.image ? "Change Asset" : "Attach Visual"}
@@ -3073,7 +3073,7 @@ export default function AdminDashboardView() {
               ))}
 
               {offers.length === 0 && (
-                <div className="py-32 text-center bg-slate-50 border-2 border-dashed border-slate-100 rounded-[48px]">
+                <div className="py-32 text-center bg-slate-50 border-2 border-dashed border-slate-300 rounded-[48px]">
                   <Gift size={64} className="mx-auto text-slate-100 mb-6" />
                   <p className="text-slate-400 font-bold text-lg">
                     No marketing campaigns pulse active.
@@ -3095,7 +3095,7 @@ export default function AdminDashboardView() {
             exit={{ opacity: 0, x: -10 }}
             className="space-y-8"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-300 pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-brand/10 text-brand rounded-2xl">
                   <Megaphone size={24} />
@@ -3136,7 +3136,7 @@ export default function AdminDashboardView() {
               {(editingRestaurant.advertisements || []).map((ad, idx) => (
                 <div
                   key={ad.id}
-                  className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-6"
+                  className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6"
                 >
                   <div className="flex items-start justify-between">
                     <div className="space-y-6 flex-grow mr-6 text-left">
@@ -3181,7 +3181,7 @@ export default function AdminDashboardView() {
                             Campaign Title
                           </label>
                           <input
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
                             value={ad.title}
                             onChange={(e) => {
                               const next = [
@@ -3202,7 +3202,7 @@ export default function AdminDashboardView() {
                             Description / Hook Line
                           </label>
                           <textarea
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm min-h-[80px]"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm min-h-[80px]"
                             value={ad.description || ""}
                             onChange={(e) => {
                               const next = [
@@ -3227,7 +3227,7 @@ export default function AdminDashboardView() {
                             </label>
                             <div className="flex gap-2">
                               <input
-                                className="flex-grow px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                                className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
                                 value={ad.image || ""}
                                 onChange={(e) => {
                                   const next = [
@@ -3280,7 +3280,7 @@ export default function AdminDashboardView() {
                                     .getElementById(`ad-image-upload-${idx}`)
                                     ?.click()
                                 }
-                                className="p-3.5 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-brand transition-all shadow-sm"
+                                className="p-3.5 bg-white border border-slate-300 rounded-2xl text-slate-400 hover:text-brand transition-all shadow-sm"
                                 title="Upload Image"
                               >
                                 <Upload size={18} />
@@ -3293,7 +3293,7 @@ export default function AdminDashboardView() {
                             </label>
                             <div className="flex gap-2">
                               <input
-                                className="flex-grow px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                                className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
                                 value={ad.videoUrl || ""}
                                 onChange={(e) => {
                                   const next = [
@@ -3310,7 +3310,7 @@ export default function AdminDashboardView() {
                                 }}
                                 placeholder="https://youtube.com/watch?v=..."
                               />
-                              <div className="p-3.5 bg-white border border-slate-200 rounded-2xl text-slate-400 shadow-sm">
+                              <div className="p-3.5 bg-white border border-slate-300 rounded-2xl text-slate-400 shadow-sm">
                                 <Video size={18} />
                               </div>
                             </div>
@@ -3324,7 +3324,7 @@ export default function AdminDashboardView() {
                             </label>
                             <input
                               type="date"
-                              className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
                               value={ad.validFrom || ""}
                               onChange={(e) => {
                                 const next = [
@@ -3347,7 +3347,7 @@ export default function AdminDashboardView() {
                             </label>
                             <input
                               type="date"
-                              className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
                               value={ad.validUntil || ""}
                               onChange={(e) => {
                                 const next = [
@@ -3379,7 +3379,7 @@ export default function AdminDashboardView() {
                           advertisements: next,
                         });
                       }}
-                      className="p-4 bg-white border border-slate-200 text-slate-400 rounded-3xl hover:text-red-500 hover:border-red-500 transition-all shadow-sm"
+                      className="p-4 bg-white border border-slate-300 text-slate-400 rounded-3xl hover:text-red-500 hover:border-red-500 transition-all shadow-sm"
                     >
                       <Trash2 size={20} />
                     </button>
@@ -3389,7 +3389,7 @@ export default function AdminDashboardView() {
 
               {(!editingRestaurant.advertisements ||
                 editingRestaurant.advertisements.length === 0) && (
-                <div className="py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
+                <div className="py-20 text-center bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-300">
                   <div className="p-5 bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-slate-200/50">
                     <Megaphone size={32} className="text-slate-300" />
                   </div>
@@ -3732,7 +3732,7 @@ export default function AdminDashboardView() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <button
               onClick={() => setActiveModal("cities")}
-              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-vibrant hover:-translate-y-1 transition-all group"
+              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-300 shadow-vibrant hover:-translate-y-1 transition-all group"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -3755,7 +3755,7 @@ export default function AdminDashboardView() {
 
             <button
               onClick={() => setActiveModal("cuisines")}
-              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-vibrant hover:-translate-y-1 transition-all group"
+              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-300 shadow-vibrant hover:-translate-y-1 transition-all group"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
@@ -3776,7 +3776,7 @@ export default function AdminDashboardView() {
               />
             </button>
 
-            <div className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+            <div className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-dashed border-slate-300">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-200 text-slate-400 rounded-2xl flex items-center justify-center">
                   <ShieldCheck size={24} />
@@ -3797,7 +3797,7 @@ export default function AdminDashboardView() {
 
         {/* Main Content Area with Tabs */}
         <div className="space-y-8">
-          <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-100 shadow-sm w-fit mb-12">
+          <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-300 shadow-sm w-fit mb-12">
             {[
               { id: "fleet", label: "Fleet Control", icon: Store },
               {
@@ -3859,7 +3859,7 @@ export default function AdminDashboardView() {
                     .map((res) => (
                       <div
                         key={res.id}
-                        className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl flex flex-col md:flex-row gap-8 items-start"
+                        className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-xl flex flex-col md:flex-row gap-8 items-start"
                       >
                         <div className="w-full md:w-64 aspect-[4/3] rounded-3xl overflow-hidden shrink-0 shadow-lg">
                           <img
@@ -4028,7 +4028,7 @@ export default function AdminDashboardView() {
                         placeholder="Search name, city, cuisine..."
                         value={resSearchQuery}
                         onChange={(e) => setResSearchQuery(e.target.value)}
-                        className="pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-4 focus:ring-brand/10 outline-none w-full sm:w-64"
+                        className="pl-9 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-4 focus:ring-brand/10 outline-none w-full sm:w-64"
                       />
                     </div>
                   </div>
@@ -4038,7 +4038,7 @@ export default function AdminDashboardView() {
                   {filteredRestaurants.map((res) => (
                     <div
                       key={res.id}
-                      className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6 group hover:shadow-2xl hover:border-brand/20 transition-all duration-500"
+                      className="bg-white p-6 rounded-[32px] border border-slate-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6 group hover:shadow-2xl hover:border-brand/20 transition-all duration-500"
                     >
                       <div className="flex items-center gap-6 w-full">
                         <div className="w-24 h-24 rounded-3xl overflow-hidden shrink-0 border-4 border-slate-50 shadow-inner group-hover:scale-105 transition-transform">
@@ -4128,7 +4128,7 @@ export default function AdminDashboardView() {
                         {/* Edit Button */}
                         <button
                           onClick={() => setEditingRestaurant(res)}
-                          className="p-4 bg-white border border-slate-100 text-slate-400 hover:text-brand hover:border-brand rounded-2xl transition-all shadow-sm hover:shadow-md"
+                          className="p-4 bg-white border border-slate-300 text-slate-400 hover:text-brand hover:border-brand rounded-2xl transition-all shadow-sm hover:shadow-md"
                           title="Edit Full Details"
                         >
                           <Edit2 size={18} />
@@ -4146,7 +4146,7 @@ export default function AdminDashboardView() {
                             "flex items-center gap-2 px-6 py-4 rounded-2xl text-xs font-black shadow-sm transition-all border",
                             res.isBookingEnabled
                               ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
-                              : "bg-slate-50 text-slate-400 border-slate-100 hover:bg-slate-100",
+                              : "bg-slate-50 text-slate-400 border-slate-300 hover:bg-slate-100",
                           )}
                         >
                           {res.isBookingEnabled ? (
@@ -4179,7 +4179,7 @@ export default function AdminDashboardView() {
                   ))}
 
                   {filteredRestaurants.length === 0 && (
-                    <div className="py-24 text-center bg-white rounded-[40px] border-2 border-dashed border-slate-100">
+                    <div className="py-24 text-center bg-white rounded-[40px] border-2 border-dashed border-slate-300">
                       <Store
                         size={48}
                         className="mx-auto text-slate-100 mb-4"
@@ -4223,7 +4223,7 @@ export default function AdminDashboardView() {
                         placeholder="Search bookings..."
                         value={bookingSearchQuery}
                         onChange={(e) => setBookingSearchQuery(e.target.value)}
-                        className="pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold min-w-[200px]"
+                        className="pl-9 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-bold min-w-[200px]"
                       />
                     </div>
 
@@ -4253,7 +4253,7 @@ export default function AdminDashboardView() {
                     <select
                       value={pulseCityFilter}
                       onChange={(e) => setPulseCityFilter(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-600 outline-none focus:ring-4 focus:ring-brand/10"
+                      className="bg-white border border-slate-300 rounded-xl px-4 py-3 text-xs font-black text-slate-600 outline-none focus:ring-4 focus:ring-brand/10"
                     >
                       <option value="all">All Cities</option>
                       {sortedCities.map((c) => (
@@ -4265,7 +4265,7 @@ export default function AdminDashboardView() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[40px] border border-slate-300 shadow-sm overflow-hidden">
                   <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-4">
                       <TrendingUp size={24} className="text-brand" />
@@ -4364,7 +4364,7 @@ export default function AdminDashboardView() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-vibrant space-y-6">
+                  <div className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-vibrant space-y-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div
@@ -4414,7 +4414,7 @@ export default function AdminDashboardView() {
                     </div>
                   </div>
 
-                  <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-vibrant flex flex-col justify-center opacity-50 cursor-not-allowed">
+                  <div className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-vibrant flex flex-col justify-center opacity-50 cursor-not-allowed">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center">
                         <Settings size={24} />
@@ -4448,7 +4448,7 @@ export default function AdminDashboardView() {
                       whileHover={stat.onClick ? { scale: 1.02, y: -4 } : {}}
                       onClick={stat.onClick}
                       className={cn(
-                        "bg-white p-10 rounded-[40px] border border-slate-100 shadow-vibrant text-left relative overflow-hidden group transition-all",
+                        "bg-white p-10 rounded-[40px] border border-slate-300 shadow-vibrant text-left relative overflow-hidden group transition-all",
                         stat.onClick && "cursor-pointer hover:border-brand/30",
                       )}
                     >
@@ -4478,7 +4478,7 @@ export default function AdminDashboardView() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <button
                       onClick={() => setActiveModal("cities")}
-                      className="flex items-center justify-between p-10 bg-white rounded-[40px] border border-slate-100 shadow-vibrant hover:-translate-y-2 transition-all duration-500 group"
+                      className="flex items-center justify-between p-10 bg-white rounded-[40px] border border-slate-300 shadow-vibrant hover:-translate-y-2 transition-all duration-500 group"
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[30px] flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -4501,7 +4501,7 @@ export default function AdminDashboardView() {
 
                     <button
                       onClick={() => setActiveModal("cuisines")}
-                      className="flex items-center justify-between p-10 bg-white rounded-[40px] border border-slate-100 shadow-vibrant hover:-translate-y-2 transition-all duration-500 group"
+                      className="flex items-center justify-between p-10 bg-white rounded-[40px] border border-slate-300 shadow-vibrant hover:-translate-y-2 transition-all duration-500 group"
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-[30px] flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -4808,7 +4808,7 @@ export default function AdminDashboardView() {
                       placeholder="Search users by name, email, or restaurant..."
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
-                      className="w-full pl-16 pr-8 py-6 bg-white border border-slate-200 rounded-[32px] outline-none focus:ring-8 focus:ring-brand/5 font-bold text-xl text-slate-800 shadow-sm"
+                      className="w-full pl-16 pr-8 py-6 bg-white border border-slate-300 rounded-[32px] outline-none focus:ring-8 focus:ring-brand/5 font-bold text-xl text-slate-800 shadow-sm"
                     />
                   </div>
                 </div>
@@ -4817,7 +4817,7 @@ export default function AdminDashboardView() {
                   <div className="max-w-7xl mx-auto">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
+                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-300">
                           <th className="py-8">Profile & Identity</th>
                           <th className="py-8">Business & Location</th>
                           <th className="py-8">Access Level</th>
@@ -4882,7 +4882,7 @@ export default function AdminDashboardView() {
                                     ? "bg-purple-50 text-purple-600 border-purple-100"
                                     : u.role === "owner"
                                       ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-slate-100 text-slate-500 border-slate-200",
+                                      : "bg-slate-100 text-slate-500 border-slate-300",
                                 )}
                               >
                                 {u.role}
@@ -4944,7 +4944,7 @@ export default function AdminDashboardView() {
                         placeholder="Search cities..."
                         value={citySearchQuery}
                         onChange={(e) => setCitySearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-brand/10 outline-none"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-4 focus:ring-brand/10 outline-none"
                       />
                     </div>
                     <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -4987,7 +4987,7 @@ export default function AdminDashboardView() {
                     .map((city) => (
                       <div
                         key={city.id}
-                        className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-brand transition-all shrink-0"
+                        className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-300 group hover:border-brand transition-all shrink-0"
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm bg-white">
@@ -5021,7 +5021,7 @@ export default function AdminDashboardView() {
                               setEditingCity(city);
                               setActiveModal("addCity");
                             }}
-                            className="p-2 bg-white text-slate-400 hover:text-brand rounded-lg transition-colors border border-slate-100"
+                            className="p-2 bg-white text-slate-400 hover:text-brand rounded-lg transition-colors border border-slate-300"
                           >
                             <Edit2 size={16} />
                           </button>
@@ -5071,7 +5071,7 @@ export default function AdminDashboardView() {
                       </label>
                       <input
                         type="text"
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-brand rounded-2xl font-bold outline-none transition-all"
                         placeholder="e.g. Pune"
                         value={editingCity.name}
                         onChange={(e) =>
@@ -5090,7 +5090,7 @@ export default function AdminDashboardView() {
                       </label>
                       <input
                         type="url"
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-brand rounded-2xl font-bold outline-none transition-all"
                         placeholder="https://..."
                         value={editingCity.image}
                         onChange={(e) =>
@@ -5108,7 +5108,7 @@ export default function AdminDashboardView() {
                       </label>
                       <input
                         type="url"
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-brand rounded-2xl font-bold outline-none transition-all"
                         placeholder="https://..."
                         value={editingCity.bannerImage || ""}
                         onChange={(e) =>
@@ -5128,7 +5128,7 @@ export default function AdminDashboardView() {
                         <input
                           type="number"
                           step="any"
-                          className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                          className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-brand rounded-2xl font-bold outline-none transition-all"
                           value={editingCity.lat}
                           onChange={(e) =>
                             setEditingCity({
@@ -5146,7 +5146,7 @@ export default function AdminDashboardView() {
                         <input
                           type="number"
                           step="any"
-                          className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-brand rounded-2xl font-bold outline-none transition-all"
+                          className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-brand rounded-2xl font-bold outline-none transition-all"
                           value={editingCity.lng}
                           onChange={(e) =>
                             setEditingCity({
@@ -5250,7 +5250,7 @@ export default function AdminDashboardView() {
                         placeholder="Search cuisines..."
                         value={cuisineSearchQuery}
                         onChange={(e) => setCuisineSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-4 focus:ring-brand/10 outline-none"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold focus:ring-4 focus:ring-brand/10 outline-none"
                       />
                     </div>
                     <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -5290,7 +5290,7 @@ export default function AdminDashboardView() {
                     .map((cuisine) => (
                       <div
                         key={cuisine.id}
-                        className="bg-white rounded-[32px] border border-slate-100 overflow-hidden group hover:border-amber-500 transition-all flex flex-col shadow-sm shrink-0"
+                        className="bg-white rounded-[32px] border border-slate-300 overflow-hidden group hover:border-amber-500 transition-all flex flex-col shadow-sm shrink-0"
                       >
                         <div className="h-48 relative">
                           <img
@@ -5307,13 +5307,13 @@ export default function AdminDashboardView() {
                           <p className="text-xs text-slate-500 font-bold leading-relaxed">
                             {cuisine.description}
                           </p>
-                          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200/50">
+                          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-300/50">
                             <button
                               onClick={() => {
                                 setEditingCuisine(cuisine);
                                 setActiveModal("addCuisine");
                               }}
-                              className="flex-grow flex items-center justify-center gap-2 bg-white text-slate-600 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 hover:border-amber-500 hover:text-amber-500 transition-all"
+                              className="flex-grow flex items-center justify-center gap-2 bg-white text-slate-600 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-300 hover:border-amber-500 hover:text-amber-500 transition-all"
                             >
                               <Edit2 size={12} /> Edit
                             </button>
@@ -5361,7 +5361,7 @@ export default function AdminDashboardView() {
                       </label>
                       <input
                         type="text"
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-amber-500 rounded-2xl font-bold outline-none transition-all"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-amber-500 rounded-2xl font-bold outline-none transition-all"
                         placeholder="e.g. Italian"
                         value={editingCuisine.name}
                         onChange={(e) =>
@@ -5380,7 +5380,7 @@ export default function AdminDashboardView() {
                       </label>
                       <input
                         type="url"
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-amber-500 rounded-2xl font-bold outline-none transition-all"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-amber-500 rounded-2xl font-bold outline-none transition-all"
                         placeholder="https://..."
                         value={editingCuisine.image}
                         onChange={(e) =>
@@ -5397,7 +5397,7 @@ export default function AdminDashboardView() {
                         Description
                       </label>
                       <textarea
-                        className="w-full px-5 py-4 bg-slate-50 border-2 border-transparent focus:border-amber-500 rounded-2xl font-bold outline-none transition-all min-h-[100px] resize-none"
+                        className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-300 focus:border-amber-500 rounded-2xl font-bold outline-none transition-all min-h-[100px] resize-none"
                         placeholder="Briefly describe this cuisine..."
                         value={editingCuisine.description}
                         onChange={(e) =>
@@ -5507,7 +5507,7 @@ export default function AdminDashboardView() {
                 className="bg-white w-full h-full relative z-10 flex flex-col md:flex-row overflow-hidden"
               >
                 {/* Sidebar Navigation - Desktop */}
-                <div className="hidden md:flex flex-col w-64 bg-slate-50 border-r border-slate-100 shrink-0">
+                <div className="hidden md:flex flex-col w-64 bg-slate-50 border-r border-slate-300 shrink-0">
                   <div className="p-6">
                     <h2 className="text-lg font-display font-black text-slate-900 leading-tight">
                       Master Config
@@ -5562,8 +5562,8 @@ export default function AdminDashboardView() {
                     ))}
                   </div>
 
-                  <div className="p-6 border-t border-slate-100">
-                    <div className="p-3 bg-white rounded-xl border border-slate-100">
+                  <div className="p-6 border-t border-slate-300">
+                    <div className="p-3 bg-white rounded-xl border border-slate-300">
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
                         Restaurant ID
                       </p>
@@ -5655,7 +5655,7 @@ export default function AdminDashboardView() {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => setEditingRestaurant(null)}
-                        className="w-9 h-9 md:w-10 md:h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-all border border-slate-100"
+                        className="w-9 h-9 md:w-10 md:h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-all border border-slate-300"
                       >
                         <X size={18} />
                       </button>
@@ -5663,7 +5663,7 @@ export default function AdminDashboardView() {
                   </div>
 
                   {/* Mobile Tabs */}
-                  <div className="md:hidden flex bg-white border-b border-slate-100 overflow-x-auto no-scrollbar scroll-smooth">
+                  <div className="md:hidden flex bg-white border-b border-slate-300 overflow-x-auto no-scrollbar scroll-smooth">
                     {[
                       { id: "general", label: "Brand", icon: Globe },
                       { id: "operational", label: "Operating", icon: Clock },
@@ -5705,7 +5705,7 @@ export default function AdminDashboardView() {
                     </div>
                   </div>
 
-                  <div className="px-6 py-3 md:px-8 md:py-3 border-t border-slate-100 bg-white flex shrink-0">
+                  <div className="px-6 py-3 md:px-8 md:py-3 border-t border-slate-300 bg-white flex shrink-0">
                     <div className="max-w-4xl mx-auto w-full flex items-center justify-end gap-3">
                       <button
                         type="submit"
@@ -5725,7 +5725,7 @@ export default function AdminDashboardView() {
                       <button
                         type="button"
                         onClick={() => setEditingRestaurant(null)}
-                        className="px-4 bg-white text-slate-400 h-9 md:h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-100"
+                        className="px-4 bg-white text-slate-400 h-9 md:h-10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-300"
                       >
                         Cancel
                       </button>

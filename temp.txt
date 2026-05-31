@@ -1,0 +1,23 @@
+273:              <input type="text" placeholder="Search guests..." className="bg-transparent border-none outline-none pl-4 font-bold text-sm" />
+363:                    <input 
+400:                      <input 
+457:                <input 
+467:                <input 
+480:                <input 
+490:                <input 
+513:                <input 
+524:                <input 
+564:                  <input 
+618:                           <input 
+629:                           <input 
+702:                <input 
+773:                    <input 
+785:                       <input 
+840:                              <input 
+874:                               <input 
+929:                        <input 
+957:                        <input 
+970:                        <input 
+1053:                     <input 
+1066:                     <input 
+1093:                     <input 

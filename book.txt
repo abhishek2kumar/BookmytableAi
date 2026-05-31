@@ -82,24 +82,31 @@ export default function BookTableView() {
     const allDates = Array.from({ length: 7 }, (_, i) =>
       addDays(startOfToday(), i),
     );
-return allDates;
+    if (!restaurant?.blackoutDates || restaurant.blackoutDates.length === 0)
+      return allDates;
+    return allDates.filter(
+      (date) => !restaurant.blackoutDates?.includes(format(date, "yyyy-MM-dd")),
+    );
   }, [restaurant]);
 
   const slotData = useMemo(() => {
     // Always use outlet timings
     const parseTimeForGrouping = (timeStr: string) => {
       if (!timeStr) return 0;
-      const timeParts = timeStr.trim().split(" ")[0].replace(/AM|PM/i, "").split(":");
-      let h = parseInt(timeParts[0], 10) || 0;
+      const p = timeStr.trim().split(" ");
+      const period =
+        p.length > 1
+          ? p[1].toUpperCase()
+          : timeStr.toUpperCase().includes("PM")
+            ? "PM"
+            : "AM";
+      const timeParts = p[0].replace(/AM|PM/i, "").split(":");
+      const h = parseInt(timeParts[0], 10) || 0;
       const m = timeParts.length > 1 ? parseInt(timeParts[1], 10) : 0;
-      
-      const upper = timeStr.toUpperCase();
-      if (upper.includes("AM") || upper.includes("PM")) {
-        const period = upper.includes("PM") ? "PM" : "AM";
-        if (period === "PM" && h !== 12) h += 12;
-        if (period === "AM" && h === 12) h = 0;
-      }
-      return h * 60 + m;
+      let hour = h;
+      if (period === "PM" && hour !== 12) hour += 12;
+      if (period === "AM" && hour === 12) hour = 0;
+      return hour * 60 + (m || 0);
     };
 
     let rawSlots: string[] = [];
@@ -219,16 +226,16 @@ return allDates;
 
   const isTimeInPast = (timeStr: string) => {
     if (!isSameDay(selectedDate, new Date())) return false;
-    const timeParts = timeStr.trim().split(" ")[0].replace(/AM|PM/i, "").split(":");
-    let h = parseInt(timeParts[0], 10) || 0;
-    const m = timeParts.length > 1 ? parseInt(timeParts[1], 10) : 0;
-    
-    const upper = timeStr.toUpperCase();
-    if (upper.includes("AM") || upper.includes("PM")) {
-      const period = upper.includes("PM") ? "PM" : "AM";
-      if (period === "PM" && h !== 12) h += 12;
-      if (period === "AM" && h === 12) h = 0;
-    }
+    const p = timeStr.trim().split(" ");
+    const period =
+      p.length > 1
+        ? p[1].toUpperCase()
+        : timeStr.toUpperCase().includes("PM")
+          ? "PM"
+          : "AM";
+    let [h, m] = p[0].replace(/AM|PM/i, "").split(":").map(Number);
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
     const now = new Date();
     return h * 60 + m <= now.getHours() * 60 + now.getMinutes();
   };
@@ -455,7 +462,7 @@ return allDates;
               ))}
             </div>
 
-            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="font-bold text-slate-900 text-sm mb-4">
+            <h3 className="font-bold text-slate-900 text-sm mb-4">
               Select the time of day to see the offers
             </h3>
             <div className="space-y-4">
@@ -575,8 +582,7 @@ return allDates;
                 );
               })}
             </div>
-            </>
-          )}</div>
+          </div>
 
           <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-300">
             <h3 className="font-bold text-slate-900 text-lg mb-4">
@@ -679,3 +685,4 @@ return allDates;
     </div>
   );
 }
+

@@ -4,8 +4,8 @@ import { useBookings, useFavoriteRestaurants, useRestaurants } from '../hooks/us
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
-import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star, Tag, User } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import AppIcon from './AppIcon';
 
@@ -15,7 +15,13 @@ export default function DashboardView() {
   const { favorites, loading: favoritesLoading } = useFavoriteRestaurants(profile?.favorites);
   const { restaurants } = useRestaurants(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'bookings' | 'favorites'>('bookings');
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile') || 'bookings';
+  
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
 
   const handleCancelBooking = async (bookingId: string) => {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return;
@@ -49,36 +55,62 @@ export default function DashboardView() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 pb-32">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-        <div>
-          <h1 className="text-4xl font-display font-black text-vibrant-dark mb-2 tracking-tight">Your Dashboard</h1>
-          <p className="text-vibrant-gray font-bold opacity-60 uppercase text-[10px] tracking-[0.2em]">Manage your dining life</p>
+      {activeTab !== 'profile' && (
+        <div className="flex flex-col mb-10">
+          <h1 className="text-4xl font-display font-black text-vibrant-dark mb-2 tracking-tight">
+            {activeTab === 'favorites' ? 'Your Favorites' : 'Your Bookings'}
+          </h1>
+          <p className="text-vibrant-gray font-bold opacity-60 uppercase text-[10px] tracking-[0.2em]">
+            Manage your dining life
+          </p>
         </div>
-        
-        <div className="flex bg-slate-100 p-1 rounded-2xl">
-          <button
-            onClick={() => setActiveTab('bookings')}
-            className={cn(
-              "px-8 py-3 rounded-xl text-sm font-black transition-all",
-              activeTab === 'bookings' ? "bg-white text-brand shadow-sm" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Reservations
-          </button>
-          <button
-            onClick={() => setActiveTab('favorites')}
-            className={cn(
-              "px-8 py-3 rounded-xl text-sm font-black transition-all",
-              activeTab === 'favorites' ? "bg-white text-brand shadow-sm" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Favorites
-          </button>
-        </div>
-      </div>
+      )}
 
       <AnimatePresence mode="wait">
-        {activeTab === 'bookings' ? (
+        {activeTab === 'profile' ? (
+          <motion.div
+            key="profile"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="max-w-2xl mx-auto mt-12 mb-8"
+          >
+            <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-vibrant border border-gray-100 flex flex-col items-center text-center overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-brand/10 to-transparent" />
+              <div className="relative z-10 flex flex-col items-center">
+                 <img src={profile?.photoURL || `https://ui-avatars.com/api/?name=${profile?.displayName}&background=0D8ABC&color=fff`} alt={profile?.displayName || ''} className="w-32 h-32 rounded-full shadow-lg border-4 border-white mb-6" />
+                 <h2 className="text-3xl font-display font-black text-slate-800">{profile?.displayName}</h2>
+                 <p className="text-slate-500 font-bold mb-8">{user?.email}</p>
+                 
+                 <div className="w-full bg-slate-50 rounded-2xl p-6 border border-slate-300">
+                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 text-left">Account Details</h3>
+                   <div className="space-y-4 text-left">
+                      <div className="flex justify-between items-center pb-4 border-b border-slate-300">
+                        <span className="text-sm font-bold text-slate-500">Member Since</span>
+                        <span className="text-sm font-black text-slate-800">
+                          {profile?.createdAt?.toDate 
+                            ? profile.createdAt.toDate().toLocaleDateString()
+                            : profile?.createdAt?.seconds 
+                            ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() 
+                            : (profile?.createdAt && !isNaN(new Date(profile.createdAt).getTime()) 
+                                ? new Date(profile.createdAt).toLocaleDateString() 
+                                : 'N/A')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pb-4 border-b border-slate-300">
+                        <span className="text-sm font-bold text-slate-500">Role</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-brand/10 text-brand px-3 py-1 rounded-full">{profile?.role || 'user'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-slate-500">Total Bookings</span>
+                        <span className="text-sm font-black text-slate-800">{bookings.length}</span>
+                      </div>
+                   </div>
+                 </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : activeTab === 'bookings' ? (
           <motion.div
             key="bookings"
             initial={{ opacity: 0, y: 10 }}
@@ -131,11 +163,11 @@ export default function DashboardView() {
                             </p>
                           </div>
                           <div className="flex gap-3">
-                            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-300">
                               <Calendar className="text-brand shrink-0" size={16} />
                               <span className="text-sm font-black text-slate-700">{formatDate(booking.dateTime)}</span>
                             </div>
-                            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100">
+                            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-300">
                               <Clock className="text-brand shrink-0" size={16} />
                               <span className="text-sm font-black text-slate-700">{formatTime(booking.dateTime)}</span>
                             </div>
@@ -147,6 +179,14 @@ export default function DashboardView() {
                             <Users size={18} className="text-brand" />
                             <span className="text-sm">{booking.guests} Guests</span>
                           </div>
+                          
+                          {(booking as any).offer && (
+                            <div className="flex items-center gap-2 text-brand font-black text-sm uppercase tracking-widest bg-brand/5 px-3 py-1.5 rounded-lg border border-brand/10">
+                              <Tag size={16} />
+                              <span className="truncate max-w-[150px]">{(booking as any).offer.title}</span>
+                            </div>
+                          )}
+
                           <Link 
                             to={getRestaurantUrl(restaurants.find(r => r.id === booking.restaurantId) || null, booking.restaurantId, booking.restaurantName)}
                             className="flex items-center gap-2 text-slate-500 hover:text-brand transition-all text-sm font-black uppercase tracking-tighter"

@@ -80,7 +80,7 @@ export default function TakeawayView() {
 
   if (restaurantsLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 border-t border-slate-200">
+      <div className="min-h-screen bg-slate-50 border-t border-slate-300">
         <div className="h-full flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
         </div>
@@ -283,7 +283,7 @@ export default function TakeawayView() {
   return (
     <div className="min-h-screen bg-slate-50 relative pb-24 md:pb-8">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-300 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center h-16 md:h-20 px-4">
           {step === "menu" ? (
             <button
@@ -325,7 +325,7 @@ export default function TakeawayView() {
           <div className="flex flex-col md:flex-row gap-8 relative">
             <div className="flex-1 space-y-6 pb-24 md:pb-0">
               {liveMenu.length === 0 ? (
-                <div className="bg-white rounded-3xl p-8 border border-slate-100 text-center">
+                <div className="bg-white rounded-3xl p-8 border border-slate-300 text-center">
                   <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <ShoppingBag className="text-slate-400" size={24} />
                   </div>
@@ -428,7 +428,7 @@ export default function TakeawayView() {
                                             className="w-full h-32 md:h-36 object-cover rounded-2xl shadow-sm"
                                           />
                                         ) : (
-                                          <div className="w-full h-32 md:h-36 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center">
+                                          <div className="w-full h-32 md:h-36 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center">
                                             <ShoppingBag
                                               size={24}
                                               className="text-slate-300"
@@ -440,7 +440,7 @@ export default function TakeawayView() {
                                           <div className="absolute -bottom-4 w-28 md:w-32 z-10 drop-shadow-md">
                                             <div
                                               className={cn(
-                                                "bg-white rounded-lg border border-slate-200 overflow-hidden font-bold transition-all",
+                                                "bg-white rounded-lg border border-slate-300 overflow-hidden font-bold transition-all",
                                                 cart[item.id]
                                                   ? "text-brand"
                                                   : "text-green-600",
@@ -505,7 +505,7 @@ export default function TakeawayView() {
             {/* Cart Summary Sidebar */}
             <div className="hidden md:block w-80 shrink-0">
               <div className="sticky top-[104px]">
-                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+                <div className="bg-white rounded-3xl p-6 border border-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
                   <h3 className="font-bold text-slate-900 text-lg mb-6 flex items-center gap-2">
                     <ShoppingBag size={20} className="text-brand" />
                     Your Cart
@@ -550,7 +550,7 @@ export default function TakeawayView() {
                         })}
                       </div>
 
-                      <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
+                      <div className="border-t border-slate-300 pt-4 space-y-2 text-sm">
                         <div className="flex justify-between text-slate-500">
                           <span>Item Total</span>
                           <span>₹{cartTotal}</span>
@@ -569,7 +569,7 @@ export default function TakeawayView() {
                           <span>Platform Fee</span>
                           <span>₹20</span>
                         </div>
-                        <div className="flex justify-between font-black text-slate-900 text-lg pt-2 mt-2 border-t border-slate-100">
+                        <div className="flex justify-between font-black text-slate-900 text-lg pt-2 mt-2 border-t border-slate-300">
                           <span>To Pay</span>
                           <span>
                             ₹
@@ -611,7 +611,7 @@ export default function TakeawayView() {
 
         {step === "checkout" && (
           <div className="max-w-xl mx-auto space-y-6">
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm">
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-300 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900 mb-6">
                 Checkout
               </h2>
@@ -644,7 +644,7 @@ export default function TakeawayView() {
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
-                            <div className="flex items-center bg-white border border-slate-200 rounded-lg overflow-hidden h-8 shadow-sm">
+                            <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden h-8 shadow-sm">
                               <button
                                 onClick={() => updateCart(itemId, false)}
                                 className="w-8 h-full flex items-center justify-center hover:bg-slate-50 text-brand"
@@ -669,7 +669,7 @@ export default function TakeawayView() {
                       );
                     })}
 
-                    <div className="border-t border-slate-200 pt-4 space-y-2 text-sm">
+                    <div className="border-t border-slate-300 pt-4 space-y-2 text-sm">
                       <div className="flex justify-between text-slate-600">
                         <span>Item Total</span>
                         <span className="font-medium text-slate-900">
@@ -691,7 +691,7 @@ export default function TakeawayView() {
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-200 pt-4 flex justify-between font-black text-lg">
+                    <div className="border-t border-slate-300 pt-4 flex justify-between font-black text-lg">
                       <span>To Pay</span>
                       <span className="text-brand">
                         ₹
@@ -759,7 +759,7 @@ export default function TakeawayView() {
                       Payment Method
                     </h3>
                     <div className="flex flex-col sm:flex-row gap-3">
-                      <label className="flex-1 flex items-center gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:border-brand/50 transition-colors has-[:checked]:border-brand has-[:checked]:bg-brand/5">
+                      <label className="flex-1 flex items-center gap-3 p-4 border border-slate-300 rounded-xl cursor-pointer hover:border-brand/50 transition-colors has-[:checked]:border-brand has-[:checked]:bg-brand/5">
                         <input
                           type="radio"
                           name="payment_method"
@@ -775,7 +775,7 @@ export default function TakeawayView() {
                           Pay Online
                         </span>
                       </label>
-                      <label className="flex-1 flex items-center gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:border-brand/50 transition-colors has-[:checked]:border-brand has-[:checked]:bg-brand/5">
+                      <label className="flex-1 flex items-center gap-3 p-4 border border-slate-300 rounded-xl cursor-pointer hover:border-brand/50 transition-colors has-[:checked]:border-brand has-[:checked]:bg-brand/5">
                         <input
                           type="radio"
                           name="payment_method"
@@ -848,11 +848,11 @@ export default function TakeawayView() {
                 " Please pay at the restaurant upon collection."}
             </p>
 
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm text-left mb-8">
+            <div className="bg-white rounded-3xl p-6 border border-slate-300 shadow-sm text-left mb-8">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                 Order Summary
               </div>
-              <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+              <div className="flex justify-between items-center pb-4 border-b border-slate-300 mb-4">
                 <div>
                   <div className="text-sm text-slate-500">Order ID</div>
                   <div className="font-bold text-slate-900">

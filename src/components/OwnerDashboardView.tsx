@@ -101,11 +101,22 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     const qBook = query(
       collection(db, 'bookings'), 
       where('restaurantOwnerId', '==', ownerId),
-      orderBy('dateTime', 'desc'),
+      orderBy('createdAt', 'desc'),
       limit(50)
     );
     const unsubscribeBook = onSnapshot(qBook, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map(doc => {
+         const d = doc.data();
+         let dateTimeStr = d.dateTime;
+         if (!dateTimeStr && d.date && d.time) {
+            dateTimeStr = `${d.date}T${d.time}:00`;
+         }
+         return {
+           id: doc.id,
+           ...d,
+           dateTime: dateTimeStr || d.createdAt,
+         };
+      });
       setBookings(data);
     });
 
@@ -204,7 +215,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
                 key={booking.id}
-                className="flex items-center justify-between p-6 bg-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-orange-200/20 border border-transparent hover:border-orange-100 rounded-3xl transition-all group"
+                className="flex items-center justify-between p-6 bg-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-orange-200/20 border border-slate-300 hover:border-orange-100 rounded-3xl transition-all group"
               >
                 <div className="flex items-center gap-6">
                   <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-orange-600 text-lg">
@@ -257,7 +268,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             <p className="text-slate-400 font-bold mt-2">Historical view of your guest activity.</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="bg-white border border-slate-200 rounded-[24px] flex items-center px-6 py-3 shadow-sm focus-within:border-orange-400 transition-all">
+            <div className="bg-white border border-slate-300 rounded-[24px] flex items-center px-6 py-3 shadow-sm focus-within:border-orange-400 transition-all">
               <Search size={18} className="text-slate-300" />
               <input type="text" placeholder="Search guests..." className="bg-transparent border-none outline-none pl-4 font-bold text-sm" />
             </div>
@@ -290,7 +301,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   </div>
                 </td>
                 <td className="bg-slate-50/50 group-hover:bg-orange-50/50 px-8 py-6 transition-all">
-                  <div className="inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-slate-100 text-xs font-black text-slate-700 shadow-sm">
+                  <div className="inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-slate-300 text-xs font-black text-slate-700 shadow-sm">
                     <Users size={14} className="text-slate-300" /> {booking.guests}
                   </div>
                 </td>
@@ -345,7 +356,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           </div>
           <div className="flex-1 space-y-10">
             {editForm.menuCategories?.map((cat: any, catIdx: number) => (
-              <motion.div layout key={cat.id} className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-8">
+              <motion.div layout key={cat.id} className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-300 space-y-8">
                 <div className="flex items-center justify-between gap-6">
                   <div className="flex-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">Category Name</label>
@@ -358,7 +369,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                         next[catIdx] = { ...next[catIdx], name: e.target.value };
                         setEditForm({...editForm, menuCategories: next});
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 font-bold outline-none focus:border-orange-400 shadow-sm"
+                      className="w-full bg-white border border-slate-300 rounded-2xl px-6 py-4 font-bold outline-none focus:border-orange-400 shadow-sm"
                     />
                   </div>
                   <button 
@@ -371,7 +382,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(cat.images || []).map((img: string, imgIdx: number) => (
                     <div key={imgIdx} className="space-y-3">
-                      <div className="aspect-[3/4] bg-white rounded-3xl border border-slate-200 overflow-hidden relative shadow-sm group">
+                      <div className="aspect-[3/4] bg-white rounded-3xl border border-slate-300 overflow-hidden relative shadow-sm group">
                         <img src={img || RESTAURANT_IMAGE_FALLBACK} className="w-full h-full object-cover" onError={handleImageError} />
                         <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <button 
@@ -387,7 +398,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                         </div>
                       </div>
                       <input 
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-bold outline-none focus:border-orange-400"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-[10px] font-bold outline-none focus:border-orange-400"
                         value={img}
                         onChange={e => {
                           const next = [...editForm.menuCategories];
@@ -404,7 +415,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                       next[catIdx].images = [...(next[catIdx].images || []), ''];
                       setEditForm({...editForm, menuCategories: next});
                     }}
-                    className="aspect-[3/4] border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:border-orange-400 hover:text-orange-400 transition-all bg-white/50"
+                    className="aspect-[3/4] border-2 border-dashed border-slate-300 rounded-3xl flex flex-col items-center justify-center gap-3 text-slate-300 hover:border-orange-400 hover:text-orange-400 transition-all bg-white/50"
                   >
                     <Plus size={32} />
                     <span className="text-[10px] font-black uppercase tracking-widest">Add Page</span>
@@ -413,7 +424,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               </motion.div>
             ))}
             {(!editForm.menuCategories || editForm.menuCategories.length === 0) && (
-              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100">
+              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-300">
                  <Menu size={64} className="mx-auto text-slate-200 mb-6" />
                  <p className="text-slate-400 font-bold">Start adding menu items.</p>
               </div>
@@ -445,7 +456,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Official Name</label>
                 <input 
                   type="text"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.name}
                   onChange={e => setEditForm({...editForm, name: e.target.value})}
                   required
@@ -455,7 +466,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cuisine Specialty</label>
                 <input 
                   type="text"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.cuisine}
                   onChange={e => setEditForm({...editForm, cuisine: e.target.value})}
                   placeholder="e.g. Contemporary Indian"
@@ -468,7 +479,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Area Name</label>
                 <input 
                   type="text"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.location}
                   onChange={e => setEditForm({...editForm, location: e.target.value})}
                   placeholder="e.g. Viman Nagar"
@@ -478,7 +489,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Avg Price for Two (₹)</label>
                 <input 
                   type="number"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.avgPrice || ''}
                   onChange={e => setEditForm({...editForm, avgPrice: parseInt(e.target.value) || 0})}
                 />
@@ -489,7 +500,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Complete Address</label>
               <textarea 
                 rows={2}
-                className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm resize-none"
+                className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm resize-none"
                 value={editForm.address || ''}
                 onChange={e => setEditForm({...editForm, address: e.target.value})}
                 placeholder="Full street address..."
@@ -502,7 +513,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <input 
                   type="number"
                   step="any"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.lat || ''}
                   onChange={e => setEditForm({...editForm, lat: parseFloat(e.target.value)})}
                   placeholder="e.g. 18.5204"
@@ -513,7 +524,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 <input 
                   type="number"
                   step="any"
-                  className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
+                  className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all text-lg shadow-sm"
                   value={editForm.lng || ''}
                   onChange={e => setEditForm({...editForm, lng: parseFloat(e.target.value)})}
                   placeholder="e.g. 73.8567"
@@ -525,7 +536,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Our Culinary Philosophy</label>
               <textarea 
                 rows={6}
-                className="w-full px-8 py-6 bg-white border-2 border-slate-100 rounded-[32px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all resize-none text-base shadow-sm"
+                className="w-full px-8 py-6 bg-white border-2 border-slate-300 rounded-[32px] font-bold outline-none focus:border-orange-500 focus:ring-8 focus:ring-orange-500/5 transition-all resize-none text-base shadow-sm"
                 value={editForm.description}
                 onChange={e => setEditForm({...editForm, description: e.target.value})}
                 placeholder="Describe your atmosphere, signature dishes, and story..."
@@ -552,7 +563,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Direct Contact Line</label>
                   <input 
                     type="text"
-                    className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-emerald-500 focus:ring-8 focus:ring-emerald-500/5 transition-all text-lg shadow-sm"
+                    className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-emerald-500 focus:ring-8 focus:ring-emerald-500/5 transition-all text-lg shadow-sm"
                     value={editForm.contactNumber || ''}
                     onChange={e => setEditForm({...editForm, contactNumber: e.target.value})}
                     placeholder="+91 98765 43210"
@@ -577,14 +588,14 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             </div>
 
             <div className="space-y-8">
-               <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+               <div className="flex items-center gap-3 border-b border-slate-300 pb-4 mb-4">
                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Daily Operating Hours</span>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
                    const curr = (editForm.dailyTimings && editForm.dailyTimings[day]) || { closed: false, open: '11:00 AM', close: '11:00 PM' };
                    return (
-                     <div key={day} className="bg-white p-6 rounded-[28px] border border-slate-100 shadow-sm space-y-4">
+                     <div key={day} className="bg-white p-6 rounded-[28px] border border-slate-300 shadow-sm space-y-4">
                        <div className="flex items-center justify-between">
                          <span className="font-bold text-slate-900">{day}</span>
                          <button 
@@ -634,7 +645,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             </div>
 
             <div className="space-y-8">
-               <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+               <div className="flex items-center gap-3 border-b border-slate-300 pb-4 mb-4">
                  <span className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Guest Amenities & Facilities</span>
                </div>
                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -690,7 +701,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               <div className="relative group">
                 <input 
                   type="url"
-                  className="w-full pl-16 pr-8 py-6 bg-white border-2 border-slate-100 rounded-[32px] font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all text-base shadow-sm"
+                  className="w-full pl-16 pr-8 py-6 bg-white border-2 border-slate-300 rounded-[32px] font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all text-base shadow-sm"
                   value={editForm.image}
                   onChange={e => setEditForm({...editForm, image: e.target.value})}
                   placeholder="https://images.unsplash.com/..."
@@ -708,7 +719,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Atmosphere & Food Gallery (One URL per line)</label>
               <textarea 
                 rows={10}
-                className="w-full px-8 py-8 bg-white border-2 border-slate-100 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
+                className="w-full px-8 py-8 bg-white border-2 border-slate-300 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
                 placeholder="https://images.unsplash.com/photo-1..."
                 value={(editForm.secondaryImages || []).join('\n')}
                 onChange={e => setEditForm({...editForm, secondaryImages: e.target.value.split('\n')})}
@@ -748,7 +759,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                  onClick={() => setEditForm({...editForm, isBookingEnabled: !editForm.isBookingEnabled})}
                  className={cn(
                    "px-10 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95",
-                   editForm.isBookingEnabled ? "bg-brand text-white shadow-brand/30" : "bg-white border-2 border-slate-100 text-slate-400 hover:border-brand hover:text-brand"
+                   editForm.isBookingEnabled ? "bg-brand text-white shadow-brand/30" : "bg-white border-2 border-slate-300 text-slate-400 hover:border-brand hover:text-brand"
                  )}
                >
                  {editForm.isBookingEnabled ? 'Engine Active' : 'Activate Engine'}
@@ -761,7 +772,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Instant Confirmation Cap (pax)</label>
                     <input 
                       type="number"
-                      className="w-full px-8 py-5 bg-white border-2 border-slate-100 rounded-[28px] font-bold outline-none focus:border-brand transition-all text-lg shadow-sm"
+                      className="w-full px-8 py-5 bg-white border-2 border-slate-300 rounded-[28px] font-bold outline-none focus:border-brand transition-all text-lg shadow-sm"
                       value={editForm.instantBookingLimit || 1}
                       onChange={e => setEditForm({...editForm, instantBookingLimit: parseInt(e.target.value) || 0})}
                     />
@@ -771,16 +782,14 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   <div className="space-y-3">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Blackout Dates (Closed for bookings)</label>
                     <div className="flex gap-3">
-                       <input 
-                         type="date"
-                         id="owner-blackout-input"
-                         className="flex-grow px-6 py-4 bg-white border-2 border-slate-100 rounded-[24px] font-bold outline-none focus:border-brand"
+                       <input type="date" id="owner-blackout-input" min={new Date().toISOString().split('T')[0]}
+                         className="flex-grow px-6 py-4 bg-white border-2 border-slate-300 rounded-[24px] font-bold outline-none focus:border-brand"
                        />
                        <button
                          type="button"
                          onClick={() => {
                            const el = document.getElementById('owner-blackout-input') as HTMLInputElement;
-                           if (el?.value) {
+                           if(el?.value && !isNaN(new Date(el.value).getTime())) {
                              if (!editForm.blackoutDates?.includes(el.value)) {
                                setEditForm({...editForm, blackoutDates: [...(editForm.blackoutDates || []), el.value]});
                              }
@@ -804,7 +813,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   </div>
                </div>
 
-               <div className="space-y-6 pt-6 border-t border-slate-100">
+               <div className="space-y-6 pt-6 border-t border-slate-300">
                   <div className="flex items-center justify-between mb-4">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Reservation Categories</label>
                     <button 
@@ -824,7 +833,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   
                   <div className="space-y-6">
                      {(editForm.slotCategories || []).map((cat: any, catIdx: number) => (
-                        <div key={cat.id} className="bg-slate-50 border border-slate-100 p-8 rounded-[32px] shadow-sm">
+                        <div key={cat.id} className="bg-slate-50 border border-slate-300 p-8 rounded-[32px] shadow-sm">
                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                               <input 
                                  className="bg-transparent text-2xl font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full"
@@ -850,7 +859,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                            </div>
                            <div className="flex flex-wrap items-center gap-4">
                              {(cat.slots || []).map((s: string, idx: number) => (
-                               <div key={idx} className="bg-white px-6 py-3 border-2 border-slate-100 shadow-sm rounded-[20px] text-sm font-black flex items-center gap-3 text-slate-700 hover:border-brand transition-colors group">
+                               <div key={idx} className="bg-white px-6 py-3 border-2 border-slate-300 shadow-sm rounded-[20px] text-sm font-black flex items-center gap-3 text-slate-700 hover:border-brand transition-colors group">
                                  {convertTo12Hour(s)}
                                  <button type="button" onClick={() => {
                                     const nextCats = [...(editForm.slotCategories || [])];
@@ -862,7 +871,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                              <div className="relative group/time">
                                <input 
                                   type="time"
-                                  className="bg-white border-2 border-slate-100 outline-none rounded-[20px] px-6 py-3 text-sm font-black focus:border-brand shadow-sm text-slate-700 w-[160px] transition-all"
+                                  className="bg-white border-2 border-slate-300 outline-none rounded-[20px] px-6 py-3 text-sm font-black focus:border-brand shadow-sm text-slate-700 w-[160px] transition-all"
                                   onChange={e => {
                                      const val = e.target.value;
                                      if (val) {
@@ -882,7 +891,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                      ))}
                      
                      {!(editForm.slotCategories || []).length && (
-                        <div className="py-16 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[32px] text-center opacity-70">
+                        <div className="py-16 bg-slate-50 border-2 border-dashed border-slate-300 rounded-[32px] text-center opacity-70">
                            <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No slot categories configured</p>
                         </div>
@@ -908,7 +917,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
 
               <div className="space-y-6">
                 {(editForm.offers || []).map((offer: any, idx: number) => (
-                  <div key={offer.id || idx} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+                  <div key={offer.id || idx} className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-orange-50/50 rounded-[20px] flex items-center justify-center text-orange-500 shadow-inner shrink-0">
                         <Gift size={20} />
@@ -978,7 +987,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                      next.push({ id: Date.now().toString(), title: '', description: '', terms: '', promoCode: '' });
                      setEditForm({...editForm, offers: next});
                   }}
-                  className="w-full py-6 border-2 border-dashed border-slate-200 rounded-[28px] text-slate-400 hover:border-orange-500 hover:text-orange-500 transition-all font-black uppercase tracking-[0.2em] text-[10px] flex justify-center items-center gap-2 bg-white/50"
+                  className="w-full py-6 border-2 border-dashed border-slate-300 rounded-[28px] text-slate-400 hover:border-orange-500 hover:text-orange-500 transition-all font-black uppercase tracking-[0.2em] text-[10px] flex justify-center items-center gap-2 bg-white/50"
                 >
                    <Plus size={16} /> Add New Offer
                 </button>
@@ -996,7 +1005,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-[40px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden"
+      className="bg-white rounded-[40px] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-300 overflow-hidden"
     >
       <div className="h-40 bg-orange-50 absolute top-0 inset-x-0 -z-0" />
       <div className="p-12 pt-16 relative z-10">
@@ -1017,14 +1026,14 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           
           <div className="md:w-2/3 space-y-6">
             {(!editForm.liveMenu || editForm.liveMenu.length === 0) && (
-              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-100">
+              <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-300">
                  <UtensilsCrossed size={64} className="mx-auto text-slate-200 mb-6" />
                  <p className="text-slate-400 font-bold">Start adding takeaway menu items.</p>
               </div>
             )}
             
             {(editForm.liveMenu || []).map((item: any, idx: number) => (
-               <div key={item.id} className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm relative group hover:shadow-md transition-all">
+               <div key={item.id} className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
                  <button 
                    onClick={() => {
                      const nextMenu = [...(editForm.liveMenu || [])];
@@ -1049,6 +1058,34 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                          setEditForm({...editForm, liveMenu: nextMenu});
                        }}
                      />
+                   </div>
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Category</label>
+                     <input 
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       value={item.category || ''}
+                       placeholder="E.g., Starter"
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, category: e.target.value };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     />
+                   </div>
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Type</label>
+                     <select 
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       value={item.isVeg === false ? 'false' : 'true'}
+                       onChange={e => {
+                         const nextMenu = [...(editForm.liveMenu || [])];
+                         nextMenu[idx] = { ...item, isVeg: e.target.value === 'true' };
+                         setEditForm({...editForm, liveMenu: nextMenu});
+                       }}
+                     >
+                       <option value="true">Veg</option>
+                       <option value="false">Non-Veg</option>
+                     </select>
                    </div>
                    <div>
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Price (₹)</label>
@@ -1090,7 +1127,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                        }}
                      />
                      {item.image && (
-                       <img src={item.image} alt={item.name} className="mt-4 w-32 h-32 object-cover rounded-2xl border border-slate-100" />
+                       <img src={item.image} alt={item.name} className="mt-4 w-32 h-32 object-cover rounded-2xl border border-slate-300" />
                      )}
                    </div>
                  </div>
@@ -1130,7 +1167,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
         {/* Sidebar Controls */}
         <div className="lg:w-80 shrink-0">
           <div className="sticky top-32 space-y-8">
-            <div className="bg-white rounded-[3rem] p-8 shadow-vibrant border border-slate-100 overflow-hidden relative">
+            <div className="bg-white rounded-[3rem] p-8 shadow-vibrant border border-slate-300 overflow-hidden relative">
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-3xl bg-brand/10 flex items-center justify-center text-brand shrink-0">
@@ -1167,7 +1204,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 </div>
                 
                 {/* Quick Toggles */}
-                <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-6 border-t border-slate-300 flex items-center justify-between">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Table Bookings</span>
                   <button
                     onClick={async () => {

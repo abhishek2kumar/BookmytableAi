@@ -215,7 +215,7 @@ export default function HomeLandingView() {
             <div className="max-w-4xl mx-auto w-full relative px-2 md:px-0">
               <div className="relative group w-full cursor-pointer" onClick={() => setIsSearchOverlayOpen(true)}>
                 <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={22} />
-                <div className="w-full pl-14 pr-4 py-3 md:py-4 bg-white border-2 border-transparent hover:border-brand/30 rounded-xl md:rounded-2xl text-base md:text-lg font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center h-14 md:h-16">
+                <div className="w-full pl-14 pr-4 py-3 md:py-4 bg-white border-2 border-slate-300 hover:border-brand/30 rounded-xl md:rounded-2xl text-base md:text-lg font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center h-14 md:h-16">
                   Search cities or restaurants...
                 </div>
               </div>
@@ -396,7 +396,7 @@ export default function HomeLandingView() {
                   {/* App Content Preview */}
                   <div className="absolute inset-0 bg-white pt-6 overflow-hidden flex flex-col">
                     {/* Tiny App Header */}
-                    <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 bg-white/80 backdrop-blur-sm z-10">
+                    <div className="px-3 py-2 flex items-center justify-between border-b border-slate-300 bg-white/80 backdrop-blur-sm z-10">
                       <div className="flex items-center gap-1.5">
                         <MapPin size={10} className="text-brand" />
                         <span className="text-[9px] font-black text-slate-900">Pune, Maharashtra</span>
@@ -414,7 +414,7 @@ export default function HomeLandingView() {
                            <h4 className="text-[10px] font-black text-slate-900 leading-tight">Explore the best<br/>dining in Pune</h4>
                            <div className="h-1.5 w-12 bg-brand/20 rounded-full" />
                          </div>
-                         <div className="h-7 w-full bg-slate-50 border border-slate-100 rounded-lg flex items-center px-2 shadow-sm">
+                         <div className="h-7 w-full bg-slate-50 border border-slate-300 rounded-lg flex items-center px-2 shadow-sm">
                             <Search size={10} className="text-slate-300 mr-1.5" />
                             <div className="h-1.5 w-24 bg-slate-200/50 rounded-full" />
                          </div>
@@ -442,7 +442,7 @@ export default function HomeLandingView() {
                             <span className="text-[8px] font-black text-slate-900 uppercase tracking-wider">Trending Now</span>
                          </div>
                          {[1,2,3].map(i => (
-                           <div key={i} className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                           <div key={i} className="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm">
                               <div className="h-20 w-full bg-slate-100 relative">
                                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded-md shadow-sm flex items-center gap-0.5">
                                     <Star size={6} className="fill-brand text-brand" />
@@ -468,7 +468,7 @@ export default function HomeLandingView() {
                     </div>
 
                     {/* Tiny Tab Bar */}
-                    <div className="absolute bottom-0 inset-x-0 border-t border-slate-100 px-6 py-3 flex justify-between bg-white/90 backdrop-blur-md">
+                    <div className="absolute bottom-0 inset-x-0 border-t border-slate-300 px-6 py-3 flex justify-between bg-white/90 backdrop-blur-md">
                         {[1,2,3,4].map(i => (
                           <div key={i} className={cn("w-1.5 h-1.5 rounded-full", i === 1 ? "bg-brand" : "bg-slate-200")} />
                         ))}
@@ -560,7 +560,7 @@ export default function HomeLandingView() {
                         <button 
                           key={res.id} 
                           onClick={() => handleSuggestionSelect(res)}
-                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left"
+                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300 text-left"
                         >
                           <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
                             {res.image ? (
@@ -589,7 +589,7 @@ export default function HomeLandingView() {
                         <button 
                           key={res.id} 
                           onClick={() => handleSuggestionSelect(res)}
-                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left"
+                          className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300 text-left"
                         >
                           <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
                             {res.image ? (

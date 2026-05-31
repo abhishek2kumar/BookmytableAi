@@ -43,7 +43,7 @@ export default function AboutView() {
       </section>
 
       {/* Stats/Info Banner */}
-      <section className="bg-white border-y border-slate-200 py-12 mb-20 flex flex-col items-center">
+      <section className="bg-white border-y border-slate-300 py-12 mb-20 flex flex-col items-center">
         <div className="max-w-7xl w-full px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-slate-100">
             <motion.div {...fadeIn} className="text-center px-4">

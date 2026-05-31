@@ -158,7 +158,7 @@ export default function CuisineView() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (index % 4) * 0.1 }}
               >
-                <Link to={getRestaurantUrl(restaurant)} className="group flex flex-col h-full bg-white rounded-2xl shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-100 hover:-translate-y-1">
+                <Link to={getRestaurantUrl(restaurant)} className="group flex flex-col h-full bg-white rounded-2xl shadow-vibrant hover:shadow-2xl transition-all duration-500 overflow-hidden border border-slate-300 hover:-translate-y-1">
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img 
                       src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} 

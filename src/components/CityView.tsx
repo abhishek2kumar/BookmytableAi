@@ -388,7 +388,7 @@ export default function CityView() {
                 readOnly
                 onClick={() => setIsSearchOverlayOpen(true)}
                 placeholder="Search for restaurant"
-                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-transparent hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
                 value={searchQuery}
               />
             </div>
@@ -416,7 +416,7 @@ export default function CityView() {
                 <img
                   src={
                     currentCity?.bannerImage ||
-                    "https://i.pinimg.com/736x/3b/ae/79/3bae79a6ae0f44e1ed07bba4f8a13b69.jpg"
+                    "https://i.pinimg.com/736x/57/49/c5/5749c5f0d470c1f48ace375243d8e994.jpg"
                   }
                   alt="Welcome Banner"
                   className="absolute inset-0 w-full h-full object-cover"
@@ -621,7 +621,7 @@ export default function CityView() {
                 <div
                   key={restaurant.id}
                   onClick={() => navigate(getRestaurantUrl(restaurant))}
-                  className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start cursor-pointer group rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-100 h-[280px]"
+                  className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start cursor-pointer group rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-300 h-[280px]"
                 >
                   <div className="absolute top-3 left-3 bg-white text-slate-900 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded shadow-sm z-20">
                     Ad
@@ -1078,7 +1078,7 @@ export default function CityView() {
                                 subtitle: "Restaurant",
                               });
                             }}
-                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100"
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300"
                           >
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
                               <img
@@ -1161,7 +1161,7 @@ export default function CityView() {
                                 }
                               }
                             }}
-                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left cursor-pointer"
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300 text-left cursor-pointer"
                           >
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
                               {res.image ? (
@@ -1373,7 +1373,7 @@ export default function CityView() {
                   <h4 className="text-sm font-black text-vibrant-gray uppercase tracking-widest mb-4">
                     Offers & Deals
                   </h4>
-                  <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border-2 border-transparent hover:border-slate-200 cursor-pointer transition-all">
+                  <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border-2 border-slate-300 hover:border-slate-300 cursor-pointer transition-all">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-brand/10 flex items-center justify-center text-brand">
                         <Percent size={20} />

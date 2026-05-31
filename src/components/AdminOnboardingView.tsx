@@ -410,7 +410,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-6"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
@@ -427,7 +427,7 @@ export default function AdminOnboardingView() {
                       placeholder="e.g. The Coastal Kitchen"
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
-                        errors.name ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.name ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.name}
                       onChange={e => {
@@ -438,7 +438,7 @@ export default function AdminOnboardingView() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Restaurant Rating *</label>
-                    <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+                    <div className="flex bg-slate-50 border border-slate-300 rounded-2xl p-1 gap-1">
                       {[1, 2, 3, 4, 5].map(r => (
                         <button
                           key={r}
@@ -462,7 +462,7 @@ export default function AdminOnboardingView() {
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Shop No. / Building No. (Optional)</label>
                     <input 
                       placeholder="e.g. Shop 42, Phoenix Mall"
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
                       value={form.shopNo}
                       onChange={e => updateLocationField('shopNo', e.target.value)}
                     />
@@ -471,7 +471,7 @@ export default function AdminOnboardingView() {
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Floor / Tower (Optional)</label>
                     <input 
                       placeholder="e.g. 2nd Floor, Wing A"
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
                       value={form.floor}
                       onChange={e => updateLocationField('floor', e.target.value)}
                     />
@@ -483,7 +483,7 @@ export default function AdminOnboardingView() {
                       placeholder="e.g. Viman Nagar"
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium",
-                        errors.area ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.area ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.area}
                       onChange={e => {
@@ -498,7 +498,7 @@ export default function AdminOnboardingView() {
                       required
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-sm",
-                        errors.city ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.city ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.city}
                       onChange={e => {
@@ -517,7 +517,7 @@ export default function AdminOnboardingView() {
                       required
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold text-sm",
-                        errors.state ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.state ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.state}
                       onChange={e => {
@@ -536,7 +536,7 @@ export default function AdminOnboardingView() {
                       placeholder="e.g. 560001"
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium",
-                        errors.pincode ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.pincode ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.pincode}
                       onChange={e => {
@@ -551,7 +551,7 @@ export default function AdminOnboardingView() {
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Landmark (Optional)</label>
                   <input 
                     placeholder="e.g. Near HDFC Bank"
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
                     value={form.landmark}
                     onChange={e => updateLocationField('landmark', e.target.value)}
                   />
@@ -561,13 +561,13 @@ export default function AdminOnboardingView() {
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Brand Description / Story (Optional)</label>
                   <textarea 
                     placeholder="Share the story behind your restaurant or what makes it unique..."
-                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium min-h-[120px] resize-none"
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium min-h-[120px] resize-none"
                     value={form.description}
                     onChange={e => setForm({...form, description: e.target.value})}
                   />
                 </div>
 
-                <div className="pt-6 border-t border-slate-100">
+                <div className="pt-6 border-t border-slate-300">
                   <div className="flex items-center justify-between mb-4">
                      <div className="flex items-center gap-3">
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Pin Coordinates</h3>
@@ -593,7 +593,7 @@ export default function AdminOnboardingView() {
                      )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[32px] border border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[32px] border border-slate-300">
                     <div className="space-y-2">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Latitude</label>
                       <div className="relative">
@@ -604,7 +604,7 @@ export default function AdminOnboardingView() {
                           className={cn(
                             "w-full px-5 py-4 bg-white border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-mono font-bold",
                             isCoordsValid ? "border-emerald-500/30" : 
-                            (errors.lat || (!isCoordsValid && !form.lat && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-200"
+                            (errors.lat || (!isCoordsValid && !form.lat && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-300"
                           )}
                           value={form.lat || ''}
                           onChange={e => {
@@ -626,7 +626,7 @@ export default function AdminOnboardingView() {
                           className={cn(
                             "w-full px-5 py-4 bg-white border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-mono font-bold",
                             isCoordsValid ? "border-emerald-500/30" : 
-                            (errors.lng || (!isCoordsValid && !form.lng && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-200"
+                            (errors.lng || (!isCoordsValid && !form.lng && !isGeocoding)) ? "border-red-500 bg-red-50/5" : "border-slate-300"
                           )}
                           value={form.lng || ''}
                           onChange={e => {
@@ -661,7 +661,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-6"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
@@ -681,7 +681,7 @@ export default function AdminOnboardingView() {
                       maxLength={10}
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
-                        errors.contactNumber ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.contactNumber ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.contactNumber}
                       onChange={e => {
@@ -699,7 +699,7 @@ export default function AdminOnboardingView() {
                       placeholder="e.g. contact@thecoastalkitchen.com"
                       className={cn(
                         "w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold",
-                        errors.contactEmail ? "border-red-500 bg-red-50/10" : "border-slate-200"
+                        errors.contactEmail ? "border-red-500 bg-red-50/10" : "border-slate-300"
                       )}
                       value={form.contactEmail}
                       onChange={e => {
@@ -737,7 +737,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-6"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
@@ -750,7 +750,7 @@ export default function AdminOnboardingView() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                   <div className="space-y-6">
-                    <div className="relative p-8 border-4 border-dashed border-slate-100 rounded-[40px] flex flex-col items-center justify-center text-center group hover:border-brand/30 transition-all bg-slate-50/50">
+                    <div className="relative p-8 border-4 border-dashed border-slate-300 rounded-[40px] flex flex-col items-center justify-center text-center group hover:border-brand/30 transition-all bg-slate-50/50">
                        <input 
                         type="file" 
                         accept=".jpeg,.jpg,.png"
@@ -781,7 +781,7 @@ export default function AdminOnboardingView() {
                         <input 
                           type="url"
                           placeholder="https://example.com/cover.jpg"
-                          className="w-full pl-14 pr-5 py-5 bg-slate-50 border border-slate-200 rounded-3xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium text-sm"
+                          className="w-full pl-14 pr-5 py-5 bg-slate-50 border border-slate-300 rounded-3xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium text-sm"
                           value={form.image || ''}
                           onChange={e => setForm({...form, image: e.target.value})}
                         />
@@ -817,7 +817,7 @@ export default function AdminOnboardingView() {
                   </div>
                 </div>
 
-                <div className="pt-10 border-t border-slate-100 space-y-6">
+                <div className="pt-10 border-t border-slate-300 space-y-6">
                   <div className="flex items-center justify-between">
                      <div className="space-y-1">
                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Additional Images (Optional)</h3>
@@ -825,7 +825,7 @@ export default function AdminOnboardingView() {
                      </div>
                   </div>
 
-                  <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-100 space-y-6">
+                  <div className="p-8 bg-slate-50 rounded-[40px] border border-slate-300 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Select Category</label>
@@ -837,7 +837,7 @@ export default function AdminOnboardingView() {
                                 onClick={() => (window as any)._imgCat = cat}
                                 className={cn(
                                   "flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border",
-                                  (window as any)._imgCat === cat ? "bg-brand text-white border-brand" : "bg-white text-slate-400 border-slate-200 hover:border-brand/30"
+                                  (window as any)._imgCat === cat ? "bg-brand text-white border-brand" : "bg-white text-slate-400 border-slate-300 hover:border-brand/30"
                                 )}
                                 ref={el => { if (el && !(window as any)._imgCat) (window as any)._imgCat = 'Food' }}
                              >
@@ -875,7 +875,7 @@ export default function AdminOnboardingView() {
                             <input 
                               id="additionalImgUrl"
                               placeholder="Paste Image URL & press Enter"
-                              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-bold outline-none focus:border-brand transition-all"
+                              className="w-full h-12 px-4 bg-white border border-slate-300 rounded-2xl text-[10px] font-bold outline-none focus:border-brand transition-all"
                               onKeyDown={e => {
                                 if (e.key === 'Enter') {
                                   const url = (e.target as HTMLInputElement).value.trim();
@@ -924,7 +924,7 @@ export default function AdminOnboardingView() {
                         );
                       })}
                       {(!form.foodImages?.length && !form.ambienceImages?.length && !form.secondaryImages?.length) && (
-                        <div className="py-8 bg-white/50 border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center text-slate-300">
+                        <div className="py-8 bg-white/50 border-2 border-dashed border-slate-300 rounded-[32px] flex flex-col items-center justify-center text-slate-300">
                            <ImageIcon size={32} strokeWidth={1} />
                            <p className="text-[8px] font-black uppercase tracking-widest mt-2">No additional images added yet</p>
                         </div>
@@ -960,7 +960,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-8"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
@@ -975,7 +975,7 @@ export default function AdminOnboardingView() {
                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Select Cuisines * (Min 1, Max 8)</label>
                        <span className="text-[10px] font-bold text-slate-400">Selected: {form.cuisine?.length || 0}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-100 max-h-[250px] overflow-y-auto">
+                    <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-300 max-h-[250px] overflow-y-auto">
                       {sortedCuisines.map(c => {
                         const isSelected = form.cuisine?.includes(c.name);
                         return (
@@ -995,7 +995,7 @@ export default function AdminOnboardingView() {
                               }
                             }}
                             className={cn(
-                              "px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold transition-all hover:border-brand/40",
+                              "px-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold transition-all hover:border-brand/40",
                               isSelected ? "bg-brand text-white border-brand shadow-lg shadow-brand/20" : "text-slate-600"
                             )}
                           >
@@ -1023,11 +1023,11 @@ export default function AdminOnboardingView() {
                     </div>
                     <div className="space-y-3">
                        {form.signatureDishes?.map((dish, idx) => (
-                         <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                         <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-300">
                             <div className="flex-grow space-y-3">
                               <input 
                                 placeholder="Dish Name"
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
+                                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
                                 value={dish.name}
                                 onChange={e => {
                                   const next = [...(form.signatureDishes || [])];
@@ -1037,7 +1037,7 @@ export default function AdminOnboardingView() {
                               />
                               <input 
                                 placeholder="Short description"
-                                className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-medium text-xs"
+                                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-xl focus:border-brand outline-none transition-all font-medium text-xs"
                                 value={dish.description}
                                 onChange={e => {
                                   const next = [...(form.signatureDishes || [])];
@@ -1050,7 +1050,7 @@ export default function AdminOnboardingView() {
                                <input 
                                   type="number"
                                   placeholder="Price"
-                                  className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
+                                  className="w-24 px-4 py-2 bg-white border border-slate-300 rounded-xl focus:border-brand outline-none transition-all font-bold text-sm"
                                   value={dish.price || ''}
                                   onChange={e => {
                                     const next = [...(form.signatureDishes || [])];
@@ -1077,7 +1077,7 @@ export default function AdminOnboardingView() {
                     </div>
                   </div>
 
-                  <div className="pt-8 border-t border-slate-100 space-y-6">
+                  <div className="pt-8 border-t border-slate-300 space-y-6">
                     <div className="flex items-center justify-between">
                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Menu Categories (e.g. Food, Drinks)</label>
                        <button 
@@ -1095,10 +1095,10 @@ export default function AdminOnboardingView() {
 
                     <div className="space-y-4">
                        {form.menuCategories?.map((cat, catIdx) => (
-                         <div key={cat.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                         <div key={cat.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-300 space-y-4">
                             <div className="flex items-center gap-4">
                                <input 
-                                  className="flex-grow bg-white px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold uppercase tracking-tight"
+                                  className="flex-grow bg-white px-4 py-2 border border-slate-300 rounded-xl text-sm font-bold uppercase tracking-tight"
                                   value={cat.name}
                                   placeholder="Category Name"
                                   onChange={e => {
@@ -1114,14 +1114,14 @@ export default function AdminOnboardingView() {
                                     next.splice(catIdx, 1);
                                     setForm({...form, menuCategories: next});
                                  }}
-                                 className="p-2 text-red-500 bg-white border border-slate-200 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                 className="p-2 text-red-500 bg-white border border-slate-300 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                                >
                                  <Trash2 size={16} />
                                </button>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                {cat.images.map((img, imgIdx) => (
-                                 <div key={imgIdx} className="relative aspect-[3/4] bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm group">
+                                 <div key={imgIdx} className="relative aspect-[3/4] bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm group">
                                     <img src={img} className="w-full h-full object-cover" />
                                     <button 
                                       className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1135,7 +1135,7 @@ export default function AdminOnboardingView() {
                                     </button>
                                  </div>
                                ))}
-                               <div className="relative aspect-[3/4] bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all overflow-hidden">
+                               <div className="relative aspect-[3/4] bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all overflow-hidden">
                                   <Plus size={24} />
                                   <p className="text-[8px] font-black uppercase mt-1">Upload File</p>
                                   <input 
@@ -1157,7 +1157,7 @@ export default function AdminOnboardingView() {
 
                                <div className="relative aspect-[3/4] group/paste">
                                  <div 
-                                   className="w-full h-full bg-white border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all cursor-pointer overflow-hidden"
+                                   className="w-full h-full bg-white border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-300 hover:border-brand hover:text-brand transition-all cursor-pointer overflow-hidden"
                                  >
                                     <Globe size={24} />
                                     <p className="text-[8px] font-black uppercase mt-1">Paste URL</p>
@@ -1166,7 +1166,7 @@ export default function AdminOnboardingView() {
                                     <input 
                                       type="url"
                                       placeholder="Paste Image URL"
-                                      className="w-full px-2 py-1.5 text-[8px] border border-slate-200 rounded-lg outline-none focus:border-brand font-bold"
+                                      className="w-full px-2 py-1.5 text-[8px] border border-slate-300 rounded-lg outline-none focus:border-brand font-bold"
                                       onKeyDown={e => {
                                         if (e.key === 'Enter') {
                                           const url = (e.target as HTMLInputElement).value;
@@ -1219,7 +1219,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-6"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
@@ -1230,11 +1230,11 @@ export default function AdminOnboardingView() {
 
                 <div className="space-y-4">
                    {DAYS_OF_WEEK.map(day => (
-                     <div key={day} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                     <div key={day} className="p-6 bg-slate-50 rounded-3xl border border-slate-300 space-y-4">
                         <div className="flex items-center justify-between">
                            <div className="flex items-center gap-4">
                               <span className="font-black text-slate-900 tracking-wider uppercase text-xs min-w-[80px]">{day}</span>
-                              <div className="flex bg-white rounded-lg border border-slate-200 p-0.5">
+                              <div className="flex bg-white rounded-lg border border-slate-300 p-0.5">
                                  <button 
                                     type="button"
                                     onClick={() => {
@@ -1278,7 +1278,7 @@ export default function AdminOnboardingView() {
                                 <div key={ride} className="flex items-center gap-3">
                                    <input 
                                       type="time" 
-                                      className="flex-grow px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                      className="flex-grow px-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-bold"
                                       value={convertTo24Hour(range.open)}
                                       onChange={e => {
                                          const next = { ...form.dailyTimings };
@@ -1289,7 +1289,7 @@ export default function AdminOnboardingView() {
                                    <span className="text-slate-300 font-bold text-xs uppercase tracking-widest">to</span>
                                    <input 
                                       type="time" 
-                                      className="flex-grow px-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                      className="flex-grow px-4 py-3 bg-white border border-slate-300 rounded-xl text-xs font-bold"
                                       value={convertTo24Hour(range.close)}
                                       onChange={e => {
                                          const next = { ...form.dailyTimings };
@@ -1314,7 +1314,7 @@ export default function AdminOnboardingView() {
                               <button 
                                 type="button"
                                 onClick={() => addTimingSlot(day)}
-                                className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-all"
+                                className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-all"
                               >
                                 + Add Time Slot
                               </button>
@@ -1356,7 +1356,7 @@ export default function AdminOnboardingView() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8"
+                className="bg-white rounded-3xl p-8 border border-slate-300 shadow-sm space-y-8"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
@@ -1373,29 +1373,29 @@ export default function AdminOnboardingView() {
                       'Takeaway', 'Card Payment', 'Digital Wallet', 'Kid Friendly',
                       'Smoking Area', 'Rooftop', 'Private Dining'
                     ].map(amenity => {
-                      const isSelected = form.facilities?.includes(amenity);
+                      const facilitiesArray = Array.isArray(form.facilities) ? form.facilities : typeof form.facilities === 'string' ? (form.facilities as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                      const isSelected = facilitiesArray.includes(amenity);
                       return (
                         <button
                           key={amenity}
                           type="button"
                           onClick={() => {
-                            const current = form.facilities || [];
-                            if (current.includes(amenity)) {
-                              setForm({...form, facilities: current.filter(a => a !== amenity)});
+                            if (isSelected) {
+                              setForm({...form, facilities: facilitiesArray.filter((a:any) => a !== amenity)});
                             } else {
-                              setForm({...form, facilities: [...current, amenity]});
+                              setForm({...form, facilities: [...facilitiesArray, amenity]});
                             }
                           }}
                           className={cn(
                             "flex items-center gap-3 p-4 rounded-2xl border transition-all text-left group",
                             isSelected 
                               ? "bg-brand/5 border-brand ring-1 ring-brand/50 shadow-sm" 
-                              : "bg-slate-50 border-slate-100 hover:border-slate-200"
+                              : "bg-slate-50 border-slate-300 hover:border-slate-300"
                           )}
                         >
                           <div className={cn(
                             "w-6 h-6 rounded-lg flex items-center justify-center transition-colors",
-                            isSelected ? "bg-brand text-white" : "bg-white border border-slate-200 text-slate-200 group-hover:border-brand/30"
+                            isSelected ? "bg-brand text-white" : "bg-white border border-slate-300 text-slate-200 group-hover:border-brand/30"
                           )}>
                             {isSelected && <Check size={14} />}
                           </div>
@@ -1408,7 +1408,7 @@ export default function AdminOnboardingView() {
                     })}
                   </div>
 
-                  <div className="space-y-4 pt-6 border-t border-slate-100">
+                  <div className="space-y-4 pt-6 border-t border-slate-300">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Other Amenities</label>
                     </div>
@@ -1416,7 +1416,7 @@ export default function AdminOnboardingView() {
                       <input 
                         id="newAmenity"
                         placeholder="e.g. Pet Friendly, Poolside"
-                        className="flex-grow px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
+                        className="flex-grow px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-bold"
                         onKeyDown={e => {
                           if (e.key === 'Enter') {
                             const input = e.target as HTMLInputElement;
@@ -1450,7 +1450,7 @@ export default function AdminOnboardingView() {
                         'Takeaway', 'Card Payment', 'Digital Wallet', 'Kid Friendly',
                         'Smoking Area', 'Rooftop', 'Private Dining'
                        ].includes(a)).map(a => (
-                         <span key={a} className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl text-[10px] font-black uppercase text-slate-600 border border-slate-200">
+                         <span key={a} className="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl text-[10px] font-black uppercase text-slate-600 border border-slate-300">
                            {a}
                            <button 
                             type="button"
@@ -1491,7 +1491,7 @@ export default function AdminOnboardingView() {
                 key="step6"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-white rounded-[48px] p-12 border border-slate-200 shadow-2xl text-center space-y-8"
+                className="bg-white rounded-[48px] p-12 border border-slate-300 shadow-2xl text-center space-y-8"
               >
                 <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-[32px] flex items-center justify-center mx-auto shadow-inner">
                    <ShieldCheck size={48} />
@@ -1502,7 +1502,7 @@ export default function AdminOnboardingView() {
                   <p className="text-slate-500 font-medium mt-3">Your restaurant ID is <span className="text-brand font-black font-mono">#{restaurantId?.slice(-6).toUpperCase()}</span></p>
                 </div>
 
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 max-w-sm mx-auto">
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-300 max-w-sm mx-auto">
                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
                       Status: <span className="text-amber-500">Pending for Approval</span>
                    </p>

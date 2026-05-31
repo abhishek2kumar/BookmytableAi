@@ -15,7 +15,8 @@ import {
   Navigation,
   Facebook,
   Twitter,
-  Instagram
+  Instagram,
+  Heart
 } from 'lucide-react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
@@ -185,7 +186,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                 placeholder="Search for city..."
                                 value={citySearchQuery}
                                 onChange={(e) => setCitySearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-transparent focus:border-brand/20 rounded-lg text-sm font-medium outline-none transition-all"
+                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 focus:border-brand/20 rounded-lg text-sm font-medium outline-none transition-all"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && filteredCities.length > 0) {
                                     handleCitySelect(filteredCities[0].name, filteredCities[0].lat, filteredCities[0].lng);
@@ -256,7 +257,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         alt="Avatar"
                         className={cn(
                           "w-10 h-10 rounded-full border-2 transition-all cursor-pointer",
-                          isProfileOpen ? "border-brand" : "border-transparent"
+                          isProfileOpen ? "border-brand" : "border-slate-300"
                         )}
                         referrerPolicy="no-referrer"
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -278,6 +279,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                   {profile.role}
                                 </p>
                               </div>
+
+                              <Link to="/dashboard?tab=profile" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
+                                <UserIcon size={16} className="text-slate-400" />
+                                Profile
+                              </Link>
+                              
+                              <Link to="/dashboard?tab=bookings" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
+                                <Calendar size={16} className="text-slate-400" />
+                                Bookings
+                              </Link>
+                              
+                              <Link to="/dashboard?tab=favorites" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold mb-2 border-b border-slate-50 pb-3">
+                                <Heart size={16} className="text-slate-400" />
+                                Favorites
+                              </Link>
+
                                <button
                                 onClick={() => {
                                   signOut();
@@ -414,7 +431,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <div className={cn(
                 "w-10 h-10 rounded-full border-2 transition-all overflow-hidden",
-                isProfileOpen ? "border-brand" : "border-transparent"
+                isProfileOpen ? "border-brand" : "border-slate-300"
               )}>
                 <img
                   src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}

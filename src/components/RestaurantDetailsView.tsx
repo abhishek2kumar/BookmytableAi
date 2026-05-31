@@ -997,7 +997,7 @@ export default function RestaurantDetailsView() {
                 readOnly
                 onClick={() => setIsSearchOverlayOpen(true)}
                 placeholder="Search for restaurant"
-                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-transparent hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
                 value={searchQuery}
               />
             </div>
@@ -1028,7 +1028,7 @@ export default function RestaurantDetailsView() {
         className={cn(
           "md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-4 transition-all duration-300",
           scrolled
-            ? "bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-100"
+            ? "bg-white/90 backdrop-blur-xl shadow-sm border-b border-slate-300"
             : "bg-transparent",
         )}
       >
@@ -1155,7 +1155,7 @@ export default function RestaurantDetailsView() {
                     "absolute top-0 right-0 flex items-center justify-center font-bold w-[38px] h-[38px] rounded-full border transition-all shrink-0 z-10 bg-white shadow-sm",
                     isBookmarked
                       ? "text-red-600 border-red-100 bg-red-50 hover:bg-red-100"
-                      : "text-slate-400 border-slate-100 hover:bg-slate-50",
+                      : "text-slate-400 border-slate-300 hover:bg-slate-50",
                     isBookmarking && "opacity-50 animate-pulse",
                   )}
                   aria-label={isBookmarked ? "Saved" : "Save"}
@@ -1218,7 +1218,7 @@ export default function RestaurantDetailsView() {
                 </div>
 
                 {/* Horizontal Action Bar: 4 Icons in a single row */}
-                <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-100 w-full mt-auto">
+                <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-300 w-full mt-auto">
                   <a
                     href="tel:+919876543210"
                     className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 transition-colors text-slate-700"
@@ -1312,7 +1312,7 @@ export default function RestaurantDetailsView() {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-100/80 to-slate-100/95" />
               </div>
 
-              <div className="bg-white rounded-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-slate-100 overflow-hidden mx-4 pb-1 relative z-10 transition-all">
+              <div className="bg-white rounded-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] border border-slate-300 overflow-hidden mx-4 pb-1 relative z-10 transition-all">
                 <div className="p-5 space-y-1">
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-1 flex-1">
@@ -1386,7 +1386,7 @@ export default function RestaurantDetailsView() {
                     <div className="flex gap-2 ml-auto">
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
-                        className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100"
+                        className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-300"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -1397,7 +1397,7 @@ export default function RestaurantDetailsView() {
                       </a>
                       <a
                         href="tel:+919876543210"
-                        className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-100"
+                        className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-300"
                       >
                         <Phone size={18} />
                       </a>
@@ -1515,7 +1515,7 @@ export default function RestaurantDetailsView() {
                 {activeOffers.map((offer, i) => (
                   <div
                     key={i}
-                    className="snap-start shrink-0 w-full md:w-[280px] bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+                    className="snap-start shrink-0 w-full md:w-[280px] bg-white border border-slate-300 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
                   >
                     <div className="p-5 bg-white pb-6">
                       <h4 className="font-black text-slate-900 leading-tight text-[20px] md:text-[22px] tracking-tight mb-1">
@@ -1526,7 +1526,7 @@ export default function RestaurantDetailsView() {
                       </div>
                     </div>
 
-                    <div className="relative border-t border-dashed border-slate-200 bg-red-50/40 p-5 flex-grow overflow-hidden">
+                    <div className="relative border-t border-dashed border-slate-300 bg-red-50/40 p-5 flex-grow overflow-hidden">
                       <div className="absolute right-0 bottom-0 opacity-[0.03] translate-x-1/4 translate-y-1/4 pointer-events-none">
                         <svg
                           width="100"
@@ -1595,7 +1595,7 @@ export default function RestaurantDetailsView() {
           {/* Advertisements / Featured Promos */}
           {restaurant.advertisements &&
             restaurant.advertisements.filter((ad) => ad.active).length > 0 && (
-              <div className="scroll-mt-24 pt-8 border-t border-slate-200">
+              <div className="scroll-mt-24 pt-8 border-t border-slate-300">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <Megaphone size={20} className="text-brand" />
@@ -1644,10 +1644,10 @@ export default function RestaurantDetailsView() {
                     .map((ad) => (
                       <div
                         key={ad.id}
-                        className="snap-start shrink-0 w-full bg-white rounded-[24px] border border-slate-200 shadow-sm hover:shadow-xl hover:border-brand/50 transition-all overflow-hidden flex flex-col md:flex-row group"
+                        className="snap-start shrink-0 w-full bg-white rounded-[24px] border border-slate-300 shadow-sm hover:shadow-xl hover:border-brand/50 transition-all overflow-hidden flex flex-col md:flex-row group"
                       >
                         <div
-                          className="relative shrink-0 w-full md:w-5/12 lg:w-2/5 overflow-hidden border-b md:border-b-0 md:border-r border-slate-100 flex bg-slate-50 cursor-pointer"
+                          className="relative shrink-0 w-full md:w-5/12 lg:w-2/5 overflow-hidden border-b md:border-b-0 md:border-r border-slate-300 flex bg-slate-50 cursor-pointer"
                           onClick={() => {
                             setEnlargedAdImage(
                               ad.image || RESTAURANT_IMAGE_FALLBACK,
@@ -1865,7 +1865,7 @@ export default function RestaurantDetailsView() {
                             {images.map((img: string, i: number) => (
                               <div
                                 key={i}
-                                className="shrink-0 w-[45vw] md:w-[220px] aspect-[3/4.2] rounded-2xl overflow-hidden border border-slate-100 cursor-zoom-in relative bg-slate-100 snap-center"
+                                className="shrink-0 w-[45vw] md:w-[220px] aspect-[3/4.2] rounded-2xl overflow-hidden border border-slate-300 cursor-zoom-in relative bg-slate-100 snap-center"
                                 onClick={() => openPhotoViewer(img)}
                               >
                                 <img
@@ -1886,13 +1886,13 @@ export default function RestaurantDetailsView() {
                           <div className="hidden md:block">
                             <button
                               onClick={() => scroll(menuScrollRef, "left")}
-                              className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                              className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
                             >
                               <ChevronLeft size={20} />
                             </button>
                             <button
                               onClick={() => scroll(menuScrollRef, "right")}
-                              className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-100 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                              className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
                             >
                               <ChevronRight size={20} />
                             </button>
@@ -1984,7 +1984,7 @@ export default function RestaurantDetailsView() {
                           return (
                             <div
                               key={i}
-                              className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none"
+                              className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-300 shadow-sm md:shadow-none"
                               onClick={() => openPhotoViewer(img)}
                             >
                               <img
@@ -2021,7 +2021,7 @@ export default function RestaurantDetailsView() {
                             return (
                               <div
                                 key={i}
-                                className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none"
+                                className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-300 shadow-sm md:shadow-none"
                                 onClick={() => openPhotoViewer(img)}
                               >
                                 <img
@@ -2058,7 +2058,7 @@ export default function RestaurantDetailsView() {
                             return (
                               <div
                                 key={i}
-                                className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-100 shadow-sm md:shadow-none"
+                                className="aspect-square rounded-xl md:rounded-2xl overflow-hidden cursor-zoom-in group relative bg-slate-50 border border-slate-300 shadow-sm md:shadow-none"
                                 onClick={() => openPhotoViewer(img)}
                               >
                                 <img
@@ -2205,7 +2205,7 @@ export default function RestaurantDetailsView() {
                 </div>
 
                 {/* Leave Review */}
-                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-300 shadow-sm flex flex-col justify-center">
                   <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4 block">
                     Rate your experience
                   </h3>
@@ -2233,7 +2233,7 @@ export default function RestaurantDetailsView() {
                   <input
                     type="text"
                     placeholder="Tell us what you loved..."
-                    className="w-full p-3 bg-slate-50 border border-slate-100 focus:border-brand focus:bg-white rounded-xl outline-none text-sm font-medium transition-all"
+                    className="w-full p-3 bg-slate-50 border border-slate-300 focus:border-brand focus:bg-white rounded-xl outline-none text-sm font-medium transition-all"
                     value={userComment}
                     onChange={(e) => setUserComment(e.target.value)}
                   />
@@ -2267,7 +2267,7 @@ export default function RestaurantDetailsView() {
                     {reviews.slice(0, 4).map((review) => (
                       <div
                         key={review.id}
-                        className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col"
+                        className="bg-white p-5 rounded-2xl border border-slate-300 shadow-sm flex flex-col"
                       >
                         <div className="flex items-center gap-3 mb-3">
                           <img
@@ -2611,7 +2611,7 @@ export default function RestaurantDetailsView() {
           initial={{ y: 100 }}
           animate={{ y: 0 }}
           exit={{ y: 100 }}
-          className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-4 pb-6 bg-white/95 backdrop-blur-xl border-t border-slate-100 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-[60] p-4 pb-6 bg-white/95 backdrop-blur-xl border-t border-slate-300 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]"
         >
           <div className="flex items-center gap-3">
             <button
@@ -2731,7 +2731,7 @@ export default function RestaurantDetailsView() {
                                 subtitle: "Restaurant",
                               });
                             }}
-                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100"
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300"
                           >
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
                               <img
@@ -2805,7 +2805,7 @@ export default function RestaurantDetailsView() {
                                 );
                               }
                             }}
-                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-transparent hover:border-slate-100 text-left cursor-pointer"
+                            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors border border-slate-300 hover:border-slate-300 text-left cursor-pointer"
                           >
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
                               {res.image ? (

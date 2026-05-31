@@ -70,17 +70,14 @@ export function getRestaurantTabUrl(restaurant: { id?: string, name?: string, ci
 export function formatDate(date: any) {
   if (!date) return '';
   const d = date.toDate ? date.toDate() : new Date(date);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(d).replace(/ /g, '-');
 }
 
 export function formatTime(date: any) {
   if (!date) return '';
   const d = date.toDate ? date.toDate() : new Date(date);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'

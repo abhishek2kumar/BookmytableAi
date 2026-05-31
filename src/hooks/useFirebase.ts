@@ -79,8 +79,7 @@ export function useBookings(uid: string | undefined, role: string | undefined) {
     if (role === "user") {
       q = query(
         collection(db, "bookings"),
-        where("userId", "==", uid),
-        orderBy("dateTime", "desc"),
+        where("userId", "==", uid)
       );
     } else if (role === "owner") {
       // For owners, we'll need to fetch bookings where restaurant.ownerId == uid
@@ -88,20 +87,37 @@ export function useBookings(uid: string | undefined, role: string | undefined) {
       // Better schema: Booking has restaurantOwnerId.
       q = query(
         collection(db, "bookings"),
-        where("restaurantOwnerId", "==", uid),
-        orderBy("dateTime", "desc"),
+        where("restaurantOwnerId", "==", uid)
       );
     } else {
       // Admin
-      q = query(collection(db, "bookings"), orderBy("dateTime", "desc"));
+      q = query(collection(db, "bookings"));
     }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Booking[];
+      let docs = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        let dateTimeStr = data.dateTime;
+        if (!dateTimeStr && data.date && data.time) {
+           dateTimeStr = `${data.date}T${data.time}:00`;
+        }
+        return {
+          id: doc.id,
+          ...data,
+          dateTime: dateTimeStr || data.createdAt,
+        };
+      }) as Booking[];
+      
+      docs.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || new Date(a.dateTime || 0).getTime() || 0;
+        const bTime = b.createdAt?.seconds || new Date(b.dateTime || 0).getTime() || 0;
+        return bTime - aTime;
+      });
+      
       setBookings(docs);
+      setLoading(false);
+    }, (error) => {
+      console.error("Bookings query error:", error);
       setLoading(false);
     });
 
