@@ -153,6 +153,25 @@ service cloud.firestore {
       allow delete: if isAdmin() || isOwner(existing().userId);
     }
 
+    match /takeaway_orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        (exists(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)) && 
+         get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid) || 
+        isAdmin()
+      );
+      
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)) && 
+         get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid)
+      );
+      
+      allow delete: if isAdmin();
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId;

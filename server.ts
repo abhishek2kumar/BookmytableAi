@@ -427,8 +427,33 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    
+    app.use(express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        } else if (filePath.includes('/assets/')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }));
+    
     app.get('*', (req, res) => {
+      if (req.path.startsWith('/assets/')) {
+        if (req.path.endsWith('.js')) {
+          // Serve a script that forces a cache-busting reload
+          return res.status(404).type('application/javascript').send('window.location.href = window.location.pathname + (window.location.search ? window.location.search + "&" : "?") + "t=" + Date.now();');
+        }
+        if (req.path.endsWith('.css')) {
+          return res.status(404).type('text/css').send('/* Not found */');
+        }
+        return res.status(404).send('Not found');
+      }
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

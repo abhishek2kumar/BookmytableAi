@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { useBookings, useFavoriteRestaurants, useRestaurants } from '../hooks/useFirebase';
 import { db } from '../lib/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, query, collection, where, onSnapshot } from 'firebase/firestore';
 import { formatDate, formatTime, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
 import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star, Tag, User } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -15,9 +15,11 @@ export default function DashboardView() {
   const { favorites, loading: favoritesLoading } = useFavoriteRestaurants(profile?.favorites);
   const { restaurants } = useRestaurants(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
+  useEffect(() => { if(!user) return; const q = query(collection(db, 'takeaway_orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})))); return () => un(); }, [user]);
   
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile') || 'bookings';
+  const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile' | 'takeawayOrders') || 'bookings';
   
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });
@@ -58,7 +60,7 @@ export default function DashboardView() {
       {activeTab !== 'profile' && (
         <div className="flex flex-col mb-10">
           <h1 className="text-4xl font-display font-black text-vibrant-dark mb-2 tracking-tight">
-            {activeTab === 'favorites' ? 'Your Favorites' : 'Your Bookings'}
+            {activeTab === 'favorites' ? 'Your Favorites' : activeTab === 'takeawayOrders' ? 'Your Takeaway Orders' : 'Your Bookings'}
           </h1>
           <p className="text-vibrant-gray font-bold opacity-60 uppercase text-[10px] tracking-[0.2em]">
             Manage your dining life
@@ -243,6 +245,70 @@ export default function DashboardView() {
                   className="bg-brand text-white px-10 py-5 rounded-2xl font-black shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-widest"
                 >
                   Find a Restaurant
+                </Link>
+              </div>
+            )}
+          </motion.div>
+                ) : activeTab === 'takeawayOrders' ? (
+          <motion.div
+            key="takeawayOrders"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            {takeawayOrders.length > 0 ? (
+              <div className="grid gap-6">
+                {takeawayOrders.map((order, index) => (
+                  <motion.div
+                    key={order.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8"
+                  >
+                     <div className="flex justify-between items-start mb-6">
+                       <div>
+                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Order #{order.orderId.slice(-8)}</div>
+                         <h3 className="text-xl font-bold text-slate-800">₹{order.totalPrice} • {order.items?.length || 0} items</h3>
+                         <div className="text-xs text-slate-500 font-semibold mt-1">
+                           {new Date(order.createdAt).toLocaleString()}
+                         </div>
+                       </div>
+                       <div className={cn(
+                          "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm",
+                          order.status === 'Completed' ? "bg-emerald-500 text-white" :
+                          order.status === 'Cancelled' ? "bg-red-500 text-white" :
+                          "bg-amber-500 text-white"
+                        )}>
+                          {order.status}
+                       </div>
+                     </div>
+                     <div className="space-y-2 bg-slate-50 p-4 rounded-xl mb-4">
+                        {order.items?.map((item: any, i: number) => (
+                          <div key={i} className="flex justify-between text-sm">
+                             <span className="text-slate-600 font-medium">{item.quantity}x {item.name}</span>
+                             <span className="text-slate-900 font-bold">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                     </div>
+                     <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg w-max" style={{ background: order.paymentMethod === 'online' ? '#eef2ff' : '#fff7ed', color: order.paymentMethod === 'online' ? '#4f46e5' : '#ea580c' }}>
+                        {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
+                     </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6">
+                  <Utensils size={40} />
+                </div>
+                <h3 className="text-2xl font-display font-black text-vibrant-dark mb-2">No takeaway orders</h3>
+                <p className="text-vibrant-gray font-bold opacity-60 mb-8 max-w-sm">You haven't ordered any takeaways yet.</p>
+                <Link 
+                  to="/" 
+                  className="bg-brand text-white px-10 py-5 rounded-2xl font-black shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-widest"
+                >
+                  Explore Menus
                 </Link>
               </div>
             )}

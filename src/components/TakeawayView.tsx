@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useRestaurants } from "../hooks/useFirebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import {
   ArrowLeft,
@@ -147,16 +147,48 @@ export default function TakeawayView() {
   };
 
   const handleConfirmOrder = async () => {
+    const payableAmount =
+      cartTotal +
+      Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) +
+      20;
+    const orderId =
+      "ORD_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
+    const customerId = user?.uid || "CUST_GUEST";
+
+    const items = Object.entries(cart).map(([itemId, qty]) => {
+      const liveItem = restaurant.liveMenu?.find((i: any) => i.id === itemId);
+      return {
+        itemId,
+        quantity: qty,
+        name: liveItem?.name || 'Unknown Item',
+        price: liveItem?.price || 0,
+      };
+    });
+
+    const createOrderRecord = async (paymentStatus: string, txnId?: string) => {
+      if (!user) return;
+      try {
+        await addDoc(collection(db, "takeaway_orders"), {
+          orderId,
+          restaurantId: restaurant.id,
+          userId: user.uid,
+          customerName: user.displayName || "Guest",
+          customerPhone: profile?.phone || "",
+          items,
+          totalPrice: payableAmount,
+          paymentMethod,
+          status: "Received",
+          paymentStatus,
+          txnId: txnId || "",
+          createdAt: Date.now()
+        });
+      } catch (e) {
+        console.error("Error creating order record", e);
+      }
+    };
+
     if (paymentMethod === "online") {
       setIsProcessingPayment(true);
-
-      const payableAmount =
-        cartTotal +
-        Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) +
-        20;
-      const orderId =
-        "ORD_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-      const customerId = user?.uid || "CUST_GUEST";
 
       try {
         const response = await fetch("/api/paytm/initiate", {
@@ -228,7 +260,7 @@ export default function TakeawayView() {
             transactionStatus: function (data: any) {
               console.log("Paytm transaction status payload: ", data);
               if (data && data.STATUS === "TXN_SUCCESS") {
-                setStep("success"); // In a production app, verify backend S2S
+                createOrderRecord("Success", data.TXNID).then(() => setStep("success"));
               } else {
                 alert(
                   "Payment was not successful. Status: " +
@@ -260,6 +292,9 @@ export default function TakeawayView() {
         setIsProcessingPayment(false);
       }
     } else {
+      setIsProcessingPayment(true);
+      await createOrderRecord("Pending");
+      setIsProcessingPayment(false);
       setStep("success");
     }
   };

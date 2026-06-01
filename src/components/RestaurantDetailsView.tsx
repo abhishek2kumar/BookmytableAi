@@ -958,6 +958,52 @@ export default function RestaurantDetailsView() {
       </div>
     );
 
+  const getSeoData = () => {
+    const cuisineStr = Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine;
+    const locationStr = restaurant.location || city || 'your city';
+    const baseDesc = `${cuisineStr} Cuisine in ${locationStr}.`;
+
+    switch (tab) {
+      case 'book':
+        return {
+          title: `Table Booking at ${restaurant.name} | Bookmytable`,
+          description: `Reserve your table for dining at ${restaurant.name}. Enjoy ${baseDesc}`
+        };
+      case 'menu':
+        return {
+          title: `Menu of ${restaurant.name} | Bookmytable`,
+          description: `Explore the full menu, prices, and signature dishes of ${restaurant.name}. ${baseDesc}`
+        };
+      case 'photos':
+        return {
+          title: `Photos, Images & Ambiance of ${restaurant.name} | Bookmytable`,
+          description: `View food photos, interior scenes, and the dining ambiance of ${restaurant.name} located in ${locationStr}.`
+        };
+      case 'reviews':
+        return {
+          title: `Reviews & Ratings of ${restaurant.name} | Bookmytable`,
+          description: `Read customer reviews, ratings, and experiences for ${restaurant.name}. ${baseDesc}`
+        };
+      case 'takeaway':
+        return {
+          title: `Order Takeaway from ${restaurant.name} | Bookmytable`,
+          description: `Order food online for takeaway from ${restaurant.name}. Browse the live menu of ${baseDesc}`
+        };
+      case 'offers':
+        return {
+          title: `Offers & Discounts at ${restaurant.name} | Bookmytable`,
+          description: `Find the best dining offers, deals, and discounts for ${restaurant.name} in ${locationStr}.`
+        };
+      default:
+        return {
+          title: `${restaurant.name} | Bookmytable`,
+          description: `Book a table at ${restaurant.name}. ${baseDesc}`
+        };
+    }
+  };
+
+  const seoData = getSeoData();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -965,23 +1011,11 @@ export default function RestaurantDetailsView() {
       className="bg-white min-h-screen pb-20 overflow-x-hidden relative"
     >
       <Helmet>
-        <title>{restaurant.name} | Bookmytable</title>
-        <meta
-          name="description"
-          content={`Book a table at ${restaurant.name}. ${Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(", ") : restaurant.cuisine} Cuisine in ${restaurant.location}.`}
-        />
-        <meta
-          property="og:title"
-          content={`${restaurant.name} | Bookmytable`}
-        />
-        <meta
-          property="og:description"
-          content={`Book a table at ${restaurant.name}. ${Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(", ") : restaurant.cuisine} Cuisine in ${restaurant.location}.`}
-        />
-        <meta
-          property="og:image"
-          content={bannerImages[0] || RESTAURANT_IMAGE_FALLBACK}
-        />
+        <title>{seoData.title}</title>
+        <meta name="description" content={seoData.description} />
+        <meta property="og:title" content={seoData.title} />
+        <meta property="og:description" content={seoData.description} />
+        <meta property="og:image" content={bannerImages[0] || RESTAURANT_IMAGE_FALLBACK} />
       </Helmet>
 
       {portalTarget &&
@@ -1145,8 +1179,8 @@ export default function RestaurantDetailsView() {
             </div>
 
             {/* Redesigned Details Section (Desktop & Tablet) */}
-            <div className="hidden md:flex flex-col md:absolute md:right-10 lg:right-16 top-1/2 -translate-y-1/2 md:w-[360px] lg:w-[420px] z-20 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_40px_rgb(0,0,0,0.12)] border border-white/50 p-5 lg:p-6 shrink-0 transition-all">
-              <div className="space-y-4 relative">
+            <div className="hidden md:flex flex-col md:absolute md:right-10 lg:right-16 top-1/2 -translate-y-1/2 md:w-[360px] lg:w-[420px] z-20 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_40px_rgb(0,0,0,0.12)] border border-white/50 p-4 pb-2 lg:p-5 lg:pb-3 shrink-0 transition-all">
+              <div className="space-y-3 relative">
                 {/* Favourite Icon at Top Right */}
                 <button
                   onClick={toggleBookmark}
@@ -1218,10 +1252,10 @@ export default function RestaurantDetailsView() {
                 </div>
 
                 {/* Horizontal Action Bar: 4 Icons in a single row */}
-                <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-300 w-full mt-auto">
+                <div className="grid grid-cols-4 gap-1 pt-2 border-t border-slate-300 w-full mt-auto">
                   <a
                     href="tel:+919876543210"
-                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-slate-50 transition-colors text-slate-700"
+                    className="flex flex-col items-center justify-center gap-1 p-1 rounded-xl hover:bg-slate-50 transition-colors text-slate-700"
                   >
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
                       <Phone size={18} />
@@ -1245,7 +1279,7 @@ export default function RestaurantDetailsView() {
                       }
                     }}
                     disabled={restaurant.isBookingEnabled === false}
-                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex flex-col items-center justify-center gap-1 p-1 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
                       <CalendarIcon size={18} />
@@ -1260,7 +1294,7 @@ export default function RestaurantDetailsView() {
                       restaurant.liveMenu.length === 0 ||
                       !isTakeawayAvailable(restaurant)
                     }
-                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex flex-col items-center justify-center gap-1 p-1 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
                       <ShoppingBag size={18} />
@@ -1272,7 +1306,7 @@ export default function RestaurantDetailsView() {
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700"
+                    className="flex flex-col items-center justify-center gap-1 p-1 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700"
                     aria-label="Get Directions"
                   >
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-brand/10 group-hover:text-brand transition-colors">
@@ -2148,11 +2182,45 @@ export default function RestaurantDetailsView() {
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-tr from-brand to-rose-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand/20 ring-1 ring-white/20">
-                          <Sparkles
-                            size={24}
-                            className="text-white fill-white/20"
+                        <div className="relative w-14 h-14 flex items-center justify-center -ml-2">
+                          {/* Ambient blue glow */}
+                          <motion.div
+                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-blue-500 rounded-full blur-[14px] z-0"
                           />
+                          
+                          {/* Sparkling SVG */}
+                          <motion.div
+                             animate={{ scale: [0.95, 1.05, 0.95] }}
+                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                             className="relative z-10 flex items-center justify-center mt-1"
+                          >
+                            <svg width="44" height="44" viewBox="0 0 100 100" className="drop-shadow-[0_0_8px_rgba(41,121,255,0.6)]">
+                              <defs>
+                                <linearGradient id="aiSparkleGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+                                  <stop offset="0%" stopColor="#8ECAFF" />
+                                  <stop offset="40%" stopColor="#2979FF" />
+                                  <stop offset="100%" stopColor="#0D3B9E" />
+                                </linearGradient>
+                                <linearGradient id="aiSparkleGradMini" x1="10%" y1="10%" x2="90%" y2="90%">
+                                  <stop offset="0%" stopColor="#D4E6FF" />
+                                  <stop offset="100%" stopColor="#2979FF" />
+                                </linearGradient>
+                              </defs>
+                              {/* Main Star */}
+                              <path fill="url(#aiSparkleGrad)" d="M 45 5 C 45 40 55 45 90 45 C 55 45 45 50 45 85 C 45 50 35 45 0 45 C 35 45 45 40 45 5 Z" />
+                              
+                              {/* Small orbiting star */}
+                              <motion.path 
+                                animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.1, 0.7] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                fill="url(#aiSparkleGradMini)" 
+                                d="M 80 15 C 80 25 85 28 95 28 C 85 28 80 31 80 41 C 80 31 75 28 65 28 C 75 28 80 25 80 15 Z" 
+                                style={{ transformOrigin: "80px 28px" }}
+                              />
+                            </svg>
+                          </motion.div>
                         </div>
                         <div>
                           <h3 className="text-xl font-black text-white tracking-tight leading-none">
@@ -2160,7 +2228,7 @@ export default function RestaurantDetailsView() {
                           </h3>
                           <p className="text-[10px] md:text-xs font-bold text-white/50 uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                            Verified Analysis
+                            Based on Google review
                           </p>
                         </div>
                       </div>

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, 
   PlusCircle, 
   ShieldCheck,
-  Calendar,
+  Calendar, ShoppingBag,
   UtensilsCrossed,
   MapPin,
   ChevronDown,
@@ -288,6 +288,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               <Link to="/dashboard?tab=bookings" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
                                 <Calendar size={16} className="text-slate-400" />
                                 Bookings
+                              </Link>
+                              
+                              <Link to="/dashboard?tab=takeawayOrders" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
+                                <ShoppingBag size={16} className="text-slate-400" />
+                                Takeaway Orders
                               </Link>
                               
                               <Link to="/dashboard?tab=favorites" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold mb-2 border-b border-slate-50 pb-3">

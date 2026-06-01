@@ -5,7 +5,7 @@ import { collection, query, where, getDocs, updateDoc, doc, onSnapshot, getDoc, 
 import { db } from '../lib/firebase';
 import AppIcon from './AppIcon';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2 } from 'lucide-react';
+import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag } from 'lucide-react';
 import { cn, convertTo12Hour, convertTo24Hour } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,6 +13,7 @@ import { useMasterData } from './MasterDataContext';
 
 const TABS = [
   { id: 'bookings', label: 'Table Bookings', icon: Calendar },
+  { id: 'takeaway-orders', label: 'Takeaway Orders', icon: ShoppingBag },
   { id: 'overview', label: 'Overview', icon: Eye },
   { id: 'general', label: 'General Info', icon: Info },
   { id: 'status', label: 'Operational Hours', icon: Clock },
@@ -192,6 +193,7 @@ export default function PartnerDashboardView() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const [newBookingForm, setNewBookingForm] = useState({
     name: '',
@@ -247,7 +249,17 @@ export default function PartnerDashboardView() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setBookings(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsubscribe();
+    const qOrders = query(
+      collection(db, 'takeaway_orders'),
+      where('restaurantId', '==', selectedRes.id)
+    );
+    const unsubOrders = onSnapshot(qOrders, (snapshot) => {
+      setTakeawayOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => {
+      unsubscribe();
+      unsubOrders();
+    };
   }, [selectedRes]);
 
   const handleLogout = async () => {
@@ -297,6 +309,27 @@ export default function PartnerDashboardView() {
   const handleSave = async () => {
     if (!selectedRes) return;
     setSaving(true);
+
+    let hasInvalidTimings = false;
+    if (formData.dailyTimings) {
+      const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      DAYS.forEach(day => {
+        const timing = (formData.dailyTimings as any)[day];
+        if (timing && !timing.closed && timing.ranges) {
+           timing.ranges.forEach((r: any) => {
+             if (!r.open || !r.close) {
+               hasInvalidTimings = true;
+             }
+           });
+        }
+      });
+    }
+    if (hasInvalidTimings) {
+       alert("Please ensure all open days have valid opening and closing times set.");
+       setSaving(false);
+       return;
+    }
+
     try {
       const docRef = doc(db, 'restaurants', selectedRes.id);
       await updateDoc(docRef, formData);
@@ -492,6 +525,90 @@ export default function PartnerDashboardView() {
 
   // Navigation inside PartnerDashboardView
 
+    const updateTakeawayOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, "takeaway_orders", orderId), {
+        status: newStatus
+      });
+    } catch(e) {
+      console.error("Failed to update status", e);
+    }
+  };
+
+  const renderTakeawayOrdersTab = () => {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex items-center justify-between">
+            <div>
+             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Takeaway Orders</h2>
+             <p className="text-slate-500 text-xs font-semibold mt-1">Manage your takeaway orders.</p>
+            </div>
+        </div>
+
+        {takeawayOrders.length === 0 ? (
+           <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
+             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+               <ShoppingBag size={24} />
+             </div>
+             <h3 className="text-lg font-bold text-slate-800 mb-1">No Orders Yet</h3>
+             <p className="text-slate-500 text-sm">When customers place takeaway orders, they will appear here.</p>
+           </div>
+        ) : (
+          <div className="grid gap-4">
+             {takeawayOrders.sort((a,b) => b.createdAt - a.createdAt).map(order => (
+               <div key={order.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                 <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="text-xs font-bold text-slate-400 mb-1">Order ID: {order.orderId}</div>
+                      <div className="font-black text-lg text-slate-900">{order.customerName}</div>
+                      <div className="text-xs font-semibold text-slate-500">{order.customerPhone}</div>
+                    </div>
+                    <div className="text-right">
+                       <div className="font-black text-brand text-lg">₹{order.totalPrice}</div>
+                       <div className="text-xs font-bold text-slate-500">
+                         {new Date(order.createdAt).toLocaleString()}
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="mb-4 bg-slate-50 p-4 rounded-xl">
+                   <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Items</div>
+                   {order.items?.map((item: any, idx: number) => (
+                     <div key={idx} className="flex justify-between items-center text-sm mb-1 last:mb-0">
+                       <span className="font-semibold text-slate-700">{item.quantity}x {item.name}</span>
+                       <span className="font-bold text-slate-900">₹{item.price * item.quantity}</span>
+                     </div>
+                   ))}
+                 </div>
+
+                 <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex items-center gap-2">
+                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status:</span>
+                       <select
+                         value={order.status}
+                         onChange={(e) => updateTakeawayOrderStatus(order.id, e.target.value)}
+                         className="px-3 py-1.5 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer"
+                       >
+                         <option value="Received">Received</option>
+                         <option value="Preparing">Preparing</option>
+                         <option value="Ready">Ready to Pickup</option>
+                         <option value="Completed">Completed</option>
+                         <option value="Cancelled">Cancelled</option>
+                       </select>
+                    </div>
+                    <div className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
+                       {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
+                    </div>
+                 </div>
+               </div>
+             ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24">
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-[60] h-16 transition-all duration-300">
@@ -578,6 +695,7 @@ export default function PartnerDashboardView() {
             <div className="space-y-8">
                {/* TAB CONTENT */}
                {activeTab === 'bookings' && renderBookingsTab()}
+               {activeTab === 'takeaway-orders' && renderTakeawayOrdersTab()}
                
                {activeTab === 'overview' && (
                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -927,7 +1045,7 @@ export default function PartnerDashboardView() {
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {formData.liveMenu.map((item, idx) => (
-                            <div key={item.id || idx} className="bg-slate-50 border border-slate-300 p-4 rounded-xl relative group">
+                            <div key={item.id || idx} className="bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-xl relative group">
                               <button onClick={() => {
                                 const newMenu = [...formData.liveMenu!];
                                 newMenu.splice(idx, 1);
@@ -935,7 +1053,7 @@ export default function PartnerDashboardView() {
                               }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
                                 <X size={14} />
                               </button>
-                              <div className="space-y-3 mt-2 pr-6">
+                              <div className="space-y-2 mt-1 pr-6">
                                 <input type="text" placeholder="Item Name" value={item.name} onChange={e => {
                                   const newMenu = [...formData.liveMenu!];
                                   newMenu[idx].name = e.target.value;
@@ -1021,7 +1139,7 @@ export default function PartnerDashboardView() {
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {formData.signatureDishes.map((item, idx) => (
-                            <div key={idx} className="bg-slate-50 border border-slate-300 p-4 rounded-xl relative group">
+                            <div key={idx} className="bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-xl relative group">
                               <button onClick={() => {
                                 const newSig = [...formData.signatureDishes!];
                                 newSig.splice(idx, 1);
@@ -1029,7 +1147,7 @@ export default function PartnerDashboardView() {
                               }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
                                 <X size={14} />
                               </button>
-                              <div className="space-y-3 mt-2 pr-6">
+                              <div className="space-y-2 mt-1 pr-6">
                                 <input type="text" placeholder="Dish Name" value={item.name} onChange={e => {
                                   const newSig = [...formData.signatureDishes!];
                                   newSig[idx].name = e.target.value;
@@ -1085,7 +1203,7 @@ export default function PartnerDashboardView() {
                               }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
                                 <X size={14} />
                               </button>
-                              <div className="space-y-3 mt-2 pr-6">
+                              <div className="space-y-2 mt-1 pr-6">
                                 <input type="text" placeholder="Offer Title" value={item.title} onChange={e => {
                                   const newOffers = [...formData.offers!];
                                   newOffers[idx].title = e.target.value;

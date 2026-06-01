@@ -291,25 +291,41 @@ export default function HomeLandingView() {
                   icon: Zap, 
                   title: 'Instant Confirmations', 
                   desc: 'No more waiting on hold. Book your table and get instant confirmation via SMS and Email.',
-                  color: 'text-vibrant-success bg-vibrant-success/10'
+                  iconFrom: 'from-emerald-400',
+                  iconTo: 'to-green-500',
+                  glowColor: 'bg-green-500',
+                  textColor: 'text-emerald-500',
+                  ringColor: 'ring-emerald-500/30'
                 },
                 { 
                   icon: TrendingUp, 
                   title: 'Top Rated Spots', 
                   desc: 'Curated selection of high-rated restaurants based on real customer feedback and food quality.',
-                  color: 'text-brand bg-brand/10'
+                  iconFrom: 'from-[#FF7A00]',
+                  iconTo: 'to-[#FF3D00]',
+                  glowColor: 'bg-brand',
+                  textColor: 'text-brand',
+                  ringColor: 'ring-brand/30'
                 },
                 { 
                   icon: Clock, 
                   title: 'Flexible Bookings', 
                   desc: 'Modify or cancel your bookings on the go. Planning a last-minute dinner was never this easy.',
-                  color: 'text-amber-500 bg-amber-500/10'
+                  iconFrom: 'from-amber-400',
+                  iconTo: 'to-orange-500',
+                  glowColor: 'bg-amber-500',
+                  textColor: 'text-amber-600',
+                  ringColor: 'ring-amber-500/30'
                 },
                 { 
                   icon: QrCode, 
                   title: 'Seamless QR Orders', 
                   desc: 'Scan the table QR code to browse the menu and place your order instantly for a seamless experience.',
-                  color: 'text-purple-500 bg-purple-500/10'
+                  iconFrom: 'from-fuchsia-400',
+                  iconTo: 'to-purple-600',
+                  glowColor: 'bg-purple-500',
+                  textColor: 'text-purple-500',
+                  ringColor: 'ring-purple-500/30'
                 },
               ].map((item, i) => (
                 <motion.div 
@@ -320,11 +336,45 @@ export default function HomeLandingView() {
                   transition={{ delay: i * 0.1 }}
                   className="flex flex-col items-center gap-6"
                 >
-                  <div className={cn("shrink-0 w-20 h-20 rounded-3xl flex items-center justify-center", item.color)}>
-                    <item.icon size={36} />
+                  <div className="relative shrink-0 w-24 h-24 flex items-center justify-center group">
+                    {/* Pulsing colored glow */}
+                    <motion.div 
+                      className={cn("absolute inset-2 rounded-full blur-[20px] opacity-20 group-hover:opacity-40 transition-opacity duration-700", item.glowColor)}
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+                    />
+                    
+                    {/* Orbiting particles */}
+                    <motion.div 
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 rounded-full border border-dashed border-slate-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-0"
+                    />
+                    
+                    {/* Gradient App Icon Core */}
+                    <div className={cn(
+                        "relative w-20 h-20 rounded-[28px] bg-white flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-inset z-10 overflow-hidden",
+                        item.ringColor
+                      )}
+                    >
+                      {/* Soft inner glow gradient */}
+                      <div className={cn(
+                        "absolute inset-0 opacity-10 bg-gradient-to-br",
+                        item.iconFrom,
+                        item.iconTo
+                      )} />
+                      
+                      {/* The Icon itself with a gradient stop definition and style (Lucide doesn't natively support gradients, so we rely on drop-shadows and vibrant colors) */}
+                      <motion.div
+                         whileHover={{ scale: 1.1, rotate: [-5, 5, 0] }}
+                         transition={{ duration: 0.3 }}
+                      >
+                         <item.icon size={34} strokeWidth={2.5} className={cn("relative z-10 drop-shadow-sm", item.textColor)} />
+                      </motion.div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-black text-vibrant-dark mb-3">{item.title}</h3>
+                  <div className="text-center">
+                    <h3 className="text-xl font-black text-slate-800 mb-3">{item.title}</h3>
                     <p className="text-vibrant-gray font-medium leading-relaxed text-sm md:text-base">{item.desc}</p>
                   </div>
                 </motion.div>

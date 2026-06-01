@@ -30,6 +30,7 @@ import {
   getRatingColor,
   isTakeawayAvailable,
 } from "../lib/utils";
+import { Helmet } from "react-helmet-async";
 import { useLocationContext } from "./LocationContext";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
@@ -218,10 +219,17 @@ export default function CityView() {
       (r) => r.liveMenu && r.liveMenu.length > 0,
     );
     if (locationSlug) {
-      list = list.filter((r) => {
-        const locSlugFormat = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-        return locSlugFormat === locationSlug;
+      const hasAnyAreaMatch = cityRestaurants.some(rest => {
+         const f = (rest.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+         return f && locationSlug.includes(f);
       });
+      if (hasAnyAreaMatch) {
+        list = list.filter((r) => {
+          const locSlugFormat = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+          const isLocMatch = !locationSlug || locSlugFormat === locationSlug || (locSlugFormat && locationSlug.includes(locSlugFormat));
+          return isLocMatch;
+        });
+      }
     }
     const withDistance = list
       .filter((r) => r.distance !== null)
@@ -276,8 +284,17 @@ export default function CityView() {
         if (!matchesSearch && searchQuery.length > 0) return false;
 
         if (locationSlug) {
-          const locSlugFormat = (res.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          if (locSlugFormat !== locationSlug) return false;
+          // Detect if any area in the city matches the locationSlug
+          const hasAnyAreaMatch = cityRestaurants.some(r => {
+             const f = (r.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+             return f && locationSlug.includes(f);
+          });
+          
+          if (hasAnyAreaMatch) {
+            const locSlugFormat = (res.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+            const isLocMatch = !locationSlug || locSlugFormat === locationSlug || (locSlugFormat && locationSlug.includes(locSlugFormat));
+            if (!isLocMatch) return false;
+          }
         }
 
         // Filter matches
@@ -375,6 +392,10 @@ export default function CityView() {
       animate={{ opacity: 1 }}
       className="pb-20 bg-vibrant-bg min-h-screen"
     >
+      <Helmet>
+        <title>{locationSlug ? `${locationSlug.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} | Bookmytable` : `Best Restaurants in ${cityName} | Bookmytable`}</title>
+        <meta name="description" content={locationSlug ? `Explore ${locationSlug.split('-').join(' ')} restaurants on Bookmytable. Find menus, reviews, photos and book a table.` : `Discover the best restaurants in ${cityName}. Find menus, reviews, photos and book your table online on Bookmytable.`} />
+      </Helmet>
       {portalTarget &&
         createPortal(
           <div className="w-full flex justify-end md:block">
