@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, updateDoc, doc, onSnapshot, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag } from 'lucide-react';
+import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud } from 'lucide-react';
+import StoryManager from './StoryManager';
 import { cn, convertTo12Hour, convertTo24Hour } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -18,6 +20,7 @@ const TABS = [
   { id: 'general', label: 'General Info', icon: Info },
   { id: 'status', label: 'Operational Hours', icon: Clock },
   { id: 'media', label: 'Media & Images', icon: ImageIcon },
+  { id: 'stories', label: 'Stories', icon: Store },
   { id: 'menu', label: 'Live Menu', icon: Utensils },
   { id: 'specialties', label: 'Signature Dishes', icon: Star },
   { id: 'offers', label: 'Offers & Promos', icon: Tag },
@@ -161,6 +164,66 @@ const InputText = ({ label, value, onChange, placeholder = '', disabled = false 
   </div>
 );
 
+const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `restaurant_images/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed', 
+        (snapshot) => {},
+        (error) => {
+          console.error("Upload failed", error);
+          alert("Image upload failed");
+          setUploading(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          onChange(downloadURL);
+          setUploading(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      {label && <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>}
+      <div className="flex items-center gap-2">
+        <input 
+          type="text" 
+          value={value || ''} 
+          onChange={e => onChange(e.target.value)} 
+          placeholder={placeholder || "Image URL"} 
+          className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-semibold text-slate-800 outline-none transition-all shadow-sm"
+        />
+        <div className="relative shrink-0">
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleFileChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            disabled={uploading}
+          />
+          <button type="button" disabled={uploading} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 h-[46px] px-4 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 shadow-sm font-semibold text-sm gap-2 whitespace-nowrap">
+            {uploading ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+            <span className="hidden sm:inline">{uploading ? 'Uploading...' : 'Upload'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TextArea = ({ label, value, onChange, placeholder = '' }: any) => (
   <div>
     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
@@ -204,6 +267,13 @@ export default function PartnerDashboardView() {
     time: '19:00'
   });
   const [bookingSubmitLoading, setBookingSubmitLoading] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -295,7 +365,7 @@ export default function PartnerDashboardView() {
       });
     } catch (err) {
       console.error(err);
-      alert("Failed to create booking.");
+      showToast("Failed to create booking.", "error");
     } finally {
       setBookingSubmitLoading(false);
     }
@@ -325,7 +395,7 @@ export default function PartnerDashboardView() {
       });
     }
     if (hasInvalidTimings) {
-       alert("Please ensure all open days have valid opening and closing times set.");
+       showToast("Please ensure all open days have valid opening and closing times set.", "error");
        setSaving(false);
        return;
     }
@@ -339,10 +409,10 @@ export default function PartnerDashboardView() {
       setSelectedRes(updatedRes);
       setRestaurants(prev => prev.map(r => r.id === updatedRes.id ? updatedRes : r));
       setHasChanges(false);
-      alert('Changes saved successfully!');
+      showToast('Changes saved successfully!', 'success');
     } catch (err) {
       console.error(err);
-      alert('Failed to save changes. Please try again.');
+      showToast('Failed to save changes. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
@@ -351,7 +421,7 @@ export default function PartnerDashboardView() {
   const handleGeocodeAddress = async () => {
     const { name, area, city, state, pincode } = formData;
     if (!area || !city) {
-      alert('Area and City are required to locate on map.');
+      showToast('Area and City are required to locate on map.', 'error');
       return;
     }
     
@@ -368,13 +438,37 @@ export default function PartnerDashboardView() {
         updateForm('lat', data[0].lat);
         updateForm('lng', data[0].lon);
       } else {
-        alert('Could not find coordinates for this address.');
+        showToast('Could not find coordinates for this address.', 'error');
       }
     } catch (err) {
       console.error('Geocoding failed:', err);
-      alert('Failed to fetch coordinates. Please try manually later.');
+      showToast('Failed to fetch coordinates. Please try manually later.', 'error');
     } finally {
       setIsGeocoding(false);
+    }
+  };
+
+  const handleDeleteImage = async (field: 'secondaryImages' | 'menuImages', imgIdx: number, imgUrl: string, label: string) => {
+    if (!window.confirm(`Do you want to delete this image from ${label}?`)) {
+      return;
+    }
+
+    const arr = [...(formData[field] || [])];
+    arr.splice(imgIdx, 1);
+    updateForm(field, arr);
+
+    if (selectedRes?.id) {
+       try {
+         const docRef = doc(db, 'restaurants', selectedRes.id);
+         await updateDoc(docRef, { [field]: arr });
+         
+         if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
+           const storageRef = ref(storage, imgUrl);
+           await deleteObject(storageRef);
+         }
+       } catch (error) {
+           console.error("Failed to delete image:", error);
+       }
     }
   };
 
@@ -383,8 +477,8 @@ export default function PartnerDashboardView() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">{label}</h3>
         <button onClick={() => {
-          const arr = [...(formData[field] || []), ''];
-          updateForm(field, arr);
+          const arr = [...(formData[field] || []), { url: '', category: '' }];
+          updateForm(field, arr as any);
         }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
           <Plus size={14} /> Add Image
         </button>
@@ -395,28 +489,158 @@ export default function PartnerDashboardView() {
            <div className="col-span-full p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
              No images added.
            </div>
-        ) : formData[field].map((url, idx) => (
-          <div key={idx} className="bg-white border border-slate-300 rounded-xl overflow-hidden relative group transition-all shrink-0">
-             <button onClick={() => {
-                const arr = [...formData[field]!];
-                arr.splice(idx, 1);
-                updateForm(field, arr);
-             }} className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm text-red-500 rounded-lg hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover:opacity-100">
+        ) : formData[field].map((item: any, idx: number) => {
+          const urlStr = typeof item === 'string' ? item : item.url;
+          const categoryStr = typeof item === 'string' ? '' : (item.category || '');
+
+          return (
+          <div key={idx} className="bg-white border border-slate-300 rounded-xl overflow-hidden relative group transition-all shrink-0 flex flex-col">
+             <button onClick={() => handleDeleteImage(field, idx, urlStr, label)} className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm text-red-500 rounded-lg hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover:opacity-100">
                 <X size={14} />
              </button>
-             <div className="h-32 bg-slate-100 flex items-center justify-center relative">
-               {url ? (
-                 <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+             <div className="h-32 bg-slate-100 flex items-center justify-center relative shrink-0">
+               {urlStr ? (
+                 <img src={urlStr} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
                ) : (
                  <ImageIcon className="text-slate-300" size={24} />
                )}
              </div>
-             <div className="p-3 bg-slate-50 border-t border-slate-300">
-                <input type="text" placeholder="Image URL" value={url} onChange={e => {
+             <div className="p-3 bg-slate-50 border-t border-slate-300 space-y-2 flex-grow">
+                <input
+                  type="text"
+                  placeholder="Category (e.g. All)"
+                  value={categoryStr}
+                  onChange={(e) => {
+                    const arr = [...formData[field]!];
+                    arr[idx] = { url: urlStr, category: e.target.value };
+                    updateForm(field, arr as any);
+                  }}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
+                />
+                <ImageUploadInput value={urlStr} onChange={(newUrl: string) => {
                    const arr = [...formData[field]!];
-                   arr[idx] = e.target.value;
-                   updateForm(field, arr);
-                }} className="w-full px-2 py-1.5 bg-white border border-slate-300 focus:border-brand rounded-lg text-xs font-semibold outline-none" />
+                   arr[idx] = typeof item === 'string' && !categoryStr 
+                     ? newUrl 
+                     : { url: newUrl, category: categoryStr };
+                   updateForm(field, arr as any);
+                }} placeholder="Image URL" />
+             </div>
+          </div>
+        )})}
+      </div>
+    </div>
+  );
+
+  const handleDeleteCategoryImage = async (catIdx: number, imgIdx: number, imgUrl: string, catName: string) => {
+    if (!window.confirm(`Do you want to delete this image from ${catName || 'this category'}?`)) {
+      return;
+    }
+
+    const arr = [...(formData.menuCategories || [])];
+    const imgs = [...arr[catIdx].images];
+    imgs.splice(imgIdx, 1);
+    arr[catIdx] = { ...arr[catIdx], images: imgs };
+    updateForm('menuCategories', arr);
+
+    if (selectedRes?.id) {
+       try {
+         const docRef = doc(db, 'restaurants', selectedRes.id);
+         await updateDoc(docRef, { menuCategories: arr });
+         
+         if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
+           const storageRef = ref(storage, imgUrl);
+           await deleteObject(storageRef);
+         }
+       } catch (error) {
+           console.error("Failed to delete image:", error);
+       }
+    }
+  };
+
+  const renderMenuCategories = () => (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Menu Categories</h3>
+        <button onClick={() => {
+          const arr = [...(formData.menuCategories || [])];
+          arr.push({ id: Math.random().toString(36).substr(2, 9), name: '', images: [] });
+          updateForm('menuCategories', arr);
+        }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
+          <Plus size={14} /> Add Category
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {(!formData.menuCategories || formData.menuCategories.length === 0) ? (
+          <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
+            No menu categories added.
+          </div>
+        ) : formData.menuCategories.map((cat, catIdx) => (
+          <div key={cat.id || catIdx} className="bg-white border text-sm font-medium border-slate-300 rounded-2xl p-5 relative group transition-all">
+             <button onClick={() => {
+                const arr = [...formData.menuCategories!];
+                arr.splice(catIdx, 1);
+                updateForm('menuCategories', arr);
+             }} className="absolute top-4 right-4 p-2 bg-slate-100 text-red-500 rounded-lg hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover:opacity-100">
+                <X size={16} />
+             </button>
+             
+             <div className="mb-4 pr-12">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sunday brunch"
+                  value={cat.name}
+                  onChange={(e) => {
+                    const arr = [...formData.menuCategories!];
+                    arr[catIdx] = { ...cat, name: e.target.value };
+                    updateForm('menuCategories', arr);
+                  }}
+                  className="w-full lg:w-1/2 px-4 py-3 rounded-xl border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
+                />
+             </div>
+
+             <div className="flex items-center justify-between mb-3">
+               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category Images</h4>
+               <button onClick={() => {
+                  const arr = [...formData.menuCategories!];
+                  const imgs = [...(cat.images || [])];
+                  imgs.push('');
+                  arr[catIdx] = { ...cat, images: imgs };
+                  updateForm('menuCategories', arr);
+               }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
+                  <Plus size={14} /> Add Image
+               </button>
+             </div>
+
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {(!cat.images || cat.images.length === 0) ? (
+                   <div className="col-span-full p-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-xs">
+                     No images in this category.
+                   </div>
+                ) : cat.images.map((imgUrl, imgIdx) => (
+                  <div key={imgIdx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden relative group/img transition-all shrink-0 flex flex-col">
+                     <button onClick={() => handleDeleteCategoryImage(catIdx, imgIdx, imgUrl, cat.name)} className="absolute top-1.5 right-1.5 p-1 bg-white/80 backdrop-blur-sm text-red-500 rounded-md hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover/img:opacity-100">
+                        <X size={12} />
+                     </button>
+                     <div className="h-24 bg-slate-100 flex items-center justify-center relative shrink-0">
+                       {imgUrl ? (
+                         <img src={imgUrl} alt={`Preview ${imgIdx}`} className="w-full h-full object-cover" />
+                       ) : (
+                         <ImageIcon className="text-slate-300" size={20} />
+                       )}
+                     </div>
+                     <div className="p-2 border-t border-slate-200 space-y-2 flex-grow">
+                        <ImageUploadInput value={imgUrl} onChange={(newUrl: string) => {
+                           const arr = [...formData.menuCategories!];
+                           const imgs = [...cat.images!];
+                           imgs[imgIdx] = newUrl;
+                           arr[catIdx] = { ...cat, images: imgs };
+                           updateForm('menuCategories', arr);
+                        }} placeholder="Image URL" />
+                     </div>
+                  </div>
+                ))}
              </div>
           </div>
         ))}
@@ -611,6 +835,29 @@ export default function PartnerDashboardView() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24">
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-[100]"
+          >
+            <div className={cn(
+              "px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 font-semibold",
+              toastMessage.type === 'success' ? 'bg-emerald-600 text-white' :
+              toastMessage.type === 'error' ? 'bg-red-600 text-white' :
+              'bg-blue-600 text-white'
+            )}>
+              {toastMessage.type === 'success' && <CheckCircle size={20} />}
+              {toastMessage.type === 'error' && <AlertCircle size={20} />}
+              {toastMessage.type === 'info' && <Info size={20} />}
+              <span>{toastMessage.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-[60] h-16 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
            <div className="flex items-center justify-between h-full">
@@ -1005,19 +1252,23 @@ export default function PartnerDashboardView() {
                  </div>
                )}
 
+               {activeTab === 'stories' && selectedRes && (
+                 <StoryManager restaurant={selectedRes} />
+               )}
+
                {activeTab === 'media' && (
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    <div className="p-4 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium border border-blue-100 mb-6">
-                     <strong>Tip:</strong> Provide direct, absolute URLs (https://...) pointing to your images. Check with admin for cloud storage access updates if uploads fail.
+                     <strong>Tip:</strong> Provide direct, absolute URLs (https://...) pointing to your images, or use the Upload button to upload an image from your device.
                    </div>
-                   <InputText label="Primary Image URL" value={formData.image} onChange={(v:any) => updateForm('image', v)} />
-                   {formData.image && <img src={formData.image} alt="Primary" className="w-full max-w-sm h-48 object-cover rounded-xl border border-slate-300" />}
+                   <ImageUploadInput label="Primary Image URL" value={formData.image} onChange={(v:any) => updateForm('image', v)} />
+                   {formData.image && <img src={formData.image} alt="Primary" className="w-full max-w-lg h-64 object-cover rounded-xl border border-slate-300 shadow-sm" />}
                    
                    <div className="pt-4 border-t border-slate-300">
                      {renderImageInputList("Secondary Images", 'secondaryImages')}
                    </div>
                    <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Menu Images", 'menuImages')}
+                     {renderMenuCategories()}
                    </div>
                  </div>
                )}

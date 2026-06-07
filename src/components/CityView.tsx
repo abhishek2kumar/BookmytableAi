@@ -34,6 +34,8 @@ import { Helmet } from "react-helmet-async";
 import { useLocationContext } from "./LocationContext";
 import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useStories } from "../hooks/useStories";
+import StoryViewer from "./StoryViewer";
 
 export default function CityView() {
   const { cityId, locationSlug } = useParams();
@@ -41,6 +43,10 @@ export default function CityView() {
   const navigate = useNavigate();
   const { cities, cuisines, loading: masterDataLoading } = useMasterData();
   const { restaurants, loading: restaurantsLoading } = useRestaurants(true);
+
+  const queryCityName = cityId || "delhi";
+  const { usersWithStories, loading: storiesLoading } = useStories(queryCityName);
+  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
 
   const loading = restaurantsLoading || masterDataLoading;
   const { coords: userCoords, city: contextCity } = useLocationContext();
@@ -543,6 +549,41 @@ export default function CityView() {
       )}
 
       <div className="max-w-7xl mx-auto px-6 mt-8 md:mt-12 space-y-12 md:space-y-20">
+
+        {/* Stories Section */}
+        {(!storiesLoading && usersWithStories.length > 0) && (
+          <section className="relative">
+            <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark mb-4">
+              Stories from Restaurants
+            </h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x -mx-6 px-6 md:mx-0 md:px-0">
+               {usersWithStories.map((storyUser, idx) => {
+                  const allViewed = storyUser.stories.every(s => s.views?.some(v => v.userId === user?.uid));
+                  return (
+                  <div key={storyUser.restaurantId} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer snap-start" onClick={() => setActiveStoryIndex(idx)}>
+                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full p-1 ${allViewed ? 'bg-slate-300' : 'bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500'}`}>
+                          <div className="w-full h-full border-2 border-white rounded-full overflow-hidden bg-white">
+                             <img src={storyUser.restaurantImage} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 w-16 md:w-20 truncate text-center">{storyUser.restaurantName}</span>
+                  </div>
+                  );
+               })}
+            </div>
+            
+            {/* Fullscreen Viewer */}
+            <AnimatePresence>
+               {activeStoryIndex !== null && (
+                  <StoryViewer 
+                     users={usersWithStories} 
+                     initialUserIndex={activeStoryIndex} 
+                     onClose={() => setActiveStoryIndex(null)} 
+                  />
+               )}
+            </AnimatePresence>
+          </section>
+        )}
 
         {/* Featured Section */}
         {!locationSlug && (loading || featuredRestaurants.length > 0) && (

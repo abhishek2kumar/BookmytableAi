@@ -2270,13 +2270,15 @@ export default function AdminDashboardView() {
                 </button>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {(editingRestaurant.secondaryImages || []).map((img, i) => (
+                {(editingRestaurant.secondaryImages || []).map((imgObj, i) => {
+                  const urlStr = typeof imgObj === 'string' ? imgObj : imgObj.url;
+                  return (
                   <div
                     key={i}
                     className="relative group aspect-[4/3] rounded-[32px] overflow-hidden border-2 border-white bg-slate-100 shadow-lg"
                   >
                     <img
-                      src={img || RESTAURANT_IMAGE_FALLBACK}
+                      src={urlStr || RESTAURANT_IMAGE_FALLBACK}
                       alt={`Secondary ${i}`}
                       className="w-full h-full object-cover"
                       onError={handleImageError}
@@ -2285,12 +2287,12 @@ export default function AdminDashboardView() {
                     <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-6 space-y-4">
                       <input
                         className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2 text-white text-[10px] font-bold outline-none"
-                        value={img}
+                        value={urlStr}
                         onChange={(e) => {
-                          const next = [
+                          const next: any[] = [
                             ...(editingRestaurant.secondaryImages || []),
                           ];
-                          next[i] = e.target.value;
+                          next[i] = typeof imgObj === 'string' ? e.target.value : { ...imgObj, url: e.target.value };
                           setEditingRestaurant({
                             ...editingRestaurant,
                             secondaryImages: next,
@@ -2314,7 +2316,7 @@ export default function AdminDashboardView() {
                       </button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </motion.div>

@@ -1,3 +1,24 @@
+export interface StoryView {
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  viewedAt: any;
+}
+
+export interface Story {
+  id: string;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantImage: string;
+  city: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  caption?: string;
+  createdAt: any;
+  expiresAt: any;
+  views: StoryView[];
+}
+
 export type UserRole = 'user' | 'owner' | 'admin';
 
 export interface UserProfile {
@@ -121,7 +142,7 @@ export interface Restaurant {
     description?: string;
   }[];
   menuImages?: string[];
-  secondaryImages?: string[];
+  secondaryImages?: (string | { url: string; category: string })[];
   foodImages?: string[];
   ambienceImages?: string[];
   popularDishes?: string[];

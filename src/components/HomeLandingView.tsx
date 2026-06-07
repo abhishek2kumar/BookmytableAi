@@ -285,97 +285,67 @@ export default function HomeLandingView() {
               Starts Right Here.
             </h2>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+            <div className="flex flex-col gap-24 md:gap-32 text-left">
               {[
                 { 
                   icon: Zap, 
                   title: 'Instant Confirmations', 
-                  desc: 'No more waiting on hold. Book your table and get instant confirmation via SMS and Email.',
-                  iconFrom: 'from-emerald-400',
-                  iconTo: 'to-green-500',
-                  glowColor: 'bg-green-500',
-                  textColor: 'text-emerald-500',
-                  ringColor: 'ring-emerald-500/30'
+                  desc: 'No more waiting on hold or wondering if your table is secure. Book instantly online and receive immediate confirmation via SMS and your registered email address.',
+                  image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1200'
                 },
                 { 
                   icon: TrendingUp, 
                   title: 'Top Rated Spots', 
-                  desc: 'Curated selection of high-rated restaurants based on real customer feedback and food quality.',
-                  iconFrom: 'from-[#FF7A00]',
-                  iconTo: 'to-[#FF3D00]',
-                  glowColor: 'bg-brand',
-                  textColor: 'text-brand',
-                  ringColor: 'ring-brand/30'
+                  desc: 'A strictly curated directory of high-rated restaurants, continuously monitored for food quality and pristine real customer feedback.',
+                  image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200'
                 },
                 { 
                   icon: Clock, 
                   title: 'Flexible Bookings', 
-                  desc: 'Modify or cancel your bookings on the go. Planning a last-minute dinner was never this easy.',
-                  iconFrom: 'from-amber-400',
-                  iconTo: 'to-orange-500',
-                  glowColor: 'bg-amber-500',
-                  textColor: 'text-amber-600',
-                  ringColor: 'ring-amber-500/30'
+                  desc: 'Modify table count, shift time slots, or cancel on the go. Planning a last-minute dinner switch has never been this effortless.',
+                  image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=1200'
                 },
                 { 
                   icon: QrCode, 
                   title: 'Seamless QR Orders', 
-                  desc: 'Scan the table QR code to browse the menu and place your order instantly for a seamless experience.',
-                  iconFrom: 'from-fuchsia-400',
-                  iconTo: 'to-purple-600',
-                  glowColor: 'bg-purple-500',
-                  textColor: 'text-purple-500',
-                  ringColor: 'ring-purple-500/30'
+                  desc: 'Sit down, scan the table code, and browse the live menu. Send orders straight to the kitchen instantly—say goodbye to waving for waiters.',
+                  image: 'https://images.unsplash.com/photo-1525610553991-2bede1a236e2?auto=format&fit=crop&q=80&w=1200'
                 },
               ].map((item, i) => (
                 <motion.div 
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex flex-col items-center gap-6"
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                  className={cn(
+                    "flex flex-col md:flex-row gap-8 md:gap-12 lg:gap-20 items-center",
+                    i % 2 !== 0 ? "md:flex-row-reverse" : ""
+                  )}
                 >
-                  <div className="relative shrink-0 w-24 h-24 flex items-center justify-center group">
-                    {/* Pulsing colored glow */}
-                    <motion.div 
-                      className={cn("absolute inset-2 rounded-full blur-[20px] opacity-20 group-hover:opacity-40 transition-opacity duration-700", item.glowColor)}
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
-                    />
-                    
-                    {/* Orbiting particles */}
-                    <motion.div 
-                      animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0 rounded-full border border-dashed border-slate-200/50 opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-0"
-                    />
-                    
-                    {/* Gradient App Icon Core */}
-                    <div className={cn(
-                        "relative w-20 h-20 rounded-[28px] bg-white flex items-center justify-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-inset z-10 overflow-hidden",
-                        item.ringColor
-                      )}
-                    >
-                      {/* Soft inner glow gradient */}
-                      <div className={cn(
-                        "absolute inset-0 opacity-10 bg-gradient-to-br",
-                        item.iconFrom,
-                        item.iconTo
-                      )} />
-                      
-                      {/* The Icon itself with a gradient stop definition and style (Lucide doesn't natively support gradients, so we rely on drop-shadows and vibrant colors) */}
-                      <motion.div
-                         whileHover={{ scale: 1.1, rotate: [-5, 5, 0] }}
-                         transition={{ duration: 0.3 }}
-                      >
-                         <item.icon size={34} strokeWidth={2.5} className={cn("relative z-10 drop-shadow-sm", item.textColor)} />
-                      </motion.div>
-                    </div>
+                  {/* Text Section */}
+                  <div className="flex-1 w-full md:w-1/2 max-w-xl">
+                    <h3 className="text-2xl md:text-3xl font-display font-bold text-slate-900 mb-4 tracking-tight leading-tight">
+                      {item.title}
+                    </h3>
+                    <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed">
+                      {item.desc}
+                    </p>
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-black text-slate-800 mb-3">{item.title}</h3>
-                    <p className="text-vibrant-gray font-medium leading-relaxed text-sm md:text-base">{item.desc}</p>
+                  
+                  {/* Image Section */}
+                  <div className="flex-1 w-full md:w-1/2">
+                    <div className="relative rounded-[40px] overflow-hidden shadow-2xl group">
+                      {/* Image hover scale effect */}
+                      <img 
+                        src={item.image} 
+                        alt={item.title}
+                        className="w-full h-full object-cover aspect-[4/3] group-hover:scale-105 transition-transform duration-1000 ease-out"
+                        referrerPolicy="no-referrer"
+                      />
+                      {/* Overlay gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/20 to-transparent pointer-events-none" />
+                    </div>
                   </div>
                 </motion.div>
               ))}
