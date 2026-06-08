@@ -785,7 +785,7 @@ export default function AdminDashboardView() {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="text-brand" size={18} />
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                  <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">
                     Legal Identity
                   </h3>
                 </div>
@@ -793,7 +793,7 @@ export default function AdminDashboardView() {
                   type="button"
                   onClick={handleGeocode}
                   disabled={isGeocoding || !editingRestaurant.address}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 rounded-xl text-[9px] font-black text-brand uppercase tracking-wider hover:border-brand transition-all disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-300 rounded-xl text-[9px] font-normal leading-[1.2] text-brand uppercase tracking-wider hover:border-brand transition-all disabled:opacity-50 shadow-sm"
                 >
                   {isGeocoding ? (
                     <Loader2 size={10} className="animate-spin" />
@@ -811,7 +811,7 @@ export default function AdminDashboardView() {
                     Legal Entity Name *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.name}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -828,7 +828,7 @@ export default function AdminDashboardView() {
                     Floor / Tower
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.floor || ""}
                     onChange={(e) =>
                       updateEditingLocationField("floor", e.target.value)
@@ -841,7 +841,7 @@ export default function AdminDashboardView() {
                     Shop / Building No.
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.shopNo || ""}
                     onChange={(e) =>
                       updateEditingLocationField("shopNo", e.target.value)
@@ -854,7 +854,7 @@ export default function AdminDashboardView() {
                     Area / Locality *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={
                       editingRestaurant.area || editingRestaurant.location || ""
                     }
@@ -870,7 +870,7 @@ export default function AdminDashboardView() {
                     City *
                   </label>
                   <select
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.city}
                     onChange={(e) =>
                       updateEditingLocationField("city", e.target.value)
@@ -889,7 +889,7 @@ export default function AdminDashboardView() {
                     State *
                   </label>
                   <select
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.state || ""}
                     onChange={(e) =>
                       updateEditingLocationField("state", e.target.value)
@@ -909,7 +909,7 @@ export default function AdminDashboardView() {
                     Pincode *
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.pincode || ""}
                     onChange={(e) =>
                       updateEditingLocationField("pincode", e.target.value)
@@ -922,7 +922,7 @@ export default function AdminDashboardView() {
                     Landmark
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.landmark || ""}
                     onChange={(e) =>
                       updateEditingLocationField("landmark", e.target.value)
@@ -936,7 +936,7 @@ export default function AdminDashboardView() {
                   <input
                     type="number"
                     step="any"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.lat || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -953,7 +953,7 @@ export default function AdminDashboardView() {
                   <input
                     type="number"
                     step="any"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.lng || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -975,7 +975,7 @@ export default function AdminDashboardView() {
                   </label>
                   <input
                     type="number"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.avgPrice}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -994,7 +994,7 @@ export default function AdminDashboardView() {
                     step="0.1"
                     min="0"
                     max="5"
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.rating || 0}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1010,7 +1010,7 @@ export default function AdminDashboardView() {
                     Contact Number
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.contactNumber || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1026,7 +1026,7 @@ export default function AdminDashboardView() {
                     Contact Email
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.contactEmail || ""}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1042,7 +1042,7 @@ export default function AdminDashboardView() {
                     Partner Emails (Comma Separated)
                   </label>
                   <input
-                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={(editingRestaurant.partnerEmails || []).join(", ")}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1103,7 +1103,7 @@ export default function AdminDashboardView() {
                 Brand Description / Story
               </label>
               <textarea
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm min-h-[200px]"
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm min-h-[200px]"
                 value={editingRestaurant.description}
                 onChange={(e) =>
                   setEditingRestaurant({
@@ -1238,7 +1238,7 @@ export default function AdminDashboardView() {
               <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6">
                 <div className="flex items-center gap-3 px-1">
                   <Clock className="text-brand" size={18} />
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                  <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">
                     Operational Velocity
                   </h3>
                 </div>
@@ -1251,7 +1251,7 @@ export default function AdminDashboardView() {
                   </p>
                   <input
                     type="number"
-                    className="w-full px-5 py-4 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none transition-all shadow-sm"
+                    className="w-full px-5 py-4 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
                     value={editingRestaurant.instantBookingLimit || 10}
                     onChange={(e) =>
                       setEditingRestaurant({
@@ -1267,7 +1267,7 @@ export default function AdminDashboardView() {
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-3 text-red-500">
                     <PowerOff size={18} />
-                    <h3 className="text-sm font-black uppercase tracking-widest">
+                    <h3 className="text-sm uppercase tracking-widest font-normal leading-[1.2]">
                       Blackout Protocol
                     </h3>
                   </div>
@@ -1334,7 +1334,7 @@ export default function AdminDashboardView() {
 
             <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-8">
               <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black text-brand uppercase tracking-[0.2em] bg-white px-4 py-1.5 rounded-full border border-slate-300 shadow-sm">
+                <span className="text-[10px] font-normal leading-[1.2] text-brand uppercase tracking-[0.2em] bg-white px-4 py-1.5 rounded-full border border-slate-300 shadow-sm">
                   Standard Weekly Cadence
                 </span>
                 <div className="h-px flex-grow bg-slate-200" />
@@ -1388,7 +1388,7 @@ export default function AdminDashboardView() {
                       className="flex flex-col md:flex-row md:items-center gap-6 p-6 bg-white rounded-[28px] border border-slate-300 shadow-sm transition-all hover:border-brand"
                     >
                       <div className="w-24 shrink-0">
-                        <span className="text-xs font-black text-slate-900 uppercase tracking-widest">
+                        <span className="text-xs font-normal text-[#363636] leading-[1.2] uppercase tracking-widest">
                           {day}
                         </span>
                       </div>
@@ -1408,7 +1408,7 @@ export default function AdminDashboardView() {
                               >
                                 <input
                                   type="time"
-                                  className="bg-transparent text-xs font-black w-24 outline-none text-slate-800"
+                                  className="bg-transparent text-xs w-24 outline-none text-[#363636] font-normal leading-[1.2]"
                                   value={convertTo24Hour(range.open)}
                                   onChange={(e) => {
                                     const nextRanges = [
@@ -1435,7 +1435,7 @@ export default function AdminDashboardView() {
                                 </span>
                                 <input
                                   type="time"
-                                  className="bg-transparent text-xs font-black w-24 outline-none text-slate-800"
+                                  className="bg-transparent text-xs w-24 outline-none text-[#363636] font-normal leading-[1.2]"
                                   value={convertTo24Hour(range.close)}
                                   onChange={(e) => {
                                     const nextRanges = [
@@ -1581,7 +1581,7 @@ export default function AdminDashboardView() {
             <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-6">
               <div className="flex items-center justify-between px-1">
                 <div>
-                  <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">
+                  <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">
                     Booking Windows
                   </h3>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -1614,7 +1614,7 @@ export default function AdminDashboardView() {
                   >
                     <div className="flex items-center justify-between gap-4 border-b border-slate-300 pb-4">
                       <input
-                        className="bg-transparent text-lg font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full uppercase tracking-tight"
+                        className="bg-transparent text-lg font-normal leading-[1.2] text-[#363636] focus:outline-none focus:ring-0 p-0 border-none w-full uppercase tracking-tight"
                         value={cat.name}
                         placeholder="Category Name (e.g. Dinner)"
                         onChange={(e) => {
@@ -1736,10 +1736,10 @@ export default function AdminDashboardView() {
                     <Image size={32} />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-2xl font-display font-black tracking-tight uppercase">
+                    <h3 className="text-2xl uppercase font-normal leading-[1.2]">
                       Media Asset Manager
                     </h3>
-                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mt-1">
+                    <p className="text-[10px] font-normal leading-[1.2] text-white/40 uppercase tracking-[0.2em] mt-1">
                       Multi-Category Asset Injection
                     </p>
                   </div>
@@ -1750,7 +1750,7 @@ export default function AdminDashboardView() {
                   id="media-manager-v2"
                 >
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-normal leading-[1.2] text-white/40 uppercase tracking-widest px-1">
                       1. Target Categorization
                     </label>
                     <div className="relative group">
@@ -1790,7 +1790,7 @@ export default function AdminDashboardView() {
                   </div>
 
                   <div className="md:col-span-2 space-y-3">
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-normal leading-[1.2] text-white/40 uppercase tracking-widest px-1">
                       2. Injection Method
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1813,7 +1813,7 @@ export default function AdminDashboardView() {
                             size={18}
                             className="text-white/40 group-hover:text-brand"
                           />
-                          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest group-hover:text-white">
+                          <span className="text-[10px] font-normal leading-[1.2] text-white/40 uppercase tracking-widest group-hover:text-white">
                             External URL
                           </span>
                         </div>
@@ -1829,7 +1829,7 @@ export default function AdminDashboardView() {
                             size={18}
                             className="text-white/40 group-hover:text-brand"
                           />
-                          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest group-hover:text-white">
+                          <span className="text-[10px] font-normal leading-[1.2] text-white/40 uppercase tracking-widest group-hover:text-white">
                             Local Upload
                           </span>
                         </div>
@@ -1882,7 +1882,7 @@ export default function AdminDashboardView() {
               </div>
               <div className="flex-grow space-y-6">
                 <div className="text-left">
-                  <h3 className="text-xl font-display font-black text-slate-900 tracking-tight leading-none uppercase">
+                  <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                     Primary Display Asset
                   </h3>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 overflow-hidden">
@@ -1895,7 +1895,7 @@ export default function AdminDashboardView() {
                       Source URL
                     </label>
                     <input
-                      className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none transition-all shadow-sm text-sm"
+                      className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm text-sm"
                       value={editingRestaurant.image}
                       onChange={(e) =>
                         setEditingRestaurant({
@@ -1934,7 +1934,7 @@ export default function AdminDashboardView() {
                     <LayoutGrid size={24} />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-2xl font-display font-black text-slate-900 tracking-tight uppercase">
+                    <h3 className="text-2xl uppercase text-[#363636] font-normal leading-[1.2]">
                       Categorized Media Collections
                     </h3>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
@@ -1968,7 +1968,7 @@ export default function AdminDashboardView() {
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-3 text-left">
                       <Soup className="text-brand" size={20} />
-                      <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                      <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                         Food Images
                       </h3>
                     </div>
@@ -2042,7 +2042,7 @@ export default function AdminDashboardView() {
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center gap-3 text-left">
                       <UtensilsCrossed className="text-brand" size={20} />
-                      <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                      <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                         Ambience & Interior
                       </h3>
                     </div>
@@ -2118,7 +2118,7 @@ export default function AdminDashboardView() {
                       <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-3 text-left">
                           <Image className="text-brand" size={20} />
-                          <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                          <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                             {category}
                           </h3>
                         </div>
@@ -2249,7 +2249,7 @@ export default function AdminDashboardView() {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-3 text-left">
                   <Building2 className="text-brand" size={20} />
-                  <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                  <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                     Secondary / Exterior
                   </h3>
                 </div>
@@ -2332,7 +2332,7 @@ export default function AdminDashboardView() {
           >
             <div className="space-y-6">
               <div className="flex items-center justify-between px-1">
-                <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                   Signature Dishes
                 </h3>
                 <button
@@ -2363,7 +2363,7 @@ export default function AdminDashboardView() {
                       </div>
                       <div className="flex-grow space-y-3">
                         <input
-                          className="w-full bg-transparent border-none font-black text-slate-800 focus:ring-0 p-0 text-sm outline-none placeholder:text-slate-300"
+                          className="w-full bg-transparent border-none font-normal text-[#363636] leading-[1.2] focus:ring-0 p-0 text-sm outline-none placeholder:text-slate-300"
                           value={dish.name}
                           placeholder="Dish Name (e.g. Butter Chicken)"
                           onChange={(e) => {
@@ -2401,7 +2401,7 @@ export default function AdminDashboardView() {
                         </span>
                         <input
                           type="number"
-                          className="w-20 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 outline-none focus:border-brand shadow-sm"
+                          className="w-20 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-normal text-[#363636] leading-[1.2] outline-none focus:border-brand shadow-sm"
                           value={dish.price || ""}
                           onChange={(e) => {
                             const next = [
@@ -2448,7 +2448,7 @@ export default function AdminDashboardView() {
 
               <div className="mt-12 pt-12 border-t border-slate-300 space-y-6">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-xl font-display font-black text-slate-950 uppercase tracking-tight">
+                  <h3 className="text-xl text-slate-950 uppercase font-normal leading-[1.2]">
                     Popular Dishes
                   </h3>
                   <button
@@ -2474,7 +2474,7 @@ export default function AdminDashboardView() {
                       className="flex items-center gap-2 bg-white border border-slate-300 rounded-2xl px-4 py-2 group hover:border-brand shadow-sm transition-all text-left"
                     >
                       <input
-                        className="bg-transparent border-none font-bold text-slate-800 focus:ring-0 p-0 text-sm outline-none placeholder:text-slate-300 w-32"
+                        className="bg-transparent border-none font-normal text-[#363636] leading-[1.2] focus:ring-0 p-0 text-sm outline-none placeholder:text-slate-300 w-32"
                         value={tag}
                         placeholder="e.g. Spicy"
                         onChange={(e) => {
@@ -2511,7 +2511,7 @@ export default function AdminDashboardView() {
 
             <div className="flex items-center justify-between px-1 pt-6 border-t border-slate-300">
               <div>
-                <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                   Digital Menu Ecosystem
                 </h3>
                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">
@@ -2550,7 +2550,7 @@ export default function AdminDashboardView() {
                         Category Title
                       </label>
                       <input
-                        className="bg-transparent border-none text-2xl font-display font-black text-slate-900 w-full focus:ring-0 p-0 placeholder:opacity-20 uppercase tracking-tight"
+                        className="bg-transparent border-none text-2xl font-normal leading-[1.2] text-[#363636] w-full focus:ring-0 p-0 placeholder:opacity-20 uppercase tracking-tight"
                         value={cat.name}
                         placeholder="e.g. CULINARY SPECIALS"
                         onChange={(e) => {
@@ -2672,7 +2672,7 @@ export default function AdminDashboardView() {
             <div className="flex flex-col gap-6">
               <div className="flex justify-between items-center bg-slate-50 p-6 rounded-[24px] border border-slate-300">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">Takeaway Menu</h3>
+                  <h3 className="text-xl mb-1 text-[#363636] font-normal leading-[1.2]">Takeaway Menu</h3>
                   <p className="text-slate-500 text-sm max-w-md">Manage your live takeaway items, pricing, and availability.</p>
                 </div>
                 <button
@@ -2713,7 +2713,7 @@ export default function AdminDashboardView() {
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Item Name</label>
                            <input 
                              type="text"
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
                              value={item.name}
                              placeholder="E.g. Chicken Burger"
                              onChange={(e) => {
@@ -2727,7 +2727,7 @@ export default function AdminDashboardView() {
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Category</label>
                            <input 
                              type="text"
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
                              value={item.category || ''}
                              placeholder="E.g. Starter"
                              onChange={(e) => {
@@ -2740,7 +2740,7 @@ export default function AdminDashboardView() {
                         <div>
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Type</label>
                            <select 
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
                              value={item.isVeg === false ? 'false' : 'true'}
                              onChange={(e) => {
                                const nextMenu = [...(editingRestaurant.liveMenu || [])];
@@ -2756,7 +2756,7 @@ export default function AdminDashboardView() {
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Price (₹)</label>
                            <input 
                              type="number"
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
                              value={item.price || ''}
                              placeholder="E.g. 199"
                              onChange={(e) => {
@@ -2769,7 +2769,7 @@ export default function AdminDashboardView() {
                         <div className="md:col-span-2">
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Description</label>
                            <textarea 
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all resize-none h-20 text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-[#363636] border-none focus:ring-2 focus:ring-brand/20 transition-all resize-none h-20 text-sm"
                              value={item.description || ''}
                              placeholder="Item details..."
                              onChange={(e) => {
@@ -2783,7 +2783,7 @@ export default function AdminDashboardView() {
                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Image URL</label>
                            <input 
                              type="text"
-                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-slate-900 border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
+                             className="w-full px-4 py-3 bg-slate-50 rounded-xl font-medium text-[#363636] border-none focus:ring-2 focus:ring-brand/20 transition-all text-sm"
                              value={item.image || ''}
                              placeholder="https://..."
                              onChange={(e) => {
@@ -2835,7 +2835,7 @@ export default function AdminDashboardView() {
                   <Gift size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                  <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                     Active Promotions
                   </h3>
                   <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 text-left">
@@ -2875,7 +2875,7 @@ export default function AdminDashboardView() {
                         Promotion Title
                       </label>
                       <input
-                        className="bg-transparent border-none text-xl font-display font-black text-slate-900 w-full focus:ring-0 p-0 placeholder:text-slate-200 uppercase tracking-tight"
+                        className="bg-transparent border-none text-xl font-normal leading-[1.2] text-[#363636] w-full focus:ring-0 p-0 placeholder:text-slate-200 uppercase tracking-tight"
                         value={offer.title}
                         placeholder="e.g. FLAT 20% OFF ON DINING"
                         onChange={(e) => {
@@ -2911,7 +2911,7 @@ export default function AdminDashboardView() {
                           <Database size={10} /> Description & Hook
                         </label>
                         <textarea
-                          className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm min-h-[80px] resize-none"
+                          className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] outline-none focus:border-brand transition-all text-sm shadow-sm min-h-[80px] resize-none"
                           value={offer.description || ""}
                           placeholder="Describe the offer value..."
                           onChange={(e) => {
@@ -2934,7 +2934,7 @@ export default function AdminDashboardView() {
                             Promo Code
                           </label>
                           <input
-                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-black text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm uppercase tracking-widest"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] outline-none focus:border-brand transition-all text-sm shadow-sm uppercase tracking-widest"
                             value={offer.promoCode || ""}
                             placeholder="e.g. BMT20"
                             onChange={(e) => {
@@ -2956,7 +2956,7 @@ export default function AdminDashboardView() {
                           </label>
                           <input
                             type="date"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] outline-none focus:border-brand transition-all text-sm shadow-sm"
                             value={offer.validFrom || ""}
                             onChange={(e) => {
                               const next = [...offers];
@@ -2977,7 +2977,7 @@ export default function AdminDashboardView() {
                           </label>
                           <input
                             type="date"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 outline-none focus:border-brand transition-all text-sm shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] outline-none focus:border-brand transition-all text-sm shadow-sm"
                             value={offer.validUntil || ""}
                             onChange={(e) => {
                               const next = [...offers];
@@ -3103,7 +3103,7 @@ export default function AdminDashboardView() {
                   <Megaphone size={24} />
                 </div>
                 <div className="text-left">
-                  <h3 className="text-xl font-display font-black text-slate-900 tracking-tight uppercase">
+                  <h3 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                     Advertisement Campaigns
                   </h3>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -3117,7 +3117,6 @@ export default function AdminDashboardView() {
                   setEditingRestaurant({
                     ...editingRestaurant,
                     advertisements: [
-                      ...(editingRestaurant.advertisements || []),
                       {
                         id: Math.random().toString(36).substr(2, 9),
                         title: "",
@@ -3125,6 +3124,7 @@ export default function AdminDashboardView() {
                         active: true,
                         validFrom: new Date().toISOString().split("T")[0],
                       },
+                      ...(editingRestaurant.advertisements || []),
                     ],
                   })
                 }
@@ -3150,7 +3150,7 @@ export default function AdminDashboardView() {
                               ad.active ? "bg-green-500" : "bg-slate-300",
                             )}
                           />
-                          <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">
+                          <h4 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">
                             Ad Slot #{idx + 1}
                           </h4>
                         </div>
@@ -3183,7 +3183,7 @@ export default function AdminDashboardView() {
                             Campaign Title
                           </label>
                           <input
-                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm"
                             value={ad.title}
                             onChange={(e) => {
                               const next = [
@@ -3204,7 +3204,7 @@ export default function AdminDashboardView() {
                             Description / Hook Line
                           </label>
                           <textarea
-                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm min-h-[80px]"
+                            className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm min-h-[80px]"
                             value={ad.description || ""}
                             onChange={(e) => {
                               const next = [
@@ -3227,22 +3227,28 @@ export default function AdminDashboardView() {
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                               Poster Image URL
                             </label>
-                            <div className="flex gap-2">
-                              <input
-                                className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
-                                value={ad.image || ""}
-                                onChange={(e) => {
-                                  const next = [
-                                    ...(editingRestaurant.advertisements || []),
-                                  ];
-                                  next[idx] = { ...ad, image: e.target.value };
-                                  setEditingRestaurant({
-                                    ...editingRestaurant,
-                                    advertisements: next,
-                                  });
-                                }}
-                                placeholder="https://..."
-                              />
+                            <div className="flex flex-col gap-2">
+                              {ad.image && (
+                                <div className="relative w-full h-32 rounded-2xl overflow-hidden bg-slate-100 border border-slate-300 shadow-sm">
+                                  <img src={ad.image} className="w-full h-full object-contain" alt="Ad Preview" />
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                <input
+                                  className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm"
+                                  value={ad.image || ""}
+                                  onChange={(e) => {
+                                    const next = [
+                                      ...(editingRestaurant.advertisements || []),
+                                    ];
+                                    next[idx] = { ...ad, image: e.target.value };
+                                    setEditingRestaurant({
+                                      ...editingRestaurant,
+                                      advertisements: next,
+                                    });
+                                  }}
+                                  placeholder="https://..."
+                                />
                               <input
                                 type="file"
                                 id={`ad-image-upload-${idx}`}
@@ -3288,6 +3294,7 @@ export default function AdminDashboardView() {
                                 <Upload size={18} />
                               </button>
                             </div>
+                           </div>
                           </div>
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
@@ -3295,7 +3302,7 @@ export default function AdminDashboardView() {
                             </label>
                             <div className="flex gap-2">
                               <input
-                                className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                                className="flex-grow px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm"
                                 value={ad.videoUrl || ""}
                                 onChange={(e) => {
                                   const next = [
@@ -3326,7 +3333,7 @@ export default function AdminDashboardView() {
                             </label>
                             <input
                               type="date"
-                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm"
                               value={ad.validFrom || ""}
                               onChange={(e) => {
                                 const next = [
@@ -3345,11 +3352,11 @@ export default function AdminDashboardView() {
                           </div>
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                              End Date
+                              Valid Until
                             </label>
                             <input
                               type="date"
-                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-bold text-slate-800 focus:border-brand outline-none shadow-sm"
+                              className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none shadow-sm"
                               value={ad.validUntil || ""}
                               onChange={(e) => {
                                 const next = [
@@ -3395,7 +3402,7 @@ export default function AdminDashboardView() {
                   <div className="p-5 bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-slate-200/50">
                     <Megaphone size={32} className="text-slate-300" />
                   </div>
-                  <h4 className="text-xl font-display font-black text-slate-900 uppercase">
+                  <h4 className="text-xl uppercase text-[#363636] font-normal leading-[1.2]">
                     No Active Campaigns
                   </h4>
                   <p className="text-sm font-bold text-slate-400 mt-2">
@@ -3419,7 +3426,7 @@ export default function AdminDashboardView() {
               <div className="flex items-center gap-4 text-red-600">
                 <AlertCircle size={28} />
                 <div>
-                  <h3 className="text-lg font-display font-black">
+                  <h3 className="text-lg font-normal leading-[1.2]">
                     System Override
                   </h3>
                   <p className="text-[9px] font-black uppercase tracking-widest opacity-60">
@@ -3431,7 +3438,7 @@ export default function AdminDashboardView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-red-100 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-black text-slate-900">
+                    <p className="text-xs font-normal text-[#363636] leading-[1.2]">
                       Platform Approval
                     </p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
@@ -3466,7 +3473,7 @@ export default function AdminDashboardView() {
                     <History size={20} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-white/50 uppercase tracking-widest">
+                    <p className="text-[9px] font-normal leading-[1.2] text-white/50 uppercase tracking-widest">
                       Modification Trace
                     </p>
                     <p className="text-xs font-bold mt-0.5">
@@ -3542,7 +3549,7 @@ export default function AdminDashboardView() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-4xl font-display font-black text-white tracking-tight leading-none">
+              <h1 className="text-4xl text-white font-normal leading-[1.2]">
                 Admin Hub
               </h1>
               <p className="text-slate-400 font-bold text-sm uppercase tracking-widest mt-2 opacity-60">
@@ -3562,7 +3569,7 @@ export default function AdminDashboardView() {
                 value={importCity}
                 onChange={(e) => setImportCity(e.target.value)}
                 placeholder="Area, City (e.g. Pune, Mumbai)"
-                className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl font-bold text-slate-800 shadow-sm focus:ring-4 focus:ring-brand/10 outline-none transition-all"
+                className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl font-normal text-[#363636] leading-[1.2] shadow-sm focus:ring-4 focus:ring-brand/10 outline-none transition-all"
               />
             </div>
             <button
@@ -3713,7 +3720,7 @@ export default function AdminDashboardView() {
               <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-2 opacity-50">
                 {stat.label}
               </p>
-              <p className="text-4xl font-display font-black text-white">
+              <p className="text-4xl font-normal leading-[1.2] text-white">
                 {stat.value}
               </p>
 
@@ -3728,7 +3735,7 @@ export default function AdminDashboardView() {
 
         {/* Quick Access System Management */}
         <div className="mb-16">
-          <h2 className="text-2xl font-display font-black text-vibrant-dark mb-6 flex items-center gap-2">
+          <h2 className="text-2xl mb-6 flex items-center gap-2 text-[#363636] font-normal leading-[1.2]">
             <Settings2 className="text-brand" /> System Architecture
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -3741,7 +3748,7 @@ export default function AdminDashboardView() {
                   <Globe size={24} />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-black text-vibrant-dark">
+                  <p className="text-sm font-normal leading-[1.2] text-[#363636]">
                     Manage Cities
                   </p>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -3764,7 +3771,7 @@ export default function AdminDashboardView() {
                   <Soup size={24} />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-black text-vibrant-dark">
+                  <p className="text-sm font-normal leading-[1.2] text-[#363636]">
                     Manage Cuisines
                   </p>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -3845,7 +3852,7 @@ export default function AdminDashboardView() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-3xl font-display font-black text-vibrant-dark tracking-tighter">
+                  <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                     Review Queue
                   </h2>
                   <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
@@ -3876,7 +3883,7 @@ export default function AdminDashboardView() {
                         <div className="flex-grow space-y-4">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[10px] font-black text-brand bg-brand/10 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                              <span className="text-[10px] font-normal leading-[1.2] text-brand bg-brand/10 px-2 py-0.5 rounded-md uppercase tracking-widest">
                                 Application #ID-
                                 {res.id?.slice(-4).toUpperCase()}
                               </span>
@@ -3889,7 +3896,7 @@ export default function AdminDashboardView() {
                                   : "N/A"}
                               </span>
                             </div>
-                            <h3 className="text-2xl font-display font-black text-slate-900 leading-tight">
+                            <h3 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                               {res.name}
                             </h3>
                             <p className="text-slate-400 font-bold text-sm flex items-center gap-1 mt-1">
@@ -3990,7 +3997,7 @@ export default function AdminDashboardView() {
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-vibrant-dark tracking-tighter">
+                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                       Active Fleet Control
                     </h2>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
@@ -4011,7 +4018,7 @@ export default function AdminDashboardView() {
                           className={cn(
                             "px-4 py-2 rounded-lg text-[10px] font-black transition-all",
                             statusFilter === f.id
-                              ? "bg-white text-slate-900 shadow-sm"
+                              ? "bg-white text-[#363636] shadow-sm"
                               : "text-slate-400 hover:text-slate-600",
                           )}
                         >
@@ -4054,7 +4061,7 @@ export default function AdminDashboardView() {
                         </div>
                         <div className="flex-grow">
                           <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-display font-black text-vibrant-dark text-xl group-hover:text-brand transition-colors">
+                            <h4 className="text-xl group-hover:text-brand transition-colors text-[#363636] font-normal leading-[1.2]">
                               {res.name}
                             </h4>
                             {!res.approved && (
@@ -4205,7 +4212,7 @@ export default function AdminDashboardView() {
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-vibrant-dark tracking-tighter">
+                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                       Live Business Pulse
                     </h2>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
@@ -4242,7 +4249,7 @@ export default function AdminDashboardView() {
                           className={cn(
                             "px-4 py-2 rounded-lg text-[10px] font-black transition-all",
                             bookingFilter === f.id
-                              ? "bg-white text-slate-900 shadow-sm"
+                              ? "bg-white text-[#363636] shadow-sm"
                               : "text-slate-400 hover:text-slate-600",
                           )}
                         >
@@ -4292,7 +4299,7 @@ export default function AdminDashboardView() {
                           </div>
                           <div className="flex-grow">
                             <div className="flex items-center justify-between mb-1">
-                              <p className="text-xl font-display font-black text-vibrant-dark">
+                              <p className="text-xl font-normal leading-[1.2] text-[#363636]">
                                 {booking.userName}
                               </p>
                               <div className="flex items-center gap-2 text-slate-400">
@@ -4357,7 +4364,7 @@ export default function AdminDashboardView() {
                 className="space-y-8"
               >
                 <div>
-                  <h2 className="text-3xl font-display font-black text-vibrant-dark tracking-tighter">
+                  <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                     Portal Configuration
                   </h2>
                   <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
@@ -4384,7 +4391,7 @@ export default function AdminDashboardView() {
                           )}
                         </div>
                         <div>
-                          <p className="font-display font-black text-slate-900 text-lg uppercase tracking-tight">
+                          <p className="font-normal leading-[1.2] text-[#363636] text-lg uppercase tracking-tight">
                             Coming Soon Splash
                           </p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
@@ -4422,7 +4429,7 @@ export default function AdminDashboardView() {
                         <Settings size={24} />
                       </div>
                       <div>
-                        <p className="font-display font-black text-slate-400 text-lg uppercase tracking-tight">
+                        <p className="font-normal leading-[1.2] text-slate-400 text-lg uppercase tracking-tight">
                           Advanced System Lockdown
                         </p>
                         <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">
@@ -4466,7 +4473,7 @@ export default function AdminDashboardView() {
                       <p className="text-[10px] font-black text-vibrant-gray uppercase tracking-widest leading-none mb-3 opacity-50">
                         {stat.label}
                       </p>
-                      <p className="text-5xl font-display font-black text-vibrant-dark tracking-tighter">
+                      <p className="text-5xl font-normal leading-[1.2] text-[#363636] tracking-tighter">
                         {stat.value}
                       </p>
                     </motion.button>
@@ -4474,7 +4481,7 @@ export default function AdminDashboardView() {
                 </div>
 
                 <div>
-                  <h2 className="text-2xl font-display font-black text-vibrant-dark mb-8 flex items-center gap-2">
+                  <h2 className="text-2xl mb-8 flex items-center gap-2 text-[#363636] font-normal leading-[1.2]">
                     <Database className="text-brand" /> Core Master Data Control
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -4487,7 +4494,7 @@ export default function AdminDashboardView() {
                           <Globe size={36} />
                         </div>
                         <div className="text-left">
-                          <p className="text-2xl font-display font-black text-vibrant-dark">
+                          <p className="text-2xl font-normal leading-[1.2] text-[#363636]">
                             City Fleet
                           </p>
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -4510,7 +4517,7 @@ export default function AdminDashboardView() {
                           <Soup size={36} />
                         </div>
                         <div className="text-left">
-                          <p className="text-2xl font-display font-black text-vibrant-dark">
+                          <p className="text-2xl font-normal leading-[1.2] text-[#363636]">
                             Cuisine Master
                           </p>
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -4571,7 +4578,7 @@ export default function AdminDashboardView() {
                       <Store size={24} />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-display font-black text-slate-900">
+                      <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                         {selectedAreaForRestaurants
                           ? `Restaurants in ${selectedAreaForRestaurants}`
                           : selectedCityForRestaurants
@@ -4610,14 +4617,14 @@ export default function AdminDashboardView() {
                           className="bg-white border border-gray-100 rounded-2xl p-6 text-left hover:border-brand hover:shadow-lg transition-all group flex items-center justify-between"
                         >
                           <div className="min-w-0 pr-4">
-                            <p className="font-display font-bold text-slate-900 text-lg group-hover:text-brand truncate">
+                            <p className="font-normal leading-[1.2] text-[#363636] text-lg group-hover:text-brand truncate">
                               {city}
                             </p>
                             <p className="text-xs text-vibrant-gray font-medium mt-1">
                               View areas
                             </p>
                           </div>
-                          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-black text-brand text-lg">
+                          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-normal leading-[1.2] text-brand text-lg">
                             {count}
                           </div>
                         </button>
@@ -4639,14 +4646,14 @@ export default function AdminDashboardView() {
                           className="bg-white border border-gray-100 rounded-2xl p-6 text-left hover:border-brand hover:shadow-lg transition-all group flex items-center justify-between"
                         >
                           <div className="min-w-0 pr-4">
-                            <p className="font-display font-bold text-slate-900 text-lg group-hover:text-brand truncate">
+                            <p className="font-normal leading-[1.2] text-[#363636] text-lg group-hover:text-brand truncate">
                               {area}
                             </p>
                             <p className="text-xs text-vibrant-gray font-medium mt-1">
                               View restaurants
                             </p>
                           </div>
-                          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-black text-brand text-lg shrink-0">
+                          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center font-normal leading-[1.2] text-brand text-lg shrink-0">
                             {count}
                           </div>
                         </button>
@@ -4717,7 +4724,7 @@ export default function AdminDashboardView() {
                                   className="w-20 h-20 rounded-xl object-cover"
                                 />
                                 <div>
-                                  <h3 className="font-display font-black text-slate-900 text-lg">
+                                  <h3 className="text-lg text-[#363636] font-normal leading-[1.2]">
                                     {res.name}
                                   </h3>
                                   <div className="flex items-center gap-3 mt-2 text-xs font-bold">
@@ -4783,7 +4790,7 @@ export default function AdminDashboardView() {
               >
                 <div className="p-10 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-vibrant-dark">
+                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                       Member Directory
                     </h2>
                     <p className="text-slate-500 font-bold mt-1 uppercase text-[10px] tracking-widest">
@@ -4810,7 +4817,7 @@ export default function AdminDashboardView() {
                       placeholder="Search users by name, email, or restaurant..."
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
-                      className="w-full pl-16 pr-8 py-6 bg-white border border-slate-300 rounded-[32px] outline-none focus:ring-8 focus:ring-brand/5 font-bold text-xl text-slate-800 shadow-sm"
+                      className="w-full pl-16 pr-8 py-6 bg-white border border-slate-300 rounded-[32px] outline-none focus:ring-8 focus:ring-brand/5 text-xl text-[#363636] shadow-sm font-normal leading-[1.2]"
                     />
                   </div>
                 </div>
@@ -4843,14 +4850,14 @@ export default function AdminDashboardView() {
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <span className="font-black text-brand text-lg">
+                                    <span className="font-normal leading-[1.2] text-brand text-lg">
                                       {u.displayName?.charAt(0) ||
                                         u.email.charAt(0)}
                                     </span>
                                   )}
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="font-black text-vibrant-dark text-xl leading-tight">
+                                  <span className="font-normal leading-[1.2] text-[#363636] text-xl leading-tight">
                                     {u.displayName || "Anonymous"}
                                   </span>
                                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -4862,7 +4869,7 @@ export default function AdminDashboardView() {
                             <td className="py-8">
                               {u.bizName ? (
                                 <div className="flex flex-col">
-                                  <span className="text-sm font-black text-brand">
+                                  <span className="text-sm font-normal leading-[1.2] text-brand">
                                     {u.bizName}
                                   </span>
                                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase mt-1">
@@ -4928,7 +4935,7 @@ export default function AdminDashboardView() {
               >
                 <div className="p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 flex-shrink-0">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-vibrant-dark">
+                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                       City Fleet
                     </h2>
                     <p className="text-slate-500 font-bold mt-1 uppercase text-[10px] tracking-widest">
@@ -5000,7 +5007,7 @@ export default function AdminDashboardView() {
                             />
                           </div>
                           <div>
-                            <span className="text-xl font-black text-vibrant-dark block">
+                            <span className="text-xl font-normal leading-[1.2] text-[#363636] block">
                               {city.name}
                             </span>
                             <div className="flex items-center gap-2 mt-1">
@@ -5062,7 +5069,7 @@ export default function AdminDashboardView() {
                 className="bg-white w-full max-w-md rounded-[32px] overflow-hidden relative z-10 shadow-2xl"
               >
                 <form onSubmit={handleSaveCity} className="p-10 space-y-6">
-                  <h3 className="text-3xl font-display font-black text-slate-900 mb-8">
+                  <h3 className="text-3xl mb-8 text-[#363636] font-normal leading-[1.2]">
                     {editingCity.id ? "Refine City" : "Deploy New City"}
                   </h3>
 
@@ -5234,7 +5241,7 @@ export default function AdminDashboardView() {
               >
                 <div className="p-10 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-6 flex-shrink-0">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-vibrant-dark">
+                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
                       Cuisine Menu
                     </h2>
                     <p className="text-slate-500 font-bold mt-1 uppercase text-[10px] tracking-widest">
@@ -5301,7 +5308,7 @@ export default function AdminDashboardView() {
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                          <h4 className="absolute bottom-4 left-6 text-white font-black text-xl">
+                          <h4 className="absolute bottom-4 left-6 text-white text-xl font-normal leading-[1.2]">
                             {cuisine.name}
                           </h4>
                         </div>
@@ -5352,7 +5359,7 @@ export default function AdminDashboardView() {
                 className="bg-white w-full max-w-md rounded-[32px] overflow-hidden relative z-10 shadow-2xl"
               >
                 <form onSubmit={handleSaveCuisine} className="p-10 space-y-6">
-                  <h3 className="text-3xl font-display font-black text-slate-900 mb-8">
+                  <h3 className="text-3xl mb-8 text-[#363636] font-normal leading-[1.2]">
                     {editingCuisine.id ? "Refine Flavor" : "Add New Flavor"}
                   </h3>
 
@@ -5445,7 +5452,7 @@ export default function AdminDashboardView() {
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden relative z-10 shadow-2xl p-8"
               >
-                <h3 className="text-xl font-display font-black text-slate-900 mb-6 tracking-tight">
+                <h3 className="text-xl mb-6 text-[#363636] font-normal leading-[1.2]">
                   Adjust Restaurant Rating
                 </h3>
                 <div className="space-y-6">
@@ -5511,7 +5518,7 @@ export default function AdminDashboardView() {
                 {/* Sidebar Navigation - Desktop */}
                 <div className="hidden md:flex flex-col w-64 bg-slate-50 border-r border-slate-300 shrink-0">
                   <div className="p-6">
-                    <h2 className="text-lg font-display font-black text-slate-900 leading-tight">
+                    <h2 className="text-lg text-[#363636] font-normal leading-[1.2]">
                       Master Config
                     </h2>
                     <p className="text-slate-400 font-black text-[9px] uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
@@ -5545,7 +5552,7 @@ export default function AdminDashboardView() {
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                           activeEditTab === tab.id
-                            ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/50"
+                            ? "bg-white text-[#363636] shadow-sm ring-1 ring-slate-200/50"
                             : "text-slate-400 hover:text-slate-600 hover:bg-white/50",
                         )}
                       >
@@ -5581,7 +5588,7 @@ export default function AdminDashboardView() {
                   {/* Mobile Header / Desktop Top Action Bar */}
                   <div className="px-6 py-2 md:px-8 md:py-3 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
                     <div className="flex flex-col min-w-0 pr-4">
-                      <p className="text-4xl font-display font-black text-slate-900 truncate max-w-[120px] md:max-w-md leading-tight">
+                      <p className="text-4xl font-normal leading-[1.2] text-[#363636] truncate max-w-[120px] md:max-w-md leading-tight">
                         {editingRestaurant.name}
                       </p>
                       <p className="text-lg font-bold text-slate-400 truncate max-w-[120px] md:max-w-md leading-tight whitespace-nowrap">

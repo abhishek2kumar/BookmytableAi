@@ -78,7 +78,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-[#363636] overflow-x-hidden flex flex-col font-sans">
       {/* Hero Banner with Background Image */}
       <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden rounded-b-[40px] md:rounded-b-[60px] shadow-sm">
         <div 
@@ -110,10 +110,10 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
             </div>
 
             <div className="space-y-4 px-4">
-              <h2 className="text-xl md:text-2xl font-medium text-slate-300 tracking-wide">
+              <h2 className="text-xl md:text-2xl text-slate-300 tracking-wide font-normal leading-[1.2]">
                 Something delicious is coming back...
               </h2>
-              <h3 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight">
+              <h3 className="text-4xl md:text-6xl lg:text-7xl text-white font-normal leading-[1.2]">
                 We’re setting the table <br className="hidden md:block" /> for something bigger.
               </h3>
             </div>
@@ -129,7 +129,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 bg-white border border-slate-300 text-slate-800 px-6 py-2.5 rounded-full text-sm font-semibold mb-12 shadow-md hover:shadow-lg transition-shadow"
+              className="inline-flex items-center gap-2 bg-white border border-slate-300 text-[#363636] px-6 py-2.5 rounded-full text-sm mb-12 shadow-md hover:shadow-lg transition-shadow font-normal leading-[1.2]"
             >
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
@@ -143,7 +143,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-3xl md:text-5xl text-slate-900 font-bold leading-tight tracking-tight"
+                className="text-3xl md:text-5xl font-normal text-[#363636] leading-[1.2] leading-tight tracking-tight"
               >
                 A better way to reserve, discover & dine.
               </motion.p>
@@ -155,7 +155,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
               >
                 We’re working behind the scenes using cutting-edge technology to deliver a faster, cleaner, and more premium platform for food lovers and restaurants.
                 <br className="hidden md:block mt-2" />
-                <span className="text-slate-800 font-medium">We’re coming back smarter, faster & tastier.</span>
+                <span className="text-[#363636] font-medium">We’re coming back smarter, faster & tastier.</span>
               </motion.p>
             </div>
 
@@ -177,7 +177,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
                       <CheckCircle2 size={28} />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-green-900 font-semibold text-xl">You're on the list!</h3>
+                      <h3 className="text-green-900 text-xl font-normal leading-[1.2]">You're on the list!</h3>
                       <p className="text-green-700 text-sm">We'll notify you the moment we launch.</p>
                     </div>
                   </motion.div>
@@ -189,7 +189,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
                         <input 
                           type="email" 
                           placeholder="Enter your email address"
-                          className="w-full pl-14 pr-4 py-4 bg-transparent border-none outline-none focus:ring-0 text-slate-800 placeholder:text-slate-400 text-base"
+                          className="w-full pl-14 pr-4 py-4 bg-transparent border-none outline-none focus:ring-0 text-[#363636] placeholder:text-slate-400 text-base"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           disabled={status === "loading"}
@@ -215,14 +215,14 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
               <div className="mt-8 flex flex-row items-center justify-center gap-6 text-sm">
                 <button 
                   onClick={handlePartnerClick}
-                  className="text-slate-500 hover:text-slate-900 font-medium transition-colors hover:underline underline-offset-4"
+                  className="text-slate-500 hover:text-[#363636] font-medium transition-colors hover:underline underline-offset-4"
                 >
                   Partner with us
                 </button>
                 <div className="w-1 h-1 rounded-full bg-slate-300"></div>
                 <button 
                   onClick={handleContactClick}
-                  className="text-slate-500 hover:text-slate-900 font-medium transition-colors hover:underline underline-offset-4"
+                  className="text-slate-500 hover:text-[#363636] font-medium transition-colors hover:underline underline-offset-4"
                 >
                   Contact support
                 </button>
@@ -236,7 +236,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
       <div className="py-24 bg-white border-t border-slate-300 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">Designed for restaurant success</h2>
+            <h2 className="text-3xl md:text-4xl text-[#363636] font-normal leading-[1.2]">Designed for restaurant success</h2>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto">
               Empower your restaurant with our next-gen management suite. hover over features to discover.
             </p>
@@ -255,7 +255,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
                 <div className="w-12 h-12 bg-white group-hover:bg-slate-900 group-hover:text-white transition-colors rounded-xl flex items-center justify-center shadow-sm text-slate-700 mb-6 border border-slate-300">
                   <feature.icon size={22} strokeWidth={2} />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">{feature.title}</h3>
+                <h3 className="text-lg mb-2 text-[#363636] font-normal leading-[1.2]">{feature.title}</h3>
                 <p className="text-slate-500 text-sm leading-relaxed">
                   {feature.desc}
                 </p>
@@ -266,7 +266,7 @@ export default function ComingSoonView({ onContactClick, onPartnerClick }: Comin
           <div className="mt-16 text-center">
             <button 
               onClick={handlePartnerClick}
-              className="inline-flex items-center gap-2 text-slate-900 font-semibold text-lg hover:gap-4 transition-all group border-b border-slate-300 hover:border-slate-900 pb-1"
+              className="inline-flex items-center gap-2 font-normal text-[#363636] leading-[1.2] text-lg hover:gap-4 transition-all group border-b border-slate-300 hover:border-slate-900 pb-1"
             >
               Partner with BookMyTable <span className="transform transition-transform text-orange-500 group-hover:translate-x-1">→</span>
             </button>

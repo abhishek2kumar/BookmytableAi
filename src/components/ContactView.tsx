@@ -44,7 +44,7 @@ export default function ContactView() {
           <motion.h3 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-6xl font-display font-black text-vibrant-dark mb-4 mt-8 md:mt-0"
+            className="text-4xl md:text-6xl font-normal leading-[1.2] text-[#363636] mb-4 mt-8 md:mt-0"
           >
             Get in Touch
           </motion.h3>
@@ -66,8 +66,8 @@ export default function ContactView() {
                   <Mail size={24} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Email Us</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">contact@bookmytable.co.in</p>
+                  <h3 className="text-sm text-slate-400 uppercase tracking-widest font-normal leading-[1.2]">Email Us</h3>
+                  <p className="text-lg font-normal leading-[1.2] text-[#363636]">contact@bookmytable.co.in</p>
                 </div>
               </div>
 
@@ -76,8 +76,8 @@ export default function ContactView() {
                   <Phone size={24} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Call Us</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">+91 8639636729 </p>
+                  <h3 className="text-sm text-slate-400 uppercase tracking-widest font-normal leading-[1.2]">Call Us</h3>
+                  <p className="text-lg font-normal leading-[1.2] text-[#363636]">+91 8639636729 </p>
                 </div>
               </div>
 
@@ -86,8 +86,8 @@ export default function ContactView() {
                   <MapPin size={24} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">Head Office</h3>
-                  <p className="text-lg font-bold text-vibrant-dark">Pune, India</p>
+                  <h3 className="text-sm text-slate-400 uppercase tracking-widest font-normal leading-[1.2]">Head Office</h3>
+                  <p className="text-lg font-normal leading-[1.2] text-[#363636]">Pune, India</p>
                 </div>
               </div>
             </div>
@@ -97,7 +97,7 @@ export default function ContactView() {
                  <Mail size={120} />
                </div>
                <div className="relative z-10">
-                 <h3 className="text-xl font-display font-bold mb-2">Partner with us</h3>
+                 <h3 className="text-xl mb-2 font-normal leading-[1.2]">Partner with us</h3>
                  <p className="text-white/60 text-sm font-medium mb-6">Want to list your restaurant? Reach out to our sales team.</p>
                  <button onClick={() => {
                    navigate('/onboarding-request');
@@ -119,7 +119,7 @@ export default function ContactView() {
                   <div className="w-20 h-20 bg-vibrant-success/10 text-vibrant-success rounded-full flex items-center justify-center mb-6">
                     <CheckCircle2 size={48} />
                   </div>
-                  <h2 className="text-3xl font-display font-bold text-vibrant-dark mb-2">Message Sent!</h2>
+                  <h2 className="text-3xl mb-2 text-[#363636] font-normal leading-[1.2]">Message Sent!</h2>
                   <p className="text-vibrant-gray font-medium">Thank you for reaching out. We'll get back to you shortly!</p>
                   <button 
                     onClick={() => setSubmitted(false)}

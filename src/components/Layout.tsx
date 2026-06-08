@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { 
@@ -42,8 +42,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [citySearchQuery, setCitySearchQuery] = useState('');
 
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const locationDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileProfileBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        profileDropdownRef.current && 
+        !profileDropdownRef.current.contains(event.target as Node) &&
+        (!mobileProfileBtnRef.current || !mobileProfileBtnRef.current.contains(event.target as Node))
+      ) {
+        setIsProfileOpen(false);
+      }
+      if (locationDropdownRef.current && !locationDropdownRef.current.contains(event.target as Node)) {
+        setIsLocationModalOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Redirect owner to Manage tab on login
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.role === 'owner' && !hasRedirected) {
       if (location.pathname === '/') {
         setHasRedirected(true);
@@ -97,9 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/nearby');
   };
 
-  const navItems = [
-    { label: 'Bookings', path: profile?.role === 'owner' ? '/owner?tab=bookings' : '/dashboard', icon: Calendar },
-  ];
+  const navItems: { label: string; path: string; icon: any }[] = [];
 
   if (profile?.role === 'owner') {
     navItems.push({ label: 'Manage', path: '/owner', icon: LayoutDashboard });
@@ -143,18 +164,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-4 sm:gap-8">
                 <Link to="/" className="flex items-center gap-3 group shrink-0">
                   <AppIcon size={44} className="group-hover:scale-110 transition-transform duration-300" />
-                  <span className="hidden lg:block text-2xl font-display font-black text-vibrant-dark tracking-tighter">
+                  <span className="hidden lg:block text-2xl font-bold leading-[1.2] text-[#363636] tracking-tighter">
                     Bookmy<span className="text-brand">Table</span>
                   </span>
                 </Link>
   
                 {/* Location Picker (Swiggy Style) */}
-                <div className="relative">
+                <div className="relative" ref={locationDropdownRef}>
                   <button 
                     onClick={() => setIsLocationModalOpen(!isLocationModalOpen)}
                     className="flex items-center gap-1.5 group cursor-pointer border-l border-gray-200 pl-4 sm:pl-6 py-1 hover:text-brand transition-all max-w-[150px] sm:max-w-none"
                   >
-                    <span className="text-xs font-bold text-vibrant-dark group-hover:text-brand border-b-2 border-vibrant-dark group-hover:border-brand transition-all whitespace-nowrap truncate leading-tight">
+                    <span className="text-sm md:text-base font-bold leading-[1.2] text-[#363636] group-hover:text-brand border-b-2 border-vibrant-dark group-hover:border-brand transition-all whitespace-nowrap truncate leading-tight">
                       {isDetecting ? 'Detecting...' : city}
                     </span>
                     <ChevronDown size={14} className="text-brand transition-transform duration-200 group-hover:translate-y-0.5 shrink-0" />
@@ -203,7 +224,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               <button
                                 key={c.name}
                                 onClick={() => handleCitySelect(c.name, c.lat, c.lng)}
-                                className="w-full text-left px-4 py-3 text-sm font-semibold text-vibrant-dark hover:bg-slate-50 hover:text-brand rounded-xl transition-all"
+                                className="w-full text-left px-4 py-3 text-sm font-normal text-[#363636] leading-[1.2] hover:bg-slate-50 hover:text-brand rounded-xl transition-all"
                               >
                                 {c.name}
                               </button>
@@ -244,14 +265,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {profile ? (
                   <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                     <div className="hidden sm:block text-right">
-                      <p className="text-sm font-semibold text-vibrant-dark leading-none">
+                      <p className="text-sm font-normal text-[#363636] leading-[1.2] leading-none">
                         {profile.displayName}
                       </p>
                       <p className="text-xs text-vibrant-gray mt-1 capitalize">
                         {profile.role}
                       </p>
                     </div>
-                    <div className="relative">
+                    <div className="relative" ref={profileDropdownRef}>
                       <img
                         src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
                         alt="Avatar"
@@ -272,7 +293,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           >
                             <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 w-48 ring-4 ring-black/5">
                               <div className="px-3 py-2 mb-2 border-b border-gray-50 md:hidden">
-                                <p className="text-sm font-semibold text-vibrant-dark truncate">
+                                <p className="text-sm font-normal text-[#363636] leading-[1.2] truncate">
                                   {profile.displayName}
                                 </p>
                                 <p className="text-xs text-vibrant-gray capitalize">
@@ -358,7 +379,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-6 md:px-4">
           <div className="flex items-center justify-center gap-3 mb-6 opacity-80 filter grayscale brightness-200">
             <AppIcon size={32} />
-            <span className="text-2xl font-display font-bold">Bookmytable</span>
+            <span className="text-2xl font-normal leading-[1.2]">Bookmytable</span>
           </div>
           <p className="text-sm mb-10 max-w-sm mx-auto text-center">
             The best way to book a table at your favorite restaurants.
@@ -428,6 +449,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {profile ? (
             <button
+              ref={mobileProfileBtnRef}
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className={cn(
                 "flex flex-col items-center gap-1 transition-all active:scale-95",

@@ -92,7 +92,7 @@ export default function TakeawayView() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <AlertCircle size={48} className="text-slate-400 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">
+        <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">
           Restaurant not found
         </h2>
         <button
@@ -343,7 +343,7 @@ export default function TakeawayView() {
             </button>
           )}
           <div className="flex-1 ml-2">
-            <h1 className="font-bold text-slate-900 text-lg sm:text-xl line-clamp-1">
+            <h1 className="text-lg sm:text-xl line-clamp-1 text-[#363636] font-normal leading-[1.2]">
               {restaurant.name}
             </h1>
             <div className="flex items-center gap-1 text-slate-500 text-xs">
@@ -364,7 +364,7 @@ export default function TakeawayView() {
                   <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <ShoppingBag className="text-slate-400" size={24} />
                   </div>
-                  <h3 className="font-bold text-slate-900">
+                  <h3 className="text-[#363636] font-normal leading-[1.2]">
                     No items available
                   </h3>
                   <p className="text-slate-500 text-sm mt-1 mb-4">
@@ -386,7 +386,7 @@ export default function TakeawayView() {
                             onClick={() => toggleCategory(cat)}
                             className="w-full flex items-center justify-between py-6 px-4 md:px-6 bg-white"
                           >
-                            <h2 className="text-xl md:text-2xl font-bold text-slate-900">
+                            <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                               {cat} ({items.length})
                             </h2>
                             {isCollapsed ? (
@@ -427,7 +427,7 @@ export default function TakeawayView() {
                                         <div className="mb-2">
                                           <DietaryIcon isVeg={item.isVeg} />
                                         </div>
-                                        <h3 className="font-bold text-slate-800 md:text-lg leading-tight">
+                                        <h3 className="md:text-lg text-[#363636] font-normal leading-[1.2]">
                                           {item.name}
                                         </h3>
                                         <div className="font-medium text-slate-700 mt-1">
@@ -491,7 +491,7 @@ export default function TakeawayView() {
                                                   >
                                                     <Minus size={16} />
                                                   </button>
-                                                  <span className="text-sm font-bold text-slate-800">
+                                                  <span className="text-sm font-normal text-[#363636] leading-[1.2]">
                                                     {cart[item.id]}
                                                   </span>
                                                   <button
@@ -541,7 +541,7 @@ export default function TakeawayView() {
             <div className="hidden md:block w-80 shrink-0">
               <div className="sticky top-[104px]">
                 <div className="bg-white rounded-3xl p-6 border border-slate-300 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-                  <h3 className="font-bold text-slate-900 text-lg mb-6 flex items-center gap-2">
+                  <h3 className="text-lg mb-6 flex items-center gap-2 text-[#363636] font-normal leading-[1.2]">
                     <ShoppingBag size={20} className="text-brand" />
                     Your Cart
                   </h3>
@@ -567,7 +567,7 @@ export default function TakeawayView() {
                               className="flex justify-between items-start gap-4"
                             >
                               <div className="flex-1">
-                                <div className="font-bold text-slate-900 text-sm leading-tight flex items-start gap-2">
+                                <div className="font-normal text-[#363636] leading-[1.2] text-sm leading-tight flex items-start gap-2">
                                   <div className="shrink-0 w-4 h-4 mt-0.5 border-2 border-brand flex items-center justify-center">
                                     <div className="w-2 h-2 rounded-full bg-brand" />
                                   </div>
@@ -577,7 +577,7 @@ export default function TakeawayView() {
                                   ₹{item.price} × {quantity}
                                 </div>
                               </div>
-                              <div className="font-black text-slate-900">
+                              <div className="font-normal text-[#363636] leading-[1.2]">
                                 ₹{item.price * quantity}
                               </div>
                             </div>
@@ -604,7 +604,7 @@ export default function TakeawayView() {
                           <span>Platform Fee</span>
                           <span>₹20</span>
                         </div>
-                        <div className="flex justify-between font-black text-slate-900 text-lg pt-2 mt-2 border-t border-slate-300">
+                        <div className="flex justify-between font-normal text-[#363636] leading-[1.2] text-lg pt-2 mt-2 border-t border-slate-300">
                           <span>To Pay</span>
                           <span>
                             ₹
@@ -647,13 +647,13 @@ export default function TakeawayView() {
         {step === "checkout" && (
           <div className="max-w-xl mx-auto space-y-6">
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-300 shadow-sm">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">
+              <h2 className="text-2xl mb-6 text-[#363636] font-normal leading-[1.2]">
                 Checkout
               </h2>
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-widest">
+                  <h3 className="mb-3 text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">
                     Order Details
                   </h3>
                   <div className="bg-slate-50 p-4 rounded-xl space-y-4">
@@ -670,7 +670,7 @@ export default function TakeawayView() {
                               <DietaryIcon isVeg={item.isVeg} />
                             </div>
                             <div>
-                              <div className="font-bold text-slate-800 text-sm">
+                              <div className="font-normal text-[#363636] leading-[1.2] text-sm">
                                 {item.name}
                               </div>
                               <div className="font-medium text-slate-500 text-sm">
@@ -686,7 +686,7 @@ export default function TakeawayView() {
                               >
                                 <Minus size={14} />
                               </button>
-                              <span className="w-6 text-center text-sm font-bold text-slate-900">
+                              <span className="w-6 text-center text-sm font-normal text-[#363636] leading-[1.2]">
                                 {quantity}
                               </span>
                               <button
@@ -696,7 +696,7 @@ export default function TakeawayView() {
                                 <Plus size={14} />
                               </button>
                             </div>
-                            <span className="font-bold text-slate-900 text-sm">
+                            <span className="font-normal text-[#363636] leading-[1.2] text-sm">
                               ₹{item.price * quantity}
                             </span>
                           </div>
@@ -707,13 +707,13 @@ export default function TakeawayView() {
                     <div className="border-t border-slate-300 pt-4 space-y-2 text-sm">
                       <div className="flex justify-between text-slate-600">
                         <span>Item Total</span>
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-[#363636]">
                           ₹{cartTotal}
                         </span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>GST ({restaurant.gstPercentage || 5}%)</span>
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-[#363636]">
                           ₹
                           {Math.round(
                             ((restaurant.gstPercentage || 5) / 100) * cartTotal,
@@ -722,7 +722,7 @@ export default function TakeawayView() {
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>Platform Fee</span>
-                        <span className="font-medium text-slate-900">₹20</span>
+                        <span className="font-medium text-[#363636]">₹20</span>
                       </div>
                     </div>
 
@@ -746,7 +746,7 @@ export default function TakeawayView() {
                       <UserCheck className="text-brand" size={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-brand">
+                      <h3 className="text-brand font-normal leading-[1.2]">
                         {!user ? "Login Required" : "Contact Details Required"}
                       </h3>
                       <p className="text-sm text-brand/80 mt-1">
@@ -790,7 +790,7 @@ export default function TakeawayView() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h3 className="font-bold text-slate-900 mb-3 text-sm uppercase tracking-widest">
+                    <h3 className="mb-3 text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">
                       Payment Method
                     </h3>
                     <div className="flex flex-col sm:flex-row gap-3">
@@ -806,7 +806,7 @@ export default function TakeawayView() {
                         <div className="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center">
                           <div className="w-2.5 h-2.5 rounded-full bg-brand opacity-0 transition-opacity"></div>
                         </div>
-                        <span className="font-bold text-slate-900">
+                        <span className="font-normal text-[#363636] leading-[1.2]">
                           Pay Online
                         </span>
                       </label>
@@ -822,7 +822,7 @@ export default function TakeawayView() {
                         <div className="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center">
                           <div className="w-2.5 h-2.5 rounded-full bg-brand opacity-0 transition-opacity"></div>
                         </div>
-                        <span className="font-bold text-slate-900">
+                        <span className="font-normal text-[#363636] leading-[1.2]">
                           Pay at Restaurant
                         </span>
                       </label>
@@ -873,7 +873,7 @@ export default function TakeawayView() {
             >
               <CheckCircle2 size={48} className="text-green-500" />
             </motion.div>
-            <h2 className="text-3xl font-black text-slate-900 mb-2">
+            <h2 className="text-3xl mb-2 text-[#363636] font-normal leading-[1.2]">
               Order Confirmed!
             </h2>
             <p className="text-slate-500 mb-8">
@@ -890,7 +890,7 @@ export default function TakeawayView() {
               <div className="flex justify-between items-center pb-4 border-b border-slate-300 mb-4">
                 <div>
                   <div className="text-sm text-slate-500">Order ID</div>
-                  <div className="font-bold text-slate-900">
+                  <div className="font-normal text-[#363636] leading-[1.2]">
                     #BMT-{Math.floor(Math.random() * 1000000)}
                   </div>
                 </div>
@@ -900,7 +900,7 @@ export default function TakeawayView() {
                       <div className="text-sm text-amber-600 font-bold">
                         Payment Pending
                       </div>
-                      <div className="font-bold text-slate-900">
+                      <div className="font-normal text-[#363636] leading-[1.2]">
                         ₹
                         {cartTotal +
                           Math.round(

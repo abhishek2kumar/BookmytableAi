@@ -79,7 +79,7 @@ export default function CuisineView() {
      return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
              <Info size={48} className="text-slate-300 mb-4" />
-             <h2 className="text-xl font-bold">Cuisine not found</h2>
+             <h2 className="text-xl font-normal leading-[1.2]">Cuisine not found</h2>
              <button onClick={() => navigate('/')} className="mt-4 text-brand font-bold">Back to Home</button>
         </div>
      )
@@ -105,7 +105,7 @@ export default function CuisineView() {
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6"
           >
-            <Link to="/" className="text-xs font-black text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
+            <Link to="/" className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
                <ChevronLeft size={12} /> Back to explore
             </Link>
           </motion.div>
@@ -113,7 +113,7 @@ export default function CuisineView() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-display font-bold text-white mb-6 tracking-tight drop-shadow-2xl"
+            className="text-5xl md:text-7xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
           >
             {cuisineName}
           </motion.h1>
@@ -172,7 +172,7 @@ export default function CuisineView() {
                       <div className="absolute bottom-3 left-0 right-0 px-3 pointer-events-none">
                         <div className="bg-brand/90 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-lg border border-white/20 w-fit max-w-[90%]">
                           <Zap size={14} className="text-white fill-white" />
-                          <span className="text-[10px] font-black text-white tracking-tight truncate leading-none">
+                          <span className="text-[10px] font-normal leading-[1.2] text-white tracking-tight truncate leading-none">
                             {restaurant.offers[0].title}
                           </span>
                         </div>
@@ -182,7 +182,7 @@ export default function CuisineView() {
                   
                   <div className="p-5 flex flex-col flex-grow gap-1.5">
                     <div className="flex justify-between items-center gap-2">
-                      <h3 className="text-lg font-display font-bold text-slate-900 group-hover:text-brand transition-colors line-clamp-1 flex-1 leading-tight">
+                      <h3 className="text-lg group-hover:text-brand transition-colors line-clamp-1 flex-1 text-[#363636] font-normal leading-[1.2]">
                         {restaurant.name}
                       </h3>
                       <div className={cn("shrink-0 px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-sm border border-white/10", getRatingColor(restaurant.rating || 0))}>
@@ -204,7 +204,7 @@ export default function CuisineView() {
                         </span>
                       </div>
                       {restaurant.distance !== null && (
-                        <span className="shrink-0 text-[11px] font-black text-brand ml-2 bg-brand/5 px-2 py-0.5 rounded-full">
+                        <span className="shrink-0 text-[11px] font-normal leading-[1.2] text-brand ml-2 bg-brand/5 px-2 py-0.5 rounded-full">
                           {restaurant.distance} km
                         </span>
                       )}
@@ -216,7 +216,7 @@ export default function CuisineView() {
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-            <h3 className="text-xl font-display font-bold text-slate-900 mb-2">No {cuisineName} restaurants yet</h3>
+            <h3 className="text-xl mb-2 text-[#363636] font-normal leading-[1.2]">No {cuisineName} restaurants yet</h3>
             <p className="text-slate-500">We couldn't find any results in this category.</p>
           </div>
         )}

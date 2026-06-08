@@ -22,7 +22,7 @@ export default function OnboardingRequestView() {
                 <div className="w-20 h-20 bg-vibrant-success/20 text-vibrant-success rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle className="w-10 h-10" />
                 </div>
-                <h3 className="text-3xl font-display font-black mb-3">Request Received!</h3>
+                <h3 className="text-3xl mb-3 font-normal leading-[1.2]">Request Received!</h3>
                 <p className="text-white/60 mb-8 font-medium">Our team will get in touch with you shortly.</p>
                 <div className="flex gap-4 justify-center">
                   <button 
@@ -62,7 +62,7 @@ export default function OnboardingRequestView() {
                 }}
               >
                 <div className="text-center mb-10">
-                  <h3 className="text-3xl font-display font-black mb-3 text-white">Partner with us</h3>
+                  <h3 className="text-3xl mb-3 text-white font-normal leading-[1.2]">Partner with us</h3>
                   <p className="text-white/60 text-sm font-medium">Fill out the form below and our team will get in touch.</p>
                 </div>
                  

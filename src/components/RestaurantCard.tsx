@@ -42,7 +42,7 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           <div className="absolute bottom-4 left-0 right-0 px-4 pointer-events-none">
             <div className="bg-brand/90 backdrop-blur-md px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg border border-white/20 w-fit max-w-[95%]">
               <Zap size={14} className="text-white fill-white" />
-              <span className="text-[10px] md:text-xs font-black text-white tracking-tight truncate leading-none uppercase">
+              <span className="text-[10px] md:text-xs font-normal leading-[1.2] text-white tracking-tight truncate leading-none uppercase">
                 {restaurant.offers[0].title}
               </span>
             </div>
@@ -57,11 +57,11 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
       
       <div className="p-4 md:p-5 flex flex-col flex-grow gap-1.5 md:gap-2">
         <div className="flex justify-between items-start gap-4">
-          <h3 className="text-base md:text-lg font-display font-bold text-slate-900 group-hover:text-brand transition-colors line-clamp-1 flex-1 leading-tight">
+          <h3 className="text-base md:text-lg group-hover:text-brand transition-colors line-clamp-1 flex-1 text-[#363636] font-normal leading-[1.2]">
             {restaurant.name}
           </h3>
           {restaurant.distance !== undefined && restaurant.distance !== null && (
-            <span className="shrink-0 text-[10px] font-black text-brand bg-brand/5 px-2 py-1 rounded-lg">
+            <span className="shrink-0 text-[10px] font-normal leading-[1.2] text-brand bg-brand/5 px-2 py-1 rounded-lg">
               {restaurant.distance} km
             </span>
           )}
@@ -71,7 +71,7 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           <span className="uppercase tracking-widest opacity-60 line-clamp-1">
             {Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine}
           </span>
-          <span className="text-slate-800 shrink-0 ml-2">₹{restaurant.avgPrice} for 2</span>
+          <span className="text-[#363636] shrink-0 ml-2">₹{restaurant.avgPrice} for 2</span>
         </div>
 
         <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">

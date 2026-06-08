@@ -62,7 +62,7 @@ export default function PartnerLoginView() {
            <div className="flex items-center justify-between h-full">
                <div className="flex items-center gap-3">
                  <AppIcon size={44} />
-                 <span className="hidden sm:block text-2xl font-display font-black text-vibrant-dark tracking-tighter">
+                 <span className="hidden sm:block text-2xl font-normal leading-[1.2] text-[#363636] tracking-tighter">
                    Bookmy<span className="text-brand">Table</span>
                  </span>
                  <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase tracking-widest ml-2 hidden sm:block">Partner</span>
@@ -82,7 +82,7 @@ export default function PartnerLoginView() {
            />
         </div>
 
-        <h1 className="text-xl md:text-3xl font-semibold md:font-black text-slate-800 mb-8 max-w-[280px] sm:max-w-none mx-auto leading-tight">
+        <h1 className="text-xl md:text-3xl md:font-normal mb-8 max-w-[280px] sm:max-w-none mx-auto text-[#363636] font-normal leading-[1.2]">
           Bookmytable partner dashboard
         </h1>
 

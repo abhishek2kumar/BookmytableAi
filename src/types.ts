@@ -172,7 +172,9 @@ export interface Booking {
   restaurantName: string;
   restaurantImage: string;
   restaurantOwnerId: string;
-  dateTime: any;
+  date?: string;
+  time?: string;
+  dateTime?: any;
   guests: number;
   userPhone: string;
   status: BookingStatus;

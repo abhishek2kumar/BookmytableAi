@@ -84,6 +84,47 @@ export function formatTime(date: any) {
   });
 }
 
+export function formatAddress(address?: string) {
+  if (!address) return '';
+  const parts = address.split(',').map(p => p.trim()).filter(Boolean);
+  const statesToRemove = [
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh", "goa", "gujarat", "haryana", 
+    "himachal pradesh", "jharkhand", "karnataka", "kerala", "madhya pradesh", "maharashtra", "manipur", 
+    "meghalaya", "mizoram", "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu", "telangana", 
+    "tripura", "uttar pradesh", "uttarakhand", "west bengal", "andaman and nicobar islands", "chandigarh", 
+    "dadra and nagar haveli and daman and diu", "lakshadweep", "delhi", "puducherry", "india"
+  ];
+
+  const filtered = parts.filter(part => {
+    const l = part.toLowerCase();
+    if (statesToRemove.includes(l)) return false;
+    if (/^\d{6}$/.test(l)) return false;
+    return true;
+  });
+
+  const landmarks = [];
+  const others = [];
+  for (const p of filtered) {
+    const pl = p.toLowerCase();
+    if (pl.startsWith('opposite') || pl.startsWith('opp ') || pl.startsWith('opp. ') || pl.startsWith('near ') || pl.startsWith('behind ') || pl.startsWith('beside ') || pl.startsWith('next to ')) {
+      landmarks.push(p);
+    } else {
+      others.push(p);
+    }
+  }
+
+  if (others.length >= 2 && landmarks.length > 0) {
+    const city = others.pop()!;
+    const locality = others.pop()!;
+    return [...others, ...landmarks, locality, city].join(', ');
+  } else if (others.length >= 1 && landmarks.length > 0) {
+     const city = others.pop()!;
+     return [...others, ...landmarks, city].join(', ');
+  }
+  
+  return filtered.join(', ');
+}
+
 export function convertTo24Hour(time12h: string): string {
   if (!time12h) return '';
   const [time, modifier] = time12h.split(' ');

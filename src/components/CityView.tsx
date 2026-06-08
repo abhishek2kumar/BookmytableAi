@@ -36,6 +36,7 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStories } from "../hooks/useStories";
 import StoryViewer from "./StoryViewer";
+import StoryAvatar from "./StoryAvatar";
 
 export default function CityView() {
   const { cityId, locationSlug } = useParams();
@@ -415,7 +416,7 @@ export default function CityView() {
                 readOnly
                 onClick={() => setIsSearchOverlayOpen(true)}
                 placeholder="Search for restaurant"
-                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-[#363636]"
                 value={searchQuery}
               />
             </div>
@@ -449,7 +450,7 @@ export default function CityView() {
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                <h2 className="relative z-10 text-xl sm:text-2xl md:text-3xl font-display font-black text-white px-6 md:px-10 w-full md:max-w-2xl leading-tight">
+                <h2 className="relative z-10 text-xl sm:text-2xl md:text-3xl text-white px-6 md:px-10 w-full md:max-w-2xl font-normal leading-[1.2]">
                   {welcomeText}
                 </h2>
               </>
@@ -487,7 +488,7 @@ export default function CityView() {
                           loading="lazy"
                         />
                       </div>
-                      <span className="text-[10px] md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors text-center max-w-[80px] md:max-w-[120px]">
+                      <span className="text-[10px] md:text-base font-normal leading-[1.2] text-[#363636] group-hover:text-brand transition-colors text-center max-w-[80px] md:max-w-[120px]">
                         {cuisine.name}
                       </span>
                     </Link>
@@ -508,7 +509,7 @@ export default function CityView() {
               >
                 <ChevronLeft size={16} /> Back to {cityName}
               </button>
-              <h1 className="text-3xl md:text-4xl font-display font-black text-vibrant-dark mb-2">
+              <h1 className="text-3xl md:text-4xl mb-2 text-[#363636] font-normal leading-[1.2]">
                 Restaurants in {famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}
               </h1>
               <div className="flex items-center gap-2 text-slate-500 font-medium">
@@ -526,7 +527,7 @@ export default function CityView() {
                     activeFilters.onlyWithOffers ||
                     activeFilters.onlyTakeaway
                     ? "bg-brand text-white border-brand border"
-                    : "bg-white border-gray-200 text-vibrant-dark border hover:border-brand shadow-sm",
+                    : "bg-white border-gray-200 text-[#363636] border hover:border-brand shadow-sm",
                 )}
               >
                 <Filter size={16} />
@@ -553,23 +554,21 @@ export default function CityView() {
         {/* Stories Section */}
         {(!storiesLoading && usersWithStories.length > 0) && (
           <section className="relative">
-            <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark mb-4">
+            <h2 className="text-xl md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
               Stories from Restaurants
             </h2>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x -mx-6 px-6 md:mx-0 md:px-0">
-               {usersWithStories.map((storyUser, idx) => {
-                  const allViewed = storyUser.stories.every(s => s.views?.some(v => v.userId === user?.uid));
-                  return (
+               {usersWithStories.map((storyUser, idx) => (
                   <div key={storyUser.restaurantId} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer snap-start" onClick={() => setActiveStoryIndex(idx)}>
-                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full p-1 ${allViewed ? 'bg-slate-300' : 'bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500'}`}>
-                          <div className="w-full h-full border-2 border-white rounded-full overflow-hidden bg-white">
-                             <img src={storyUser.restaurantImage} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                      </div>
+                      <StoryAvatar 
+                         stories={storyUser.stories} 
+                         userPhoto={storyUser.restaurantImage} 
+                         currentUserId={user?.uid} 
+                         className="w-16 h-16 md:w-20 md:h-20" 
+                      />
                       <span className="text-xs font-bold text-slate-700 w-16 md:w-20 truncate text-center">{storyUser.restaurantName}</span>
                   </div>
-                  );
-               })}
+               ))}
             </div>
             
             {/* Fullscreen Viewer */}
@@ -590,7 +589,7 @@ export default function CityView() {
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Featured Restaurants
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -604,13 +603,13 @@ export default function CityView() {
                     onClick={() => scroll(featuredRef, "left")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronLeft size={20} className="text-vibrant-dark" />
+                    <ChevronLeft size={20} className="text-[#363636]" />
                   </button>
                   <button
                     onClick={() => scroll(featuredRef, "right")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronRight size={20} className="text-vibrant-dark" />
+                    <ChevronRight size={20} className="text-[#363636]" />
                   </button>
                 </div>
               </div>
@@ -647,7 +646,7 @@ export default function CityView() {
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Spotlight in {cityName}
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -661,13 +660,13 @@ export default function CityView() {
                     onClick={() => scroll(spotlightRef, "left")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronLeft size={20} className="text-vibrant-dark" />
+                    <ChevronLeft size={20} className="text-[#363636]" />
                   </button>
                   <button
                     onClick={() => scroll(spotlightRef, "right")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronRight size={20} className="text-vibrant-dark" />
+                    <ChevronRight size={20} className="text-[#363636]" />
                   </button>
                 </div>
               </div>
@@ -685,7 +684,7 @@ export default function CityView() {
                   onClick={() => navigate(getRestaurantUrl(restaurant))}
                   className="relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start cursor-pointer group rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-300 h-[280px]"
                 >
-                  <div className="absolute top-3 left-3 bg-white text-slate-900 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded shadow-sm z-20">
+                  <div className="absolute top-3 left-3 bg-white text-[#363636] text-[10px] uppercase tracking-widest px-2.5 py-1 rounded shadow-sm z-20 font-normal leading-[1.2]">
                     Ad
                   </div>
                   <img 
@@ -711,7 +710,7 @@ export default function CityView() {
                         </div>
                       )}
                       <div className={activeAd ? "border-t border-white/20 pt-3 flex flex-col gap-0.5" : "flex flex-col gap-0.5"}>
-                        <h3 className="font-display font-medium text-base text-white line-clamp-1 drop-shadow-md">{restaurant.name}</h3>
+                        <h3 className="text-base text-white line-clamp-1 drop-shadow-md font-normal leading-[1.2]">{restaurant.name}</h3>
                         <div className="flex items-center gap-1.5 text-white/80 drop-shadow-md">
                           <MapPin size={14} className="shrink-0" />
                           <p className="text-xs line-clamp-1">{restaurant.location}</p>
@@ -729,7 +728,7 @@ export default function CityView() {
         {!locationSlug && !loading && famousLocations.length > 0 && (
           <section className="relative group/section">
             <div className="mb-6">
-              <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+              <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
               </h2>
               <p className="text-vibrant-gray font-medium text-sm">
@@ -754,7 +753,7 @@ export default function CityView() {
                     size={28}
                     className="text-brand mb-3 group-hover:scale-110 transition-transform"
                   />
-                  <span className="font-bold text-sm md:text-base text-vibrant-dark text-center">
+                  <span className="text-sm md:text-base text-[#363636] text-center font-normal leading-[1.2]">
                     {locationName}
                   </span>
                 </div>
@@ -768,7 +767,7 @@ export default function CityView() {
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   {locationSlug ? `Take Away Restaurants in ${famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}` : "Takeaway restaurants near You"}
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -782,13 +781,13 @@ export default function CityView() {
                     onClick={() => scroll(takeawayRef, "left")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronLeft size={20} className="text-vibrant-dark" />
+                    <ChevronLeft size={20} className="text-[#363636]" />
                   </button>
                   <button
                     onClick={() => scroll(takeawayRef, "right")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronRight size={20} className="text-vibrant-dark" />
+                    <ChevronRight size={20} className="text-[#363636]" />
                   </button>
                 </div>
               </div>
@@ -828,7 +827,7 @@ export default function CityView() {
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Top Discounts in {cityName}
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -845,13 +844,13 @@ export default function CityView() {
                     onClick={() => scroll(discountRef, "left")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronLeft size={20} className="text-vibrant-dark" />
+                    <ChevronLeft size={20} className="text-[#363636]" />
                   </button>
                   <button
                     onClick={() => scroll(discountRef, "right")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronRight size={20} className="text-vibrant-dark" />
+                    <ChevronRight size={20} className="text-[#363636]" />
                   </button>
                 </div>
               </div>
@@ -889,7 +888,7 @@ export default function CityView() {
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Restaurants Near You
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -903,13 +902,13 @@ export default function CityView() {
                     onClick={() => scroll(nearbyRef, "left")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronLeft size={20} className="text-vibrant-dark" />
+                    <ChevronLeft size={20} className="text-[#363636]" />
                   </button>
                   <button
                     onClick={() => scroll(nearbyRef, "right")}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
                   >
-                    <ChevronRight size={20} className="text-vibrant-dark" />
+                    <ChevronRight size={20} className="text-[#363636]" />
                   </button>
                 </div>
               </div>
@@ -948,7 +947,7 @@ export default function CityView() {
         >
           {!locationSlug && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-display font-black text-vibrant-dark">
+            <h2 className="text-2xl md:text-3xl text-[#363636] font-normal leading-[1.2]">
               {searchQuery
                 ? `Search results for "${searchQuery}"`
                 : `Explore All in ${cityName}`}
@@ -963,7 +962,7 @@ export default function CityView() {
                     activeFilters.minRating > 0 ||
                     activeFilters.onlyWithOffers
                     ? "bg-brand text-white border-brand border"
-                    : "bg-white border-gray-200 text-vibrant-dark border hover:border-brand shadow-sm",
+                    : "bg-white border-gray-200 text-[#363636] border hover:border-brand shadow-sm",
                 )}
               >
                 <Filter size={16} />
@@ -1009,7 +1008,7 @@ export default function CityView() {
             </div>
           ) : (
             <div className="text-center py-32 bg-white rounded-3xl border border-dashed border-gray-200">
-              <h3 className="text-2xl font-display font-black text-slate-400">
+              <h3 className="text-2xl text-slate-400 font-normal leading-[1.2]">
                 No restaurants matching your search
               </h3>
             </div>
@@ -1035,7 +1034,7 @@ export default function CityView() {
         {locationSlug && !loading && famousLocations.length > 0 && (
           <section className="relative group/section mt-8 md:mt-12 pt-8 md:pt-12 border-t border-gray-100">
             <div className="mb-6">
-              <h2 className="text-xl md:text-2xl font-display font-black text-vibrant-dark">
+              <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
               </h2>
               <p className="text-vibrant-gray font-medium text-sm">
@@ -1060,7 +1059,7 @@ export default function CityView() {
                     size={28}
                     className="text-brand mb-3 group-hover:scale-110 transition-transform"
                   />
-                  <span className="font-bold text-sm md:text-base text-vibrant-dark text-center">
+                  <span className="text-sm md:text-base text-[#363636] text-center font-normal leading-[1.2]">
                     {locationName}
                   </span>
                 </div>
@@ -1084,7 +1083,7 @@ export default function CityView() {
             <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
               <button
                 onClick={() => setIsSearchOverlayOpen(false)}
-                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
+                className="p-2 -ml-2 text-[#363636] hover:bg-slate-50 rounded-full transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
@@ -1150,7 +1149,7 @@ export default function CityView() {
                               />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">
+                              <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">
                                 {res.name}
                               </h4>
                               <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">
@@ -1196,7 +1195,7 @@ export default function CityView() {
                 <div className="p-4 md:p-6">
                   {recentSearches.length > 0 && (
                     <div className="mb-10 md:mb-16">
-                      <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">
+                      <h4 className="text-xs md:text-sm text-vibrant-gray uppercase tracking-widest mb-6 font-normal leading-[1.2]">
                         Recent Searches
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1243,7 +1242,7 @@ export default function CityView() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">
+                              <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">
                                 {res.name}
                               </h4>
                               <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">
@@ -1272,7 +1271,7 @@ export default function CityView() {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="font-bold text-sm md:text-base text-vibrant-dark group-hover:text-brand transition-colors truncate">
+                        <span className="text-sm md:text-base text-[#363636] group-hover:text-brand transition-colors truncate font-normal leading-[1.2]">
                           {cuisine.name}
                         </span>
                       </button>
@@ -1280,7 +1279,7 @@ export default function CityView() {
                   </div>
 
                   <div className="mt-10 md:mt-16">
-                    <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">
+                    <h4 className="text-xs md:text-sm text-vibrant-gray uppercase tracking-widest mb-6 font-normal leading-[1.2]">
                       Trending Near {cityName}
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1306,7 +1305,7 @@ export default function CityView() {
                             size={16}
                             className="text-brand shrink-0"
                           />
-                          <span className="text-sm md:text-base font-bold text-vibrant-dark group-hover:text-brand transition-colors truncate">
+                          <span className="text-sm md:text-base font-normal leading-[1.2] text-[#363636] group-hover:text-brand transition-colors truncate">
                             {res.name}
                           </span>
                           <span className="text-[10px] md:text-xs bg-slate-100 text-vibrant-gray px-2 py-1 rounded font-black ml-auto whitespace-nowrap">
@@ -1345,7 +1344,7 @@ export default function CityView() {
               className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-[101] shadow-2xl flex flex-col"
             >
               <div className="p-6 border-b flex items-center justify-between">
-                <h3 className="text-xl font-display font-black text-vibrant-dark">
+                <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">
                   Filters
                 </h3>
                 <button
@@ -1359,7 +1358,7 @@ export default function CityView() {
               <div className="flex-1 overflow-y-auto p-6 space-y-10">
                 {/* Cuisines */}
                 <section>
-                  <h4 className="text-sm font-black text-vibrant-gray uppercase tracking-widest mb-4">
+                  <h4 className="text-sm text-vibrant-gray uppercase tracking-widest mb-4 font-normal leading-[1.2]">
                     Cuisines
                   </h4>
                   <div className="flex flex-wrap gap-2">
@@ -1384,7 +1383,7 @@ export default function CityView() {
                             "px-4 py-2 rounded-full text-sm font-bold transition-all border-2",
                             isSelected
                               ? "bg-brand/10 border-brand text-brand"
-                              : "bg-white border-gray-100 text-vibrant-dark hover:border-gray-300",
+                              : "bg-white border-gray-100 text-[#363636] hover:border-gray-300",
                           )}
                         >
                           {c.name}
@@ -1396,7 +1395,7 @@ export default function CityView() {
 
                 {/* Rating */}
                 <section>
-                  <h4 className="text-sm font-black text-vibrant-gray uppercase tracking-widest mb-4">
+                  <h4 className="text-sm text-vibrant-gray uppercase tracking-widest mb-4 font-normal leading-[1.2]">
                     Minimum Rating
                   </h4>
                   <div className="flex gap-2">
@@ -1413,7 +1412,7 @@ export default function CityView() {
                           "flex-1 py-3 rounded-xl text-sm font-bold transition-all border-2 flex flex-col items-center gap-1",
                           activeFilters.minRating === rating
                             ? "bg-brand/10 border-brand text-brand"
-                            : "bg-white border-gray-100 text-vibrant-dark hover:border-gray-200",
+                            : "bg-white border-gray-100 text-[#363636] hover:border-gray-200",
                         )}
                       >
                         {rating === 0 ? (
@@ -1432,7 +1431,7 @@ export default function CityView() {
 
                 {/* Offers */}
                 <section>
-                  <h4 className="text-sm font-black text-vibrant-gray uppercase tracking-widest mb-4">
+                  <h4 className="text-sm text-vibrant-gray uppercase tracking-widest mb-4 font-normal leading-[1.2]">
                     Offers & Deals
                   </h4>
                   <label className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border-2 border-slate-300 hover:border-slate-300 cursor-pointer transition-all">
@@ -1441,7 +1440,7 @@ export default function CityView() {
                         <Percent size={20} />
                       </div>
                       <div>
-                        <p className="font-bold text-vibrant-dark">
+                        <p className="font-normal leading-[1.2] text-[#363636]">
                           Exclusive Offers
                         </p>
                         <p className="text-xs text-vibrant-gray font-medium">
@@ -1467,7 +1466,7 @@ export default function CityView() {
                         <ShoppingBag size={20} />
                       </div>
                       <div>
-                        <p className="font-bold text-vibrant-dark text-sm">
+                        <p className="font-normal leading-[1.2] text-[#363636] text-sm">
                           Takeaway Available
                         </p>
                         <p className="text-xs text-vibrant-gray font-medium">
@@ -1500,7 +1499,7 @@ export default function CityView() {
                       onlyTakeaway: false,
                     });
                   }}
-                  className="flex-1 py-4 text-sm font-black text-vibrant-gray hover:text-vibrant-dark transition-colors"
+                  className="flex-1 py-4 text-sm font-black text-vibrant-gray hover:text-[#363636] transition-colors"
                 >
                   Clear All
                 </button>

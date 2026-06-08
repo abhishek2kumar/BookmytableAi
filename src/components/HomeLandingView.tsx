@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, ChevronLeft, Clock, X, UtensilsCrossed, CheckCircle, Sparkles, QrCode } from 'lucide-react';
+import { Search, MapPin, Navigation, TrendingUp, Star, Zap, ChevronRight, ChevronDown, ChevronLeft, Clock, X, UtensilsCrossed, CheckCircle, Sparkles, QrCode, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLocationContext } from './LocationContext';
 import { useMasterData } from './MasterDataContext';
@@ -204,7 +204,7 @@ export default function HomeLandingView() {
             transition={{ duration: 0.8 }}
             className="flex flex-col items-center"
           >
-            <h1 className="text-4xl md:text-7xl font-display font-black text-white mb-6 leading-tight drop-shadow-2xl text-center">
+            <h1 className="text-4xl md:text-7xl text-white mb-6 drop-shadow-2xl text-center font-normal leading-[1.2]">
               Book the perfect table,<br />
               <span className="text-brand">wherever you are.</span>
             </h1>
@@ -237,7 +237,7 @@ export default function HomeLandingView() {
       {/* Popular Cities */}
       <section className="max-w-7xl mx-auto px-4 py-24 md:py-32">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-display font-black text-vibrant-dark mb-4">
+          <h2 className="text-3xl md:text-5xl mb-4 text-[#363636] font-normal leading-[1.2]">
             Popular Cities
           </h2>
           <p className="text-vibrant-gray font-medium text-lg">
@@ -268,7 +268,7 @@ export default function HomeLandingView() {
                 />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors"></div>
               </div>
-              <span className="text-lg font-black text-vibrant-dark group-hover:text-brand transition-colors">
+              <span className="text-lg font-normal text-[#363636] leading-[1.2] group-hover:text-brand transition-colors">
                 {city.name}
               </span>
             </motion.button>
@@ -277,75 +277,59 @@ export default function HomeLandingView() {
       </section>
 
       {/* Features / Why Bookmytable */}
-      <section className="bg-slate-50 py-24 md:py-32 overflow-hidden">
+      <section className="bg-gradient-to-br from-slate-900 to-vibrant-dark py-16 md:py-24 border-y border-white/10">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-4xl md:text-5xl font-display font-black text-vibrant-dark mb-16 leading-tight">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl md:text-5xl text-white mb-16 text-center font-normal leading-[1.2]">
               Your <span className="text-brand">Fine Dining</span> Experience<br />
               Starts Right Here.
             </h2>
             
-            <div className="flex flex-col gap-24 md:gap-32 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 text-left">
               {[
                 { 
-                  icon: Zap, 
+                  icon: <Zap size={24} className="text-amber-500" />,
                   title: 'Instant Confirmations', 
-                  desc: 'No more waiting on hold or wondering if your table is secure. Book instantly online and receive immediate confirmation via SMS and your registered email address.',
-                  image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1200'
+                  desc: 'Receive immediate booking confirmation via SMS and your registered email address.',
+                  bgTheme: 'bg-amber-500/10 border-amber-500/20'
                 },
                 { 
-                  icon: TrendingUp, 
-                  title: 'Top Rated Spots', 
-                  desc: 'A strictly curated directory of high-rated restaurants, continuously monitored for food quality and pristine real customer feedback.',
-                  image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200'
-                },
-                { 
-                  icon: Clock, 
+                  icon: <Clock size={24} className="text-brand" />,
                   title: 'Flexible Bookings', 
-                  desc: 'Modify table count, shift time slots, or cancel on the go. Planning a last-minute dinner switch has never been this effortless.',
-                  image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&q=80&w=1200'
+                  desc: 'Cancel on the go as per your convenience',
+                  bgTheme: 'bg-brand/10 border-brand/20'
                 },
                 { 
-                  icon: QrCode, 
+                  icon: <QrCode size={24} className="text-emerald-500" />,
                   title: 'Seamless QR Orders', 
-                  desc: 'Sit down, scan the table code, and browse the live menu. Send orders straight to the kitchen instantly—say goodbye to waving for waiters.',
-                  image: 'https://images.unsplash.com/photo-1525610553991-2bede1a236e2?auto=format&fit=crop&q=80&w=1200'
+                  desc: 'Scan the table code, browse the live menu and send orders straight to the kitchen instantly.',
+                  bgTheme: 'bg-emerald-500/10 border-emerald-500/20'
+                },
+                { 
+                  icon: <ShoppingBag size={24} className="text-blue-500" />,
+                  title: 'Take away', 
+                  desc: 'Skip the Queue. Grab & Go.',
+                  bgTheme: 'bg-blue-500/10 border-blue-500/20'
                 },
               ].map((item, i) => (
                 <motion.div 
                   key={i}
-                  initial={{ opacity: 0, y: 40 }}
+                  initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.7, ease: "easeOut" }}
-                  className={cn(
-                    "flex flex-col md:flex-row gap-8 md:gap-12 lg:gap-20 items-center",
-                    i % 2 !== 0 ? "md:flex-row-reverse" : ""
-                  )}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
+                  className="flex items-start gap-4 md:gap-5"
                 >
-                  {/* Text Section */}
-                  <div className="flex-1 w-full md:w-1/2 max-w-xl">
-                    <h3 className="text-2xl md:text-3xl font-display font-bold text-slate-900 mb-4 tracking-tight leading-tight">
+                  <div className={cn("w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full flex items-center justify-center border", item.bgTheme)}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-lg md:text-xl text-white mb-1.5 md:mb-2 font-normal leading-[1.2]">
                       {item.title}
                     </h3>
-                    <p className="text-slate-600 text-base md:text-lg font-medium leading-relaxed">
+                    <p className="text-slate-400 text-sm font-medium leading-snug">
                       {item.desc}
                     </p>
-                  </div>
-                  
-                  {/* Image Section */}
-                  <div className="flex-1 w-full md:w-1/2">
-                    <div className="relative rounded-[40px] overflow-hidden shadow-2xl group">
-                      {/* Image hover scale effect */}
-                      <img 
-                        src={item.image} 
-                        alt={item.title}
-                        className="w-full h-full object-cover aspect-[4/3] group-hover:scale-105 transition-transform duration-1000 ease-out"
-                        referrerPolicy="no-referrer"
-                      />
-                      {/* Overlay gradient */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/20 to-transparent pointer-events-none" />
-                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -359,13 +343,13 @@ export default function HomeLandingView() {
       {/* CTA section */}
       <section className="py-24 md:py-32 bg-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-6xl font-display font-black text-vibrant-dark mb-10 leading-tight">
+          <h2 className="text-4xl md:text-6xl mb-10 text-[#363636] font-normal leading-[1.2]">
             Ready to explore the best<br />
             cuisines in your town?
           </h2>
           <button 
             onClick={() => handleCitySelect('Bangalore', 12.9716, 77.5946)}
-            className="group relative inline-flex items-center gap-3 bg-vibrant-dark text-white px-10 py-5 rounded-2xl font-black text-xl hover:bg-black transition-all shadow-xl active:scale-95 overflow-hidden"
+            className="group relative inline-flex items-center gap-3 bg-vibrant-dark text-white px-10 py-5 rounded-2xl font-normal leading-[1.2] text-xl hover:bg-black transition-all shadow-xl active:scale-95 overflow-hidden"
           >
             <span className="relative z-10">Start Exploring Now</span>
             <ChevronRight className="relative z-10 group-hover:translate-x-1 transition-transform" />
@@ -378,7 +362,7 @@ export default function HomeLandingView() {
       <section className="pb-24 px-4">
          <div className="max-w-6xl mx-auto bg-gradient-to-br from-slate-900 to-vibrant-dark rounded-3xl p-10 md:p-20 relative overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12 group shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)]">
             <div className="relative z-10 max-w-xl">
-               <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-6 leading-tight">
+               <h2 className="text-4xl md:text-5xl text-white mb-6 font-normal leading-[1.2]">
                   Download the <span className="text-brand">Bookmytable</span> Mobile App
                </h2>
                <p className="text-xl text-white/60 mb-10 font-medium">
@@ -390,8 +374,8 @@ export default function HomeLandingView() {
                        <Zap size={20} className="text-white fill-white" />
                     </div>
                     <div className="text-left">
-                       <p className="text-[10px] font-black uppercase text-white/40 leading-none mb-1">Get it on</p>
-                       <p className="text-lg font-black text-white leading-none">Play Store</p>
+                       <p className="text-[10px] font-normal leading-[1.2] uppercase text-white/40 mb-1">Get it on</p>
+                       <p className="text-lg font-normal leading-[1.2] text-white">Play Store</p>
                     </div>
                   </a>
                   <a href="#" className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl transition-all flex items-center gap-3 group/btn">
@@ -399,8 +383,8 @@ export default function HomeLandingView() {
                        <Zap size={20} className="text-white fill-white" />
                     </div>
                     <div className="text-left">
-                       <p className="text-[10px] font-black uppercase text-white/40 leading-none mb-1">Download on the</p>
-                       <p className="text-lg font-black text-white leading-none">App Store</p>
+                       <p className="text-[10px] font-normal leading-[1.2] uppercase text-white/40 mb-1">Download on the</p>
+                       <p className="text-lg font-normal leading-[1.2] text-white">App Store</p>
                     </div>
                   </a>
                </div>
@@ -419,7 +403,7 @@ export default function HomeLandingView() {
                     <div className="px-3 py-2 flex items-center justify-between border-b border-slate-300 bg-white/80 backdrop-blur-sm z-10">
                       <div className="flex items-center gap-1.5">
                         <MapPin size={10} className="text-brand" />
-                        <span className="text-[9px] font-black text-slate-900">Pune, Maharashtra</span>
+                        <span className="text-[9px] font-normal text-[#363636] leading-[1.2]">Pune, Maharashtra</span>
                         <ChevronDown size={8} className="text-slate-400" />
                       </div>
                       <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center">
@@ -431,7 +415,7 @@ export default function HomeLandingView() {
                       {/* Tiny App Hero */}
                       <div className="px-3 py-3 space-y-3">
                          <div className="space-y-1">
-                           <h4 className="text-[10px] font-black text-slate-900 leading-tight">Explore the best<br/>dining in Pune</h4>
+                           <h4 className="text-[10px] text-[#363636] font-normal leading-[1.2]">Explore the best<br/>dining in Pune</h4>
                            <div className="h-1.5 w-12 bg-brand/20 rounded-full" />
                          </div>
                          <div className="h-7 w-full bg-slate-50 border border-slate-300 rounded-lg flex items-center px-2 shadow-sm">
@@ -443,7 +427,7 @@ export default function HomeLandingView() {
                       {/* Tiny Categories */}
                       <div className="px-3 space-y-2 mb-4">
                          <div className="flex justify-between items-center">
-                            <span className="text-[8px] font-black text-slate-900 uppercase tracking-wider">Cuisines</span>
+                            <span className="text-[8px] font-normal text-[#363636] leading-[1.2] uppercase tracking-wider">Cuisines</span>
                             <div className="h-1 w-6 bg-brand/10 rounded-full" />
                          </div>
                          <div className="flex gap-2 overflow-x-auto scrollbar-none">
@@ -459,18 +443,18 @@ export default function HomeLandingView() {
                       {/* Tiny Restaurant List */}
                       <div className="px-3 space-y-3">
                          <div className="flex justify-between items-center">
-                            <span className="text-[8px] font-black text-slate-900 uppercase tracking-wider">Trending Now</span>
+                            <span className="text-[8px] font-normal text-[#363636] leading-[1.2] uppercase tracking-wider">Trending Now</span>
                          </div>
                          {[1,2,3].map(i => (
                            <div key={i} className="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm">
                               <div className="h-20 w-full bg-slate-100 relative">
                                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded-md shadow-sm flex items-center gap-0.5">
                                     <Star size={6} className="fill-brand text-brand" />
-                                    <span className="text-[6px] font-black text-brand">4.5</span>
+                                    <span className="text-[6px] font-normal leading-[1.2] text-brand">4.5</span>
                                  </div>
                                  <div className="absolute bottom-2 left-2 h-3.5 w-16 bg-brand/90 rounded px-1 flex items-center gap-1">
                                     <Zap size={6} className="text-white fill-white" />
-                                    <span className="text-[6px] font-black text-white uppercase">50% OFF</span>
+                                    <span className="text-[6px] font-normal leading-[1.2] text-white uppercase">50% OFF</span>
                                  </div>
                               </div>
                               <div className="p-2 space-y-1">
@@ -510,7 +494,7 @@ export default function HomeLandingView() {
                <motion.div 
                  animate={{ y: [0, 10, 0] }}
                  transition={{ duration: 5, repeat: Infinity, delay: 1 }}
-                 className="absolute -left-12 bottom-40 bg-white text-vibrant-dark px-4 py-2 rounded-xl shadow-2xl font-black text-xs"
+                 className="absolute -left-12 bottom-40 bg-white text-[#363636] px-4 py-2 rounded-xl shadow-2xl font-normal leading-[1.2] text-xs"
                >
                   1M+ Downloads
                </motion.div>
@@ -535,7 +519,7 @@ export default function HomeLandingView() {
             <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
               <button 
                 onClick={() => setIsSearchOverlayOpen(false)}
-                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
+                className="p-2 -ml-2 text-[#363636] hover:bg-slate-50 rounded-full transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
@@ -573,7 +557,7 @@ export default function HomeLandingView() {
                 {!searchValue.trim() && recentSearches.length > 0 ? (
                   <>
                     <div className="pb-3 pt-1">
-                      <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Recent Searches</span>
+                      <span className="text-[10px] md:text-xs font-normal leading-[1.2] text-vibrant-gray uppercase tracking-[0.15em]">Recent Searches</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {recentSearches.map(res => (
@@ -592,7 +576,7 @@ export default function HomeLandingView() {
                              )}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                            <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">{res.name}</h4>
                             <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
                           </div>
                         </button>
@@ -602,7 +586,7 @@ export default function HomeLandingView() {
                 ) : suggestions.length > 0 ? (
                   <>
                     <div className="pb-3 pt-1">
-                      <span className="text-[10px] md:text-xs font-black text-vibrant-gray uppercase tracking-[0.15em]">Search Results</span>
+                      <span className="text-[10px] md:text-xs font-normal leading-[1.2] text-vibrant-gray uppercase tracking-[0.15em]">Search Results</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {suggestions.map(res => (
@@ -621,7 +605,7 @@ export default function HomeLandingView() {
                              )}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="font-bold text-vibrant-dark md:text-lg truncate">{res.name}</h4>
+                            <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">{res.name}</h4>
                             <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">{res.subtitle} {res.city ? `• ${res.city}` : ''}</p>
                           </div>
                         </button>

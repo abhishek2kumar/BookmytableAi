@@ -384,7 +384,7 @@ export default function AdminOnboardingView() {
 
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-display font-black text-slate-900 tracking-tight">Onboard New Restaurant</h1>
+            <h1 className="text-4xl text-[#363636] font-normal leading-[1.2]">Onboard New Restaurant</h1>
             {step <= 6 && (
               <div className="bg-brand/10 text-brand px-4 py-2 rounded-2xl font-black text-sm">
                 Step {step} of 6
@@ -416,7 +416,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
                     <Utensils className="text-brand" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Restaurant Identity</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Restaurant Identity</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -570,7 +570,7 @@ export default function AdminOnboardingView() {
                 <div className="pt-6 border-t border-slate-300">
                   <div className="flex items-center justify-between mb-4">
                      <div className="flex items-center gap-3">
-                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Pin Coordinates</h3>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Pin Coordinates</h3>
                         <button 
                           type="button"
                           onClick={() => handleGeocodeAddress(false)}
@@ -667,7 +667,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                     <User className="text-blue-500" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Contact Information</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Contact Information</h2>
                 </div>
                 
                 <p className="text-slate-400 text-sm font-medium">These details are required to receive booking information and system updates.</p>
@@ -743,7 +743,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
                     <ImageIcon className="text-amber-500" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Restaurant Image</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Restaurant Image</h2>
                 </div>
 
                 <p className="text-slate-400 text-sm font-medium">Upload a high-quality cover image or provided a URL (Max 5MB). Mandatory for visibility.</p>
@@ -764,7 +764,7 @@ export default function AdminOnboardingView() {
                              <ImageIcon size={32} />
                           </div>
                           <div>
-                             <p className="font-black text-slate-900 uppercase tracking-widest text-xs">
+                             <p className="font-normal text-[#363636] leading-[1.2] uppercase tracking-widest text-xs">
                                 {isUploading ? 'Uploading...' : 'Upload Cover Image'}
                              </p>
                              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest leading-none">JPEG, PNG up to 5MB</p>
@@ -820,7 +820,7 @@ export default function AdminOnboardingView() {
                 <div className="pt-10 border-t border-slate-300 space-y-6">
                   <div className="flex items-center justify-between">
                      <div className="space-y-1">
-                       <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Additional Images (Optional)</h3>
+                       <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Additional Images (Optional)</h3>
                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Add photos of food, ambience or exterior</p>
                      </div>
                   </div>
@@ -900,7 +900,7 @@ export default function AdminOnboardingView() {
                         if (images.length === 0) return null;
                         return (
                           <div key={cat} className="space-y-3">
-                            <h4 className="text-[10px] font-black text-brand uppercase tracking-widest flex items-center gap-2">
+                            <h4 className="text-[10px] text-brand uppercase tracking-widest flex items-center gap-2 font-normal leading-[1.2]">
                               {cat} <span className="h-px flex-grow bg-brand/10"></span>
                             </h4>
                             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
@@ -966,7 +966,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                     <UtensilsCrossed className="text-emerald-500" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Menu & Cuisines (Optional)</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Menu & Cuisines (Optional)</h2>
                 </div>
 
                 <div className="space-y-6">
@@ -1225,7 +1225,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
                     <Clock className="text-amber-500" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Dining Timings</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Dining Timings</h2>
                 </div>
 
                 <div className="space-y-4">
@@ -1233,7 +1233,7 @@ export default function AdminOnboardingView() {
                      <div key={day} className="p-6 bg-slate-50 rounded-3xl border border-slate-300 space-y-4">
                         <div className="flex items-center justify-between">
                            <div className="flex items-center gap-4">
-                              <span className="font-black text-slate-900 tracking-wider uppercase text-xs min-w-[80px]">{day}</span>
+                              <span className="font-normal text-[#363636] leading-[1.2] tracking-wider uppercase text-xs min-w-[80px]">{day}</span>
                               <div className="flex bg-white rounded-lg border border-slate-300 p-0.5">
                                  <button 
                                     type="button"
@@ -1362,7 +1362,7 @@ export default function AdminOnboardingView() {
                   <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
                     <ShieldCheck className="text-emerald-500" size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900">Amenities & Facilities</h2>
+                  <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Amenities & Facilities</h2>
                 </div>
 
                 <div className="space-y-8">
@@ -1498,7 +1498,7 @@ export default function AdminOnboardingView() {
                 </div>
                 
                 <div>
-                  <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Application Submitted</h2>
+                  <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">Application Submitted</h2>
                   <p className="text-slate-500 font-medium mt-3">Your restaurant ID is <span className="text-brand font-black font-mono">#{restaurantId?.slice(-6).toUpperCase()}</span></p>
                 </div>
 

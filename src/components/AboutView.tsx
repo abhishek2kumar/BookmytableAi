@@ -27,7 +27,7 @@ export default function AboutView() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-display font-black text-slate-900 mb-6 tracking-tight"
+            className="text-5xl md:text-7xl font-normal leading-[1.2] text-[#363636] mb-6 tracking-tight"
           >
             Connecting People Over <span className="text-brand">Great Food</span>
           </motion.h1>
@@ -47,19 +47,19 @@ export default function AboutView() {
         <div className="max-w-7xl w-full px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-slate-100">
             <motion.div {...fadeIn} className="text-center px-4">
-              <div className="text-4xl font-black text-brand mb-2">2017</div>
+              <div className="text-4xl font-normal leading-[1.2] text-brand mb-2">2017</div>
               <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Year Founded</div>
             </motion.div>
             <motion.div {...fadeIn} transition={{ delay: 0.1 }} className="text-center px-4">
-              <div className="text-4xl font-black text-slate-900 mb-2 text-center flex justify-center">Pune</div>
+              <div className="text-4xl font-normal text-[#363636] leading-[1.2] mb-2 text-center flex justify-center">Pune</div>
               <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Headquarters</div>
             </motion.div>
             <motion.div {...fadeIn} transition={{ delay: 0.2 }} className="text-center px-4">
-              <div className="text-4xl font-black text-brand mb-2 text-center flex justify-center">1M+</div>
+              <div className="text-4xl font-normal leading-[1.2] text-brand mb-2 text-center flex justify-center">1M+</div>
               <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Diners Served</div>
             </motion.div>
             <motion.div {...fadeIn} transition={{ delay: 0.3 }} className="text-center px-4">
-              <div className="text-4xl font-black text-slate-900 mb-2 text-center flex justify-center">10k+</div>
+              <div className="text-4xl font-normal text-[#363636] leading-[1.2] mb-2 text-center flex justify-center">10k+</div>
               <div className="text-sm font-bold text-slate-500 uppercase tracking-widest">Partner Restaurants</div>
             </motion.div>
           </div>
@@ -85,10 +85,10 @@ export default function AboutView() {
             </div>
           </motion.div>
           <motion.div {...fadeIn} transition={{ delay: 0.2 }}>
-            <h2 className="text-4xl font-display font-black text-slate-900 mb-6">Our Story</h2>
+            <h2 className="text-4xl mb-6 text-[#363636] font-normal leading-[1.2]">Our Story</h2>
             <div className="space-y-6 text-lg text-slate-600 leading-relaxed">
               <p>
-                Founded in <strong className="text-slate-900">2017</strong> and headquartered in <strong className="text-slate-900">Pune, Maharashtra, India</strong>, Bookmytable (registered as <em>Heywelt Technologies India Pvt Ltd</em>) emerged from a simple observation: deciding where to eat and securing a table should be as enjoyable as the meal itself.
+                Founded in <strong className="text-[#363636]">2017</strong> and headquartered in <strong className="text-[#363636]">Pune, Maharashtra, India</strong>, Bookmytable (registered as <em>Heywelt Technologies India Pvt Ltd</em>) emerged from a simple observation: deciding where to eat and securing a table should be as enjoyable as the meal itself.
               </p>
               <p>
                 What started as a small team of food enthusiasts in Pune has grown into a leading platform that bridges the gap between passionate diners and exceptional restaurants across the country.
@@ -105,7 +105,7 @@ export default function AboutView() {
       <section className="bg-slate-900 py-24 text-white mx-4 rounded-[3rem]">
         <div className="max-w-7xl mx-auto px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-display font-black mb-6 text-white">Our Core Values</h2>
+            <h2 className="text-4xl md:text-5xl mb-6 text-white font-normal leading-[1.2]">Our Core Values</h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">The principles that drive us every day to build the best dining platform.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
@@ -123,7 +123,7 @@ export default function AboutView() {
                  <div className="w-14 h-14 bg-white/10 group-hover:bg-brand/20 text-brand rounded-2xl flex items-center justify-center mb-6 transition-colors">
                    <value.icon size={28} />
                  </div>
-                 <h3 className="text-2xl font-black mb-4 text-white">{value.title}</h3>
+                 <h3 className="text-2xl mb-4 text-white font-normal leading-[1.2]">{value.title}</h3>
                  <p className="text-slate-400 leading-relaxed">{value.desc}</p>
                </motion.div>
              ))}

@@ -21,6 +21,20 @@ interface Props {
 
 const STORY_DURATION = 5000;
 
+function getTimeAgo(timestamp: any): string {
+  if (!timestamp) return 'Just now';
+  const time = timestamp.toMillis ? timestamp.toMillis() : Date.now();
+  const diffInSeconds = Math.floor((Date.now() - time) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d`;
+}
+
 export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Props) {
   const { user } = useAuth();
   const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex);
@@ -80,7 +94,6 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
     setProgress(0);
   };
 
-  // Progress Bar Animation
   useEffect(() => {
     if (currentStory?.mediaType === 'video') {
         if (videoRef.current) {
@@ -96,13 +109,14 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
     }
 
     let startTimestamp: number | null = null;
-    const initialProgress = progress;
-
+    const initialProgress = progress; // closure captures current progress safely because effect runs on pause/resume
+    
+    // Instead of accumulated time, let's just track elapsed from start and pause times.
     const animateProgress = (timestamp: number) => {
-      if (startTimestamp === null) startTimestamp = timestamp;
-      
+      if (!startTimestamp) startTimestamp = timestamp;
       const elapsed = timestamp - startTimestamp;
-      const newProgress = initialProgress + (elapsed / STORY_DURATION) * 100;
+      const addedProgress = (elapsed / STORY_DURATION) * 100;
+      const newProgress = initialProgress + addedProgress;
 
       if (newProgress >= 100) {
         handleNext();
@@ -120,7 +134,6 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
   }, [isPaused, imgLoaded, currentStoryIndex, currentUserIndex, currentStory]);
 
   useEffect(() => {
-    startTimeRef.current = 0;
     setProgress(0);
   }, [currentStoryIndex, currentUserIndex]);
 
@@ -154,7 +167,7 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
             <video 
               ref={videoRef}
               src={currentStory.mediaUrl} 
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               autoPlay 
               playsInline 
               muted={false}
@@ -165,7 +178,7 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
           ) : (
              <img 
                src={currentStory.mediaUrl}
-               className="w-full h-full object-cover"
+               className="w-full h-full object-contain"
                onLoad={() => setImgLoaded(true)}
              />
           )}
@@ -180,7 +193,7 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
           {currentUser.stories.map((story, idx) => (
             <div key={story.id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
               <div 
-                className="h-full bg-white transition-all duration-100 ease-linear"
+                className="h-full bg-white"
                 style={{ 
                   width: `${
                     idx < currentStoryIndex ? 100 : 
@@ -199,9 +212,9 @@ export default function StoryViewer({ users, initialUserIndex = 0, onClose }: Pr
                <img src={currentUser.restaurantImage} className="w-full h-full object-cover" />
             </div>
             <div className="text-white drop-shadow-md">
-               <h3 className="font-bold text-sm tracking-tight">{currentUser.restaurantName}</h3>
+               <h3 className="text-sm font-normal leading-[1.2]">{currentUser.restaurantName}</h3>
                <span className="text-xs text-white/80 font-medium">
-                  {Math.round((Date.now() - (currentStory.createdAt?.toMillis ? currentStory.createdAt.toMillis() : Date.now())) / (1000 * 60 * 60))}h
+                  {getTimeAgo(currentStory.createdAt)}
                </span>
             </div>
           </div>

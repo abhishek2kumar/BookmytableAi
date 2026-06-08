@@ -28,7 +28,7 @@ export default function ErrorView() {
                <MapPin size={48} className="text-brand" />
             </div>
 
-            <h1 className="text-3xl font-display font-black text-slate-900 mb-4 leading-tight">
+            <h1 className="text-3xl mb-4 text-[#363636] font-normal leading-[1.2]">
               {isInvalid 
                 ? "Are you sure you entered the right location?" 
                 : city 
@@ -53,7 +53,7 @@ export default function ErrorView() {
               
               <button 
                 onClick={() => navigate('/')}
-                className="w-full bg-slate-100 text-slate-900 py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-brand/10 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                className="w-full bg-slate-100 text-[#363636] py-4 md:py-5 rounded-2xl text-lg hover:bg-brand/10 transition-all flex items-center justify-center gap-3 active:scale-[0.98] font-normal leading-[1.2]"
               >
                 <Search size={20} />
                 Try Another Search

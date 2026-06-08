@@ -6,7 +6,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud } from 'lucide-react';
+import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video } from 'lucide-react';
 import StoryManager from './StoryManager';
 import { cn, convertTo12Hour, convertTo24Hour } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,10 +20,11 @@ const TABS = [
   { id: 'general', label: 'General Info', icon: Info },
   { id: 'status', label: 'Operational Hours', icon: Clock },
   { id: 'media', label: 'Media & Images', icon: ImageIcon },
-  { id: 'stories', label: 'Stories', icon: Store },
   { id: 'menu', label: 'Live Menu', icon: Utensils },
   { id: 'specialties', label: 'Signature Dishes', icon: Star },
+  { id: 'stories', label: 'Stories', icon: Store },
   { id: 'offers', label: 'Offers & Promos', icon: Tag },
+  { id: 'ads', label: 'Ads', icon: Megaphone },
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -62,7 +63,7 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 w-full justify-between">
             <div className="flex flex-col">
                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Guest</div>
-               <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+               <div className="font-normal text-[#363636] leading-[1.2] text-sm flex items-center gap-2">
                  {userPhoto ? (
                    <img src={userPhoto} alt={b.userName || 'Guest'} className="w-6 h-6 rounded-full object-cover" />
                  ) : (
@@ -76,19 +77,19 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
             </div>
             <div>
                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Schedule</div>
-               <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+               <div className="font-normal text-[#363636] leading-[1.2] text-sm flex items-center gap-2">
                  <Calendar size={14} className="text-brand" /> {dateStr} at {b.time}
                </div>
             </div>
             <div>
                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Size</div>
-               <div className="font-bold text-slate-800 text-sm flex items-center gap-2">
+               <div className="font-normal text-[#363636] leading-[1.2] text-sm flex items-center gap-2">
                  <Users size={14} className="text-brand" /> {b.guests} Guests
                </div>
             </div>
             <div>
                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Source</div>
-               <div className="font-bold text-slate-800 text-sm">
+               <div className="font-normal text-[#363636] leading-[1.2] text-sm">
                  {b.source || 'Self'}
                </div>
             </div>
@@ -160,7 +161,7 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
 const InputText = ({ label, value, onChange, placeholder = '', disabled = false }: any) => (
   <div>
     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
-    <input type="text" disabled={disabled} value={value || ''} onChange={e => !disabled && onChange(e.target.value)} placeholder={placeholder} className={cn("w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-semibold text-slate-800 outline-none transition-all shadow-sm", disabled && "opacity-50 cursor-not-allowed")} />
+    <input type="text" disabled={disabled} value={value || ''} onChange={e => !disabled && onChange(e.target.value)} placeholder={placeholder} className={cn("w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm", disabled && "opacity-50 cursor-not-allowed")} />
   </div>
 );
 
@@ -204,7 +205,7 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
           value={value || ''} 
           onChange={e => onChange(e.target.value)} 
           placeholder={placeholder || "Image URL"} 
-          className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-semibold text-slate-800 outline-none transition-all shadow-sm"
+          className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm"
         />
         <div className="relative shrink-0">
           <input 
@@ -227,7 +228,7 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
 const TextArea = ({ label, value, onChange, placeholder = '' }: any) => (
   <div>
     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
-    <textarea value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={4} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-semibold text-slate-800 outline-none transition-all resize-none shadow-sm" />
+    <textarea value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={4} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all resize-none shadow-sm" />
   </div>
 );
 
@@ -250,6 +251,7 @@ export default function PartnerDashboardView() {
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRes, setSelectedRes] = useState<Restaurant | null>(null);
+  const [isResDropdownOpen, setIsResDropdownOpen] = useState(false);
   
   const [activeTab, setActiveTab] = useState('bookings');
   const [formData, setFormData] = useState<Partial<Restaurant>>({});
@@ -475,7 +477,7 @@ export default function PartnerDashboardView() {
   const renderImageInputList = (label: string, field: 'secondaryImages' | 'menuImages') => (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">{label}</h3>
+        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">{label}</h3>
         <button onClick={() => {
           const arr = [...(formData[field] || []), { url: '', category: '' }];
           updateForm(field, arr as any);
@@ -560,7 +562,7 @@ export default function PartnerDashboardView() {
   const renderMenuCategories = () => (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Menu Categories</h3>
+        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Menu Categories</h3>
         <button onClick={() => {
           const arr = [...(formData.menuCategories || [])];
           arr.push({ id: Math.random().toString(36).substr(2, 9), name: '', images: [] });
@@ -601,7 +603,7 @@ export default function PartnerDashboardView() {
              </div>
 
              <div className="flex items-center justify-between mb-3">
-               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Category Images</h4>
+               <h4 className="text-xs text-slate-500 uppercase tracking-wider font-normal leading-[1.2]">Category Images</h4>
                <button onClick={() => {
                   const arr = [...formData.menuCategories!];
                   const imgs = [...(cat.images || [])];
@@ -693,7 +695,7 @@ export default function PartnerDashboardView() {
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
         <div className="flex justify-between items-center bg-white p-6 rounded-[24px] border border-slate-300 shadow-sm relative overflow-hidden">
            <div>
-             <h2 className="text-xl font-display font-black text-slate-800">Table Reservations</h2>
+             <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Table Reservations</h2>
              <p className="text-slate-500 text-xs font-semibold mt-1">Manage all your table bookings.</p>
            </div>
            <button onClick={() => setShowNewBookingModal(true)} className="px-6 py-3 rounded-2xl bg-brand text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-brand/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
@@ -702,20 +704,20 @@ export default function PartnerDashboardView() {
            </button>
         </div>
         <div>
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Today's Bookings</h3>
+          <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Today's Bookings</h3>
           {todayBookings.length === 0 ? <p className="text-sm text-slate-500 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-300">No bookings for today.</p> : todayBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
         </div>
         
         {upcomingBookings.length > 0 && (
           <div>
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Upcoming Bookings</h3>
+            <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Upcoming Bookings</h3>
             {upcomingBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
           </div>
         )}
 
         {previousBookings.length > 0 && (
           <div>
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Previous Bookings</h3>
+            <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Previous Bookings</h3>
             {previousBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
           </div>
         )}
@@ -737,7 +739,7 @@ export default function PartnerDashboardView() {
         <AppIcon />
         <div className="mt-8 bg-white p-8 rounded-3xl shadow-sm max-w-md w-full">
           <Store className="mx-auto text-slate-300 mb-4" size={48} />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">No Restaurants Linked</h2>
+          <h2 className="text-xl mb-2 text-[#363636] font-normal leading-[1.2]">No Restaurants Linked</h2>
           <p className="text-slate-500 mb-6">Your email {user?.email} is not linked to any active restaurants.</p>
           <button onClick={handleLogout} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-2 rounded-xl font-bold transition-colors">
             Logout
@@ -764,7 +766,7 @@ export default function PartnerDashboardView() {
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center justify-between">
             <div>
-             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Takeaway Orders</h2>
+             <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">Takeaway Orders</h2>
              <p className="text-slate-500 text-xs font-semibold mt-1">Manage your takeaway orders.</p>
             </div>
         </div>
@@ -774,7 +776,7 @@ export default function PartnerDashboardView() {
              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                <ShoppingBag size={24} />
              </div>
-             <h3 className="text-lg font-bold text-slate-800 mb-1">No Orders Yet</h3>
+             <h3 className="text-lg mb-1 text-[#363636] font-normal leading-[1.2]">No Orders Yet</h3>
              <p className="text-slate-500 text-sm">When customers place takeaway orders, they will appear here.</p>
            </div>
         ) : (
@@ -784,11 +786,11 @@ export default function PartnerDashboardView() {
                  <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="text-xs font-bold text-slate-400 mb-1">Order ID: {order.orderId}</div>
-                      <div className="font-black text-lg text-slate-900">{order.customerName}</div>
+                      <div className="text-lg text-[#363636] font-normal leading-[1.2]">{order.customerName}</div>
                       <div className="text-xs font-semibold text-slate-500">{order.customerPhone}</div>
                     </div>
                     <div className="text-right">
-                       <div className="font-black text-brand text-lg">₹{order.totalPrice}</div>
+                       <div className="font-normal leading-[1.2] text-brand text-lg">₹{order.totalPrice}</div>
                        <div className="text-xs font-bold text-slate-500">
                          {new Date(order.createdAt).toLocaleString()}
                        </div>
@@ -800,7 +802,7 @@ export default function PartnerDashboardView() {
                    {order.items?.map((item: any, idx: number) => (
                      <div key={idx} className="flex justify-between items-center text-sm mb-1 last:mb-0">
                        <span className="font-semibold text-slate-700">{item.quantity}x {item.name}</span>
-                       <span className="font-bold text-slate-900">₹{item.price * item.quantity}</span>
+                       <span className="font-normal text-[#363636] leading-[1.2]">₹{item.price * item.quantity}</span>
                      </div>
                    ))}
                  </div>
@@ -863,7 +865,7 @@ export default function PartnerDashboardView() {
            <div className="flex items-center justify-between h-full">
                <div className="flex items-center gap-3">
                  <AppIcon size={36} />
-                 <span className="hidden sm:block text-xl font-display font-black text-vibrant-dark tracking-tighter">
+                 <span className="hidden sm:block text-xl font-normal leading-[1.2] text-[#363636] tracking-tighter">
                    Bookmy<span className="text-brand">Table</span>
                  </span>
                  <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase tracking-widest ml-2 hidden sm:block">Partner</span>
@@ -871,7 +873,7 @@ export default function PartnerDashboardView() {
                
               <div className="flex items-center gap-4">
                 <div className="hidden md:block text-right">
-                  <p className="text-sm font-bold text-slate-800">{user?.displayName}</p>
+                  <p className="text-sm font-normal text-[#363636] leading-[1.2]">{user?.displayName}</p>
                 </div>
                 {user?.photoURL && (
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border-2 border-slate-300" />
@@ -889,20 +891,56 @@ export default function PartnerDashboardView() {
         {/* Sidebar */}
         <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6">
           <div className="bg-white p-4 rounded-xl border border-slate-300">
-             <div className="space-y-1">
+             <div className="space-y-1 relative">
               {selectedRes && (
-                <div
-                  className="w-full flex flex-col gap-1 p-3 rounded-lg text-left bg-slate-100 text-brand"
-                >
-                  <div className="flex flex-col truncate">
-                    <span className="truncate text-sm font-bold">{selectedRes.name}</span>
-                    <span className="truncate text-[10px] text-slate-500 font-medium uppercase tracking-wide">
-                      {selectedRes.location}, {selectedRes.city}
-                    </span>
-                    <span className="truncate text-[9px] text-slate-400 font-medium font-mono tracking-wide mt-1">
-                      ID: {selectedRes.id}
-                    </span>
-                  </div>
+                <div className="w-full relative">
+                  <button
+                    onClick={() => restaurants.length > 1 && setIsResDropdownOpen(!isResDropdownOpen)}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-1 p-4 rounded-xl text-left bg-slate-50 border border-slate-200 overflow-hidden",
+                       restaurants.length > 1 && "cursor-pointer hover:bg-slate-100 transition-colors"
+                    )}
+                  >
+                    <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
+                      <span className="truncate text-base font-bold text-brand">{selectedRes.name}</span>
+                      <span className="truncate text-[11px] text-slate-500 font-medium uppercase tracking-wide mt-1">
+                        {selectedRes.location}, {selectedRes.city}
+                      </span>
+                      <span className="truncate text-[10px] text-slate-400 font-medium font-mono tracking-wide mt-1.5 opacity-70">
+                        ID: {selectedRes.id}
+                      </span>
+                    </div>
+                    {restaurants.length > 1 && (
+                       <ChevronDown size={18} className={cn("shrink-0 transition-transform text-slate-400", isResDropdownOpen && "rotate-180")} />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                     {isResDropdownOpen && (
+                        <motion.div
+                           initial={{ opacity: 0, y: 5 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           exit={{ opacity: 0, y: 5 }}
+                           className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 text-sm"
+                        >
+                           {restaurants.filter(r => r.id !== selectedRes.id).map(r => (
+                              <button
+                                 key={r.id}
+                                 onClick={() => {
+                                    setSelectedRes(r);
+                                    setIsResDropdownOpen(false);
+                                    setHasChanges(false);
+                                    setFormData(r);
+                                 }}
+                                 className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                              >
+                                 <div className="font-bold text-[#363636] truncate">{r.name}</div>
+                                 <div className="text-[10px] text-slate-500 uppercase tracking-wide truncate mt-0.5">{r.location}, {r.city}</div>
+                              </button>
+                           ))}
+                        </motion.div>
+                     )}
+                  </AnimatePresence>
                 </div>
               )}
              </div>
@@ -949,19 +987,19 @@ export default function PartnerDashboardView() {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Rating</p>
-                        <p className="text-2xl font-black text-slate-800">{formData.rating || 'N/A'}</p>
+                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">{formData.rating || 'N/A'}</p>
                       </div>
                       <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Reviews</p>
-                        <p className="text-2xl font-black text-slate-800">{(formData as any).reviewsCount || 0}</p>
+                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">{(formData as any).reviewsCount || 0}</p>
                       </div>
                       <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Avg Price</p>
-                        <p className="text-2xl font-black text-slate-800">₹{formData.avgPrice || 0}</p>
+                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">₹{formData.avgPrice || 0}</p>
                       </div>
                       <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Menu Items</p>
-                        <p className="text-2xl font-black text-slate-800">
+                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">
                           {formData.liveMenu?.length || 0}
                         </p>
                       </div>
@@ -973,7 +1011,7 @@ export default function PartnerDashboardView() {
                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    {/* Basic Details */}
                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
-                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Basic Details</h3>
+                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Basic Details</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                        <InputText label="Restaurant Name *" value={formData.name} onChange={(v:any) => updateForm('name', v)} disabled={true} />
                        <InputText label="Contact Number *" value={formData.contactNumber} onChange={(v:any) => updateForm('contactNumber', v)} />
@@ -986,20 +1024,20 @@ export default function PartnerDashboardView() {
 
                    {/* Address Details */}
                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
-                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Address Details</h3>
+                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Address Details</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                        <InputText label="Floor / Tower" value={formData.floor} onChange={(v:any) => updateForm('floor', v)} />
                        <InputText label="Shop / Building No." value={formData.shopNo} onChange={(v:any) => updateForm('shopNo', v)} />
                        <InputText label="Area / Locality *" value={formData.area} onChange={(v:any) => updateForm('area', v)} />
                        <InputText label="Landmark (Optional)" value={formData.landmark} onChange={(v:any) => updateForm('landmark', v)} />
-                       <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">City *</label><select value={formData.city || ''} onChange={(e) => updateForm('city', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-semibold text-slate-800 outline-none transition-all shadow-sm"><option value="" disabled>Select City</option>{cities.map((city: any, i: number) => (<option key={city.id || i} value={city.name}>{city.name}</option>))}</select></div>
+                       <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">City *</label><select value={formData.city || ''} onChange={(e) => updateForm('city', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-brand/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm"><option value="" disabled>Select City</option>{cities.map((city: any, i: number) => (<option key={city.id || i} value={city.name}>{city.name}</option>))}</select></div>
                        <InputText label="State *" value={formData.state} onChange={(v:any) => updateForm('state', v)} />
                        <InputText label="Pincode *" value={formData.pincode} onChange={(v:any) => updateForm('pincode', v)} />
                      </div>
                      
                      <div className="pt-6 border-t border-slate-300">
                        <div className="flex items-center justify-between mb-4">
-                         <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Coordinates</h4>
+                         <h4 className="text-xs uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Coordinates</h4>
                          <button
                            type="button"
                            onClick={handleGeocodeAddress}
@@ -1019,7 +1057,7 @@ export default function PartnerDashboardView() {
 
                    {/* Cuisines & Facilities */}
                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
-                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Cuisines & Facilities</h3>
+                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Cuisines & Facilities</h3>
                      
                      <div className="mb-6">
                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Select Cuisines</label>
@@ -1049,7 +1087,7 @@ export default function PartnerDashboardView() {
                        <input 
                          type="text" 
                          placeholder="+ Add custom cuisine (Press Enter)" 
-                         className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-brand rounded-xl font-semibold text-slate-800 outline-none transition-all text-sm mb-2"
+                         className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-brand rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all text-sm mb-2"
                          onKeyDown={e => {
                            if (e.key === 'Enter') {
                              e.preventDefault();
@@ -1124,7 +1162,7 @@ export default function PartnerDashboardView() {
                {activeTab === 'status' && (
                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    <div>
-                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Daily Timings</h3>
+                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Daily Timings</h3>
                      <div className="space-y-4">
                        {DAYS.map(day => {
                          const timing = (formData.dailyTimings as any)?.[day] || { closed: false };
@@ -1160,7 +1198,7 @@ export default function PartnerDashboardView() {
                                      updateForm('dailyTimings', newTimings);
                                    }
                                  }}
-                                 className="text-[10px] uppercase tracking-widest font-black text-brand hover:underline transition-colors flex items-center justify-center gap-1 sm:w-auto bg-brand/5 px-3 py-1.5 rounded-lg border border-brand/20"
+                                 className="text-[10px] uppercase tracking-widest font-normal leading-[1.2] text-brand hover:underline transition-colors flex items-center justify-center gap-1 sm:w-auto bg-brand/5 px-3 py-1.5 rounded-lg border border-brand/20"
                                >
                                  Copy to all days
                                </button>
@@ -1177,7 +1215,7 @@ export default function PartnerDashboardView() {
                                        newTimings[day] = { ...timing, ranges: newRanges };
                                        
                                        updateForm('dailyTimings', newTimings);
-                                     }} className="w-28 px-4 py-2 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-semibold text-slate-800 text-sm outline-none transition-all shadow-sm" />
+                                     }} className="w-28 px-4 py-2 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-normal text-[#363636] leading-[1.2] text-sm outline-none transition-all shadow-sm" />
                                      <span className="text-slate-400 font-bold text-sm">to</span>
                                      <input type="time" value={convertTo24Hour(range.close)} onChange={e => {
                                        const newTimings = { ...(formData.dailyTimings || {}) };
@@ -1186,7 +1224,7 @@ export default function PartnerDashboardView() {
                                        newTimings[day] = { ...timing, ranges: newRanges };
                                        
                                        updateForm('dailyTimings', newTimings);
-                                     }} className="w-28 px-4 py-2 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-semibold text-slate-800 text-sm outline-none transition-all shadow-sm" />
+                                     }} className="w-28 px-4 py-2 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-normal text-[#363636] leading-[1.2] text-sm outline-none transition-all shadow-sm" />
                                      {Math.max(ranges.length, 1) > 1 && (
                                        <button type="button" onClick={() => {
                                          const newTimings = { ...(formData.dailyTimings || {}) };
@@ -1216,11 +1254,11 @@ export default function PartnerDashboardView() {
                    </div>
 
                    <div>
-                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-2">Blackout Dates</h3>
+                     <h3 className="text-sm uppercase tracking-widest mb-2 text-[#363636] font-normal leading-[1.2]">Blackout Dates</h3>
                      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-relaxed mb-4">Dates when your restaurant is closed or unable to accept online bookings.</p>
                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-300 space-y-4">
                        <div className="flex gap-3 max-w-sm">
-                         <input type="date" id="newBlackoutDate" min={new Date().toISOString().split('T')[0]} className="flex-1 px-4 py-2.5 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-semibold text-slate-800 text-sm outline-none transition-all shadow-sm" />
+                         <input type="date" id="newBlackoutDate" min={new Date().toISOString().split('T')[0]} className="flex-1 px-4 py-2.5 bg-white border border-slate-300 focus:border-brand/50 rounded-xl font-normal text-[#363636] leading-[1.2] text-sm outline-none transition-all shadow-sm" />
                          <button type="button" onClick={() => {
                            const el = document.getElementById('newBlackoutDate') as HTMLInputElement;
                            if(el && el.value && !isNaN(new Date(el.value).getTime())) {
@@ -1277,7 +1315,7 @@ export default function PartnerDashboardView() {
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Live Menu Items</h3>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Live Menu Items</h3>
                         <p className="text-xs text-slate-500 mt-1">Manage items available for digital ordering</p>
                       </div>
                       <button onClick={() => {
@@ -1371,7 +1409,7 @@ export default function PartnerDashboardView() {
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Signature Dishes</h3>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Signature Dishes</h3>
                         <p className="text-xs text-slate-500 mt-1">Highlight your best dishes to attract diners</p>
                       </div>
                       <button onClick={() => {
@@ -1427,7 +1465,7 @@ export default function PartnerDashboardView() {
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Ongoing Offers</h3>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Ongoing Offers</h3>
                         <p className="text-xs text-slate-500 mt-1">Manage discounts and seasonal promotions</p>
                       </div>
                       <button onClick={() => {
@@ -1498,6 +1536,163 @@ export default function PartnerDashboardView() {
                  </div>
                )}
 
+               {activeTab === 'ads' && (
+                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Advertisement Campaigns</h3>
+                        <p className="text-xs text-slate-500 mt-1">Manage visual ads and video promos</p>
+                      </div>
+                      <button onClick={() => {
+                        const newAd = [{ 
+                            id: Math.random().toString(36).substr(2, 9),
+                            title: '', 
+                            description: '', 
+                            active: true,
+                            validFrom: new Date().toISOString().split('T')[0]
+                        }, ...(formData.advertisements || [])];
+                        updateForm('advertisements', newAd);
+                      }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
+                        <Plus size={14} /> Create New Ad
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(!formData.advertisements || formData.advertisements.length === 0) ? (
+                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
+                          No active advertisements.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-6">
+                          {formData.advertisements.map((ad, idx) => (
+                            <div key={ad.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-6 flex-grow mr-6 text-left">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <span className={cn("w-3 h-3 rounded-full animate-pulse", ad.active ? "bg-green-500" : "bg-slate-300")} />
+                                      <h4 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Ad Slot #{idx + 1}</h4>
+                                    </div>
+                                    <button type="button" onClick={() => {
+                                      const newAds = [...formData.advertisements!];
+                                      newAds[idx].active = !ad.active;
+                                      updateForm('advertisements', newAds);
+                                    }} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all", ad.active ? "bg-green-100 text-green-600" : "bg-slate-200 text-slate-400")}>
+                                      {ad.active ? "Active" : "Paused"}
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-4">
+                                    <div className="space-y-2">
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Campaign Title</label>
+                                      <input className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none" value={ad.title} onChange={(e) => {
+                                        const newAds = [...formData.advertisements!];
+                                        newAds[idx].title = e.target.value;
+                                        updateForm('advertisements', newAds);
+                                      }} placeholder="Monsoon Special Ad..." />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description / Hook Line</label>
+                                      <textarea className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-brand outline-none min-h-[80px]" value={ad.description || ""} onChange={(e) => {
+                                        const newAds = [...formData.advertisements!];
+                                        newAds[idx].description = e.target.value;
+                                        updateForm('advertisements', newAds);
+                                      }} />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Poster Image URL</label>
+                                        <div className="flex flex-col gap-2">
+                                          {ad.image && ad.image !== "Uploading..." && (
+                                            <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                                              <img src={ad.image} className="w-full h-full object-contain" alt="Ad Preview" />
+                                            </div>
+                                          )}
+                                          <div className="flex gap-2">
+                                            <input className="flex-grow px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-brand outline-none" value={ad.image || ""} onChange={(e) => {
+                                              const newAds = [...formData.advertisements!];
+                                              newAds[idx].image = e.target.value;
+                                              updateForm('advertisements', newAds);
+                                            }} placeholder="https://..." />
+                                            <input type="file" id={`partner-ad-image-upload-${idx}`} className="hidden" accept="image/*" onChange={async (e) => {
+                                              const file = e.target.files?.[0];
+                                              if (!file) return;
+                                              try {
+                                                const newAds = [...formData.advertisements!];
+                                                newAds[idx].image = "Uploading...";
+                                                updateForm('advertisements', newAds);
+                                                
+                                                const storageRef = ref(storage, `restaurants/${file.name}-${Date.now()}`);
+                                                const uploadTask = uploadBytesResumable(storageRef, file);
+                                                uploadTask.on('state_changed', null, null, async () => {
+                                                  const url = await getDownloadURL(uploadTask.snapshot.ref);
+                                                  const updatedAds = [...formData.advertisements!];
+                                                  updatedAds[idx].image = url;
+                                                  updateForm('advertisements', updatedAds);
+                                                });
+                                              } catch (err) {
+                                                console.error(err);
+                                              }
+                                            }} />
+                                            <button type="button" onClick={() => document.getElementById(`partner-ad-image-upload-${idx}`)?.click()} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-brand transition-all" title="Upload Image">
+                                              <Upload size={18} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">YouTube Video Link</label>
+                                        <div className="flex gap-2">
+                                          <input className="flex-grow px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-brand outline-none" value={ad.videoUrl || ""} onChange={(e) => {
+                                            const newAds = [...formData.advertisements!];
+                                            newAds[idx].videoUrl = e.target.value;
+                                            updateForm('advertisements', newAds);
+                                          }} placeholder="https://youtube.com/watch?v=..." />
+                                          <div className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400">
+                                            <Video size={18} />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valid From</label>
+                                        <input type="date" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-brand outline-none" value={ad.validFrom || ""} onChange={(e) => {
+                                          const newAds = [...formData.advertisements!];
+                                          newAds[idx].validFrom = e.target.value;
+                                          updateForm('advertisements', newAds);
+                                        }} />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valid Until</label>
+                                        <input type="date" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-brand outline-none" value={ad.validUntil || ""} onChange={(e) => {
+                                          const newAds = [...formData.advertisements!];
+                                          newAds[idx].validUntil = e.target.value;
+                                          updateForm('advertisements', newAds);
+                                        }} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button type="button" onClick={() => {
+                                  const newAds = [...formData.advertisements!];
+                                  newAds.splice(idx, 1);
+                                  updateForm('advertisements', newAds);
+                                }} className="p-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition-colors">
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                 </div>
+               )}
+
             </div>
           )}
         </div>
@@ -1509,7 +1704,7 @@ export default function PartnerDashboardView() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[90vh]">
             <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-300 flex justify-between items-center relative overflow-hidden shrink-0">
                <div className="relative z-10">
-                 <h2 className="text-xl font-display font-black text-slate-800">New Booking</h2>
+                 <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">New Booking</h2>
                  <p className="text-slate-500 font-semibold text-xs mt-1">Create booking on behalf of user</p>
                </div>
                <button onClick={() => setShowNewBookingModal(false)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-sm relative z-10 transition-colors">
@@ -1545,9 +1740,9 @@ export default function PartnerDashboardView() {
                    <div className="md:col-span-2">
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Size (Guests) *</label>
                      <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-xl">
-                        <button type="button" onClick={() => setNewBookingForm({...newBookingForm, guests: Math.max(1, newBookingForm.guests - 1)})} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-black text-brand shadow-sm">-</button>
-                        <div className="flex-1 text-center font-black text-lg text-slate-800">{newBookingForm.guests}</div>
-                        <button type="button" onClick={() => setNewBookingForm({...newBookingForm, guests: newBookingForm.guests + 1})} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-black text-brand shadow-sm">+</button>
+                        <button type="button" onClick={() => setNewBookingForm({...newBookingForm, guests: Math.max(1, newBookingForm.guests - 1)})} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-normal leading-[1.2] text-brand shadow-sm">-</button>
+                        <div className="flex-1 text-center text-lg text-[#363636] font-normal leading-[1.2]">{newBookingForm.guests}</div>
+                        <button type="button" onClick={() => setNewBookingForm({...newBookingForm, guests: newBookingForm.guests + 1})} className="w-10 h-10 bg-white rounded-lg flex items-center justify-center font-normal leading-[1.2] text-brand shadow-sm">+</button>
                      </div>
                    </div>
                  </div>
@@ -1572,7 +1767,7 @@ export default function PartnerDashboardView() {
                     <Info size={18} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-sm">Unsaved Changes</h4>
+                    <h4 className="text-sm text-[#363636] font-normal leading-[1.2]">Unsaved Changes</h4>
                     <p className="text-xs text-slate-500 font-medium">You have modified your restaurant information.</p>
                   </div>
                 </div>

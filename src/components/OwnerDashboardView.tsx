@@ -190,7 +190,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               <stat.icon size={28} />
             </div>
             <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-2 relative z-10">{stat.label}</p>
-            <h3 className="text-5xl font-display font-black text-slate-900 relative z-10 tracking-tight">{stat.value}</h3>
+            <h3 className="text-5xl relative z-10 text-[#363636] font-normal leading-[1.2]">{stat.value}</h3>
             <div className={cn("absolute -bottom-4 -right-4 w-32 h-32 rounded-full blur-3xl opacity-20", stat.bg)} />
           </motion.div>
         ))}
@@ -200,7 +200,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-12">
             <div>
-              <h2 className="text-3xl font-display font-black text-slate-900 tracking-tight">Recent Activity</h2>
+              <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">Recent Activity</h2>
               <p className="text-slate-400 font-bold mt-1">Incoming reservations status</p>
             </div>
             <button onClick={() => setActiveTab('bookings')} className="p-4 bg-orange-50/50 hover:bg-orange-100/50 rounded-2xl text-orange-600 transition-all flex items-center gap-3 font-bold group">
@@ -222,7 +222,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     {booking.userName?.charAt(0) || 'G'}
                   </div>
                   <div>
-                    <h4 className="font-black text-slate-900 text-lg leading-none">{booking.userName}</h4>
+                    <h4 className="text-lg text-[#363636] font-normal leading-[1.2]">{booking.userName}</h4>
                     <p className="text-slate-400 text-sm font-bold mt-2 flex items-center gap-4">
                       <span className="flex items-center gap-1.5"><Users size={14} className="text-slate-300" /> {booking.guests} Guests</span>
                       <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-300" /> {booking.time}</span>
@@ -264,7 +264,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
       <div className="p-10 md:p-12 border-b border-slate-50 bg-orange-50/20">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div>
-            <h2 className="text-4xl font-display font-black text-slate-900 tracking-tight">Reservations</h2>
+            <h2 className="text-4xl text-[#363636] font-normal leading-[1.2]">Reservations</h2>
             <p className="text-slate-400 font-bold mt-2">Historical view of your guest activity.</p>
           </div>
           <div className="flex items-center gap-4">
@@ -295,7 +295,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                       {booking.userName?.charAt(0) || 'G'}
                     </div>
                     <div>
-                      <div className="font-black text-slate-900 leading-none mb-1.5">{booking.userName}</div>
+                      <div className="font-normal text-[#363636] leading-[1.2] leading-none mb-1.5">{booking.userName}</div>
                       <div className="text-[10px] font-bold text-slate-400">{booking.userEmail}</div>
                     </div>
                   </div>
@@ -306,7 +306,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   </div>
                 </td>
                 <td className="bg-slate-50/50 group-hover:bg-orange-50/50 px-8 py-6 transition-all">
-                  <div className="font-bold text-slate-900 text-sm">{formatDate(booking.dateTime)}</div>
+                  <div className="font-normal text-[#363636] leading-[1.2] text-sm">{formatDate(booking.dateTime)}</div>
                   <div className="text-[10px] font-black text-orange-600 uppercase tracking-widest mt-1">{booking.time}</div>
                 </td>
                 <td className="bg-slate-50/50 group-hover:bg-orange-50/50 last:rounded-r-[2rem] px-8 py-6 text-right transition-all">
@@ -345,7 +345,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
       <div className="p-12 pt-16 relative z-10">
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/3">
-            <h3 className="text-3xl font-display font-black text-slate-900 tracking-tight leading-none mb-4">Visual Menu</h3>
+            <h3 className="text-3xl mb-4 text-[#363636] font-normal leading-[1.2]">Visual Menu</h3>
             <p className="text-slate-400 font-bold leading-relaxed mb-8">Organize your digital presence into categories.</p>
             <button 
               onClick={() => setEditForm({...editForm, menuCategories: [...(editForm.menuCategories || []), { id: Date.now().toString(), name: '', images: [] }]})}
@@ -446,7 +446,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           >
             <div className="flex items-center gap-4 border-l-4 border-orange-500 pl-6 mb-8">
                <div>
-                  <h4 className="text-2xl font-display font-black text-slate-900">Branding & Identity</h4>
+                  <h4 className="text-2xl text-[#363636] font-normal leading-[1.2]">Branding & Identity</h4>
                   <p className="text-slate-400 font-bold text-xs">Configure how {restaurant?.name || 'your restaurant'} appears to diners.</p>
                </div>
             </div>
@@ -553,7 +553,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           >
             <div className="flex items-center gap-4 border-l-4 border-emerald-500 pl-6 mb-8">
                <div>
-                  <h4 className="text-2xl font-display font-black text-slate-900">Operations & Logistics</h4>
+                  <h4 className="text-2xl text-[#363636] font-normal leading-[1.2]">Operations & Logistics</h4>
                   <p className="text-slate-400 font-bold text-xs">Manage your availability and guest services.</p>
                </div>
             </div>
@@ -597,7 +597,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    return (
                      <div key={day} className="bg-white p-6 rounded-[28px] border border-slate-300 shadow-sm space-y-4">
                        <div className="flex items-center justify-between">
-                         <span className="font-bold text-slate-900">{day}</span>
+                         <span className="font-normal text-[#363636] leading-[1.2]">{day}</span>
                          <button 
                            type="button"
                            onClick={() => {
@@ -691,7 +691,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           >
             <div className="flex items-center gap-4 border-l-4 border-blue-500 pl-6 mb-8">
                <div>
-                  <h4 className="text-2xl font-display font-black text-slate-900">Global Gallery</h4>
+                  <h4 className="text-2xl text-[#363636] font-normal leading-[1.2]">Global Gallery</h4>
                   <p className="text-slate-400 font-bold text-xs">High-quality visuals for your profile page.</p>
                </div>
             </div>
@@ -739,7 +739,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           >
             <div className="flex items-center gap-4 border-l-4 border-brand pl-6 mb-8">
                <div>
-                  <h4 className="text-2xl font-display font-black text-slate-900">Reservation Control Hub</h4>
+                  <h4 className="text-2xl text-[#363636] font-normal leading-[1.2]">Reservation Control Hub</h4>
                   <p className="text-slate-400 font-bold text-xs">Configure how bookings are accepted and confirmed.</p>
                </div>
             </div>
@@ -750,7 +750,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     <Calendar size={28} />
                   </div>
                   <div>
-                    <h4 className="text-xl font-display font-black text-slate-900 leading-tight">Live Booking Engine</h4>
+                    <h4 className="text-xl text-[#363636] font-normal leading-[1.2]">Live Booking Engine</h4>
                     <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Status: {editForm.isBookingEnabled ? 'ON & Live' : 'OFF & Hidden'}</p>
                   </div>
                </div>
@@ -836,7 +836,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                         <div key={cat.id} className="bg-slate-50 border border-slate-300 p-8 rounded-[32px] shadow-sm">
                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                               <input 
-                                 className="bg-transparent text-2xl font-display font-black text-slate-900 focus:outline-none focus:ring-0 p-0 border-none w-full"
+                                 className="bg-transparent text-2xl font-normal leading-[1.2] text-[#363636] focus:outline-none focus:ring-0 p-0 border-none w-full"
                                  value={cat.name}
                                  placeholder="Category Name (e.g. Dinner)"
                                  onChange={e => {
@@ -910,7 +910,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           >
              <div className="flex items-center gap-4 border-l-4 border-orange-500 pl-6 mb-8">
                 <div>
-                   <h4 className="text-2xl font-display font-black text-slate-900">Current Offers</h4>
+                   <h4 className="text-2xl text-[#363636] font-normal leading-[1.2]">Current Offers</h4>
                    <p className="text-slate-400 font-bold text-xs">Manage deals and special promotions.</p>
                 </div>
              </div>
@@ -925,7 +925,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                       <div className="flex-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Offer Title</label>
                         <input 
-                          className="w-full bg-transparent border-none font-black text-slate-900 focus:ring-0 p-0 text-xl outline-none"
+                          className="w-full bg-transparent border-none font-normal text-[#363636] leading-[1.2] focus:ring-0 p-0 text-xl outline-none"
                           value={offer.title || offer}
                           placeholder="e.g. 20% Off on Weekends"
                           onChange={e => {
@@ -1011,7 +1011,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
       <div className="p-12 pt-16 relative z-10">
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/3">
-            <h3 className="text-3xl font-display font-black text-slate-900 tracking-tight leading-none mb-4">Live Menu</h3>
+            <h3 className="text-3xl mb-4 text-[#363636] font-normal leading-[1.2]">Live Menu</h3>
             <p className="text-slate-400 font-bold leading-relaxed mb-8">Manage your online takeaway orders menu including pricing and availability.</p>
             <button 
               onClick={() => {
@@ -1049,7 +1049,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    <div>
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Item Name</label>
                      <input 
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                        value={item.name}
                        placeholder="E.g., Margherita Pizza"
                        onChange={e => {
@@ -1062,7 +1062,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    <div>
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Category</label>
                      <input 
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                        value={item.category || ''}
                        placeholder="E.g., Starter"
                        onChange={e => {
@@ -1075,7 +1075,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    <div>
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Type</label>
                      <select 
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                        value={item.isVeg === false ? 'false' : 'true'}
                        onChange={e => {
                          const nextMenu = [...(editForm.liveMenu || [])];
@@ -1091,7 +1091,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Price (₹)</label>
                      <input 
                        type="number"
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                        value={item.price || ''}
                        placeholder="E.g., 299"
                        onChange={e => {
@@ -1104,7 +1104,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    <div className="md:col-span-2">
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Description</label>
                      <textarea 
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none h-24"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none h-24"
                        value={item.description || ''}
                        placeholder="Short description of the item..."
                        onChange={e => {
@@ -1117,7 +1117,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                    <div className="md:col-span-2">
                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Image URL</label>
                      <input 
-                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-bold text-slate-900 border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                       className="w-full px-6 py-4 bg-slate-50 rounded-[20px] font-normal text-[#363636] leading-[1.2] border-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                        value={item.image || ''}
                        placeholder="https://..."
                        onChange={e => {
@@ -1174,7 +1174,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     <LayoutDashboard size={32} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-display font-black text-slate-900 leading-tight truncate" title={restaurant?.name}>{restaurant?.name || 'Owner Dashboard'}</h2>
+                    <h2 className="text-xl truncate text-[#363636] font-normal leading-[1.2]" title={restaurant?.name}>{restaurant?.name || 'Owner Dashboard'}</h2>
                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 truncate" title={restaurant?.location}>{restaurant?.location || 'Management Hub'}</p>
                   </div>
                 </div>

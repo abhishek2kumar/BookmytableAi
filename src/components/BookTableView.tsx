@@ -312,7 +312,7 @@ return allDates;
           <div className="w-20 h-20 bg-brand text-white rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-brand/20">
             <Check size={40} strokeWidth={3} />
           </div>
-          <h3 className="text-2xl font-display font-black text-slate-900 mb-2">
+          <h3 className="text-2xl mb-2 text-[#363636] font-normal leading-[1.2]">
             Booking Confirmed!
           </h3>
           <p className="text-sm font-bold text-slate-500 mb-8">
@@ -321,7 +321,7 @@ return allDates;
 
           <div className="bg-slate-50/80 rounded-2xl p-6 w-full text-left space-y-4 mb-8 font-medium border border-slate-300">
             <div className="border-b border-slate-300 pb-4 mb-4">
-              <h4 className="font-bold text-slate-900 text-lg mb-1 uppercase tracking-tight">
+              <h4 className="text-lg mb-1 uppercase text-[#363636] font-normal leading-[1.2]">
                 {restaurant.name}
               </h4>
               <p className="text-sm text-slate-500">
@@ -331,19 +331,19 @@ return allDates;
 
             <div className="flex justify-between items-center">
               <span className="text-slate-500 text-sm font-bold">Date</span>
-              <span className="text-slate-900 text-sm font-black">
+              <span className="text-[#363636] text-sm font-normal leading-[1.2]">
                 {format(selectedDate, "MMM d, yyyy")}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500 text-sm font-bold">Time</span>
-              <span className="text-slate-900 text-sm font-black">
+              <span className="text-[#363636] text-sm font-normal leading-[1.2]">
                 {selectedTime}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500 text-sm font-bold">Guests</span>
-              <span className="text-slate-900 text-sm font-black">
+              <span className="text-[#363636] text-sm font-normal leading-[1.2]">
                 {guests}
               </span>
             </div>
@@ -351,7 +351,7 @@ return allDates;
               <span className="text-brand text-sm font-bold uppercase tracking-wide">
                 Offer Applied
               </span>
-              <span className="text-slate-900 text-sm font-black">
+              <span className="text-[#363636] text-sm font-normal leading-[1.2]">
                 Flat 10% off
               </span>
             </div>
@@ -372,7 +372,7 @@ return allDates;
             </button>
             <button
               onClick={() => navigate(`/`)}
-              className="w-full bg-slate-100 text-slate-800 rounded-xl py-4 font-bold active:scale-[0.98] transition-all hover:bg-slate-200"
+              className="w-full bg-slate-100 text-[#363636] rounded-xl py-4 active:scale-[0.98] transition-all hover:bg-slate-200 font-normal leading-[1.2]"
             >
               Go to Home
             </button>
@@ -394,7 +394,7 @@ return allDates;
             <ArrowLeft size={24} />
           </button>
           <div className="ml-3 flex-1 overflow-hidden">
-            <h1 className="font-black text-lg md:text-xl text-slate-900 leading-none mb-1">
+            <h1 className="text-lg md:text-xl mb-1 text-[#363636] font-normal leading-[1.2]">
               Book Table
             </h1>
             <p className="text-xs font-bold text-slate-500 truncate">
@@ -408,7 +408,7 @@ return allDates;
         {/* Main Booking Content */}
         <div className="space-y-4 md:space-y-6">
           <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-300">
-            <h3 className="font-bold text-slate-900 text-lg mb-4">
+            <h3 className="text-lg mb-4 text-[#363636] font-normal leading-[1.2]">
               Number of guest(s)
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
@@ -430,7 +430,7 @@ return allDates;
           </div>
 
           <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-300">
-            <h3 className="font-bold text-slate-900 text-lg mb-4">
+            <h3 className="text-lg mb-4 text-[#363636] font-normal leading-[1.2]">
               When are you visiting?
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2 mb-6">
@@ -455,7 +455,7 @@ return allDates;
               ))}
             </div>
 
-            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="font-bold text-slate-900 text-sm mb-4">
+            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="text-sm mb-4 text-[#363636] font-normal leading-[1.2]">
               Select the time of day to see the offers
             </h3>
             <div className="space-y-4">
@@ -522,7 +522,7 @@ return allDates;
                       <div className="flex items-center gap-4">
                         {icon}
                         <div className="text-left">
-                          <p className="font-bold text-slate-900">{cat.name}</p>
+                          <p className="font-normal text-[#363636] leading-[1.2]">{cat.name}</p>
                           <p className="text-xs text-slate-500 font-medium">
                             {cat.id === "breakfast" && "10:00 AM to 12:00 PM"}
                             {cat.id === "lunch" && "12:00 PM to 05:00 PM"}
@@ -579,7 +579,7 @@ return allDates;
           )}</div>
 
           <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-300">
-            <h3 className="font-bold text-slate-900 text-lg mb-4">
+            <h3 className="text-lg mb-4 text-[#363636] font-normal leading-[1.2]">
               Select offer to proceed
             </h3>
 
@@ -609,7 +609,7 @@ return allDates;
                             : "border-slate-300 bg-transparent",
                         )}
                       ></div>
-                      <h4 className="font-bold text-slate-900 text-base">
+                      <h4 className="text-base text-[#363636] font-normal leading-[1.2]">
                         {offer.title}
                       </h4>
                     </div>
@@ -637,7 +637,7 @@ return allDates;
 
           {(!user || !profile?.phone) && (
             <div className="bg-white rounded-[20px] md:rounded-[24px] p-5 md:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-300">
-              <h3 className="font-bold text-slate-900 text-lg mb-4">
+              <h3 className="text-lg mb-4 text-[#363636] font-normal leading-[1.2]">
                 Contact Details
               </h3>
               <input

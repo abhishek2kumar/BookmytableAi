@@ -80,12 +80,14 @@ import {
   getRestaurantTabUrl,
   getRatingColor,
   isTakeawayAvailable,
+  formatAddress as formatAddressGlobal,
 } from "../lib/utils";
 import { summarizeGoogleReviews } from "../services/aiService";
 import ReactMarkdown from "react-markdown";
 import { Helmet } from "react-helmet-async";
 import { useStories } from "../hooks/useStories";
 import StoryViewer from "./StoryViewer";
+import StoryAvatar from "./StoryAvatar";
 
 export default function RestaurantDetailsView() {
   const { slug, tab, city } = useParams<{
@@ -523,7 +525,7 @@ export default function RestaurantDetailsView() {
     return () => clearInterval(interval);
   }, [reviews.length]);
 
-  const formatAddress = (rest: Restaurant) => {
+  const formatAddressLocal = (rest: Restaurant) => {
     const parts = [];
     if (rest.floor) parts.push(rest.floor);
     if (rest.shopNo) parts.push(rest.shopNo);
@@ -532,8 +534,8 @@ export default function RestaurantDetailsView() {
     if (rest.landmark) parts.push(rest.landmark);
     if (rest.city) parts.push(rest.city);
 
-    if (parts.length > 0) return parts.join(", ");
-    return rest.address || rest.location || "";
+    if (parts.length > 0) return formatAddressGlobal(parts.join(", "));
+    return formatAddressGlobal(rest.address || rest.location || "");
   };
 
   const scroll = (
@@ -608,7 +610,7 @@ export default function RestaurantDetailsView() {
     try {
       const summary = await summarizeGoogleReviews(
         restaurant.name,
-        formatAddress(restaurant),
+        formatAddressLocal(restaurant),
       );
       setAiSummary(summary);
 
@@ -706,7 +708,7 @@ export default function RestaurantDetailsView() {
             userEmail: user.email,
             userName: profile?.displayName || user.displayName || "Guest",
             restaurantName: restaurant.name,
-            restaurantLocation: formatAddress(restaurant),
+            restaurantLocation: formatAddressLocal(restaurant),
             ownerEmail: restaurantOwnerEmail,
             dateTime: bookingDateTime.toISOString(),
             guests,
@@ -978,7 +980,7 @@ export default function RestaurantDetailsView() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
-        <h2 className="text-2xl font-display font-bold text-vibrant-dark mb-2">
+        <h2 className="text-2xl mb-2 text-[#363636] font-normal leading-[1.2]">
           {error || "Something went wrong"}
         </h2>
         <button
@@ -1071,7 +1073,7 @@ export default function RestaurantDetailsView() {
                 readOnly
                 onClick={() => setIsSearchOverlayOpen(true)}
                 placeholder="Search for restaurant"
-                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-slate-800"
+                className="w-full pl-12 pr-6 py-2.5 bg-slate-50 border border-slate-300 hover:bg-white hover:border-brand/20 cursor-pointer rounded-xl font-medium shadow-sm transition-all text-sm outline-none text-[#363636]"
                 value={searchQuery}
               />
             </div>
@@ -1111,7 +1113,7 @@ export default function RestaurantDetailsView() {
             onClick={() =>
               navigate(`/${(restaurant.city || "").toLowerCase()}`)
             }
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800 active:scale-95 transition-all"
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all"
           >
             <ChevronLeft size={24} />
           </button>
@@ -1122,7 +1124,7 @@ export default function RestaurantDetailsView() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="text-lg font-display font-black text-slate-900 line-clamp-1"
+                className="text-lg font-normal leading-[1.2] text-[#363636] line-clamp-1"
               >
                 {restaurant.name}
               </motion.h2>
@@ -1135,7 +1137,7 @@ export default function RestaurantDetailsView() {
             onClick={toggleBookmark}
             disabled={isBookmarking}
             className={cn(
-              "w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800 active:scale-95 transition-all",
+              "w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all",
               isBookmarking && "opacity-50",
             )}
           >
@@ -1148,7 +1150,7 @@ export default function RestaurantDetailsView() {
             />
           </button>
           <button
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800 active:scale-95 transition-all"
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all"
             onClick={() => {
               if (navigator.share) {
                 navigator
@@ -1241,7 +1243,7 @@ export default function RestaurantDetailsView() {
                 </button>
 
                 <div className="flex flex-col gap-2 pr-12">
-                  <div className="flex items-center gap-2 text-slate-800 font-display flex-wrap">
+                  <div className="flex items-center gap-2 text-[#363636] flex-wrap">
                     <div
                       className={cn(
                         "p-1 rounded-full shrink-0",
@@ -1260,7 +1262,7 @@ export default function RestaurantDetailsView() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <h1 className="text-2xl lg:text-3xl font-display font-black text-slate-900 tracking-tight leading-tight">
+                    <h1 className="text-2xl lg:text-3xl text-[#363636] font-normal leading-[1.2]">
                       {restaurant.name}
                     </h1>
                     {hasStories && (
@@ -1268,16 +1270,17 @@ export default function RestaurantDetailsView() {
                         onClick={() => setShowStoryViewer(true)}
                         className="flex flex-col items-center justify-center shrink-0 cursor-pointer group"
                       >
-                         <div className={`w-10 h-10 rounded-full p-[2px] group-hover:scale-105 transition-transform ${allStoriesViewed ? 'bg-slate-300' : 'bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500'}`}>
-                             <div className="w-full h-full rounded-full border-2 border-white bg-white overflow-hidden">
-                                 <img src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} className="w-full h-full object-cover" />
-                             </div>
-                         </div>
+                         <StoryAvatar 
+                             stories={usersWithStories[0].stories}
+                             userPhoto={restaurant.image || RESTAURANT_IMAGE_FALLBACK}
+                             currentUserId={user?.uid}
+                             className="w-10 h-10 group-hover:scale-105 transition-transform"
+                         />
                       </button>
                     )}
                   </div>
 
-                  <div className="text-sm text-slate-800 font-bold hidden md:block">
+                  <div className="text-sm font-normal text-[#363636] leading-[1.2] hidden md:block">
                     {Array.isArray(restaurant.cuisine)
                       ? restaurant.cuisine.join(", ")
                       : restaurant.cuisine}
@@ -1286,8 +1289,8 @@ export default function RestaurantDetailsView() {
 
                 <div className="space-y-1.5 pt-1">
                   <div className="flex gap-2 text-sm items-baseline">
-                    <span className="text-slate-800 font-medium line-clamp-2 leading-snug">
-                      {formatAddress(restaurant)}
+                    <span className="text-[#363636] font-medium line-clamp-2 leading-snug">
+                      {formatAddressLocal(restaurant)}
                     </span>
                   </div>
 
@@ -1357,7 +1360,7 @@ export default function RestaurantDetailsView() {
                   </button>
 
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddressLocal(restaurant)}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex flex-col items-center justify-center gap-1 p-1 rounded-xl group hover:bg-slate-50 transition-colors text-slate-700"
@@ -1405,7 +1408,7 @@ export default function RestaurantDetailsView() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-3">
-                        <h1 className="text-[26px] font-black text-slate-900 leading-tight tracking-tight">
+                        <h1 className="text-[26px] text-[#363636] font-normal leading-[1.2]">
                           {restaurant.name}
                         </h1>
                         {hasStories && (
@@ -1413,15 +1416,16 @@ export default function RestaurantDetailsView() {
                             onClick={() => setShowStoryViewer(true)}
                             className="flex flex-col items-center justify-center shrink-0 cursor-pointer group"
                           >
-                             <div className={`w-8 h-8 rounded-full p-[2px] group-hover:scale-105 transition-transform ${allStoriesViewed ? 'bg-slate-300' : 'bg-gradient-to-tr from-yellow-400 via-orange-500 to-pink-500'}`}>
-                                 <div className="w-full h-full rounded-full border border-white bg-white overflow-hidden">
-                                     <img src={restaurant.image || RESTAURANT_IMAGE_FALLBACK} className="w-full h-full object-cover" />
-                                 </div>
-                             </div>
+                             <StoryAvatar 
+                                 stories={usersWithStories[0].stories}
+                                 userPhoto={restaurant.image || RESTAURANT_IMAGE_FALLBACK}
+                                 currentUserId={user?.uid}
+                                 className="w-8 h-8 group-hover:scale-105 transition-transform"
+                             />
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center flex-wrap gap-1 text-[13px] text-slate-800">
+                      <div className="flex items-center flex-wrap gap-1 text-[13px] text-[#363636]">
                         <span>{distance} km</span>
                         <span className="text-slate-300">•</span>
                         <span className="line-clamp-1">
@@ -1487,7 +1491,7 @@ export default function RestaurantDetailsView() {
 
                     <div className="flex gap-2 ml-auto">
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddress(restaurant)}`)}`}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${restaurant.name} ${formatAddressLocal(restaurant)}`)}`}
                         className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-700 active:scale-95 transition-transform border border-slate-300"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -1529,7 +1533,7 @@ export default function RestaurantDetailsView() {
                 (restaurant.ambienceImages?.length || 0) > 0
               ),
             },
-            { id: "overview", label: "Story", show: true },
+            { id: "overview", label: "About", show: true },
             { id: "reviews", label: "Reviews", show: true },
             {
               id: "book",
@@ -1561,7 +1565,7 @@ export default function RestaurantDetailsView() {
                     t.disabled && "opacity-50 pointer-events-none",
                     isActive
                       ? "text-brand"
-                      : "text-slate-500 hover:text-slate-900",
+                      : "text-slate-500 hover:text-[#363636]",
                   )}
                 >
                   {t.label}
@@ -1585,7 +1589,7 @@ export default function RestaurantDetailsView() {
           {activeOffers.length > 0 && (
             <div id="offers" className="scroll-mt-24">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-slate-900">Offers</h2>
+                <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">Offers</h2>
                 {activeOffers.length > 1 && (
                   <div className="hidden md:flex gap-3">
                     <div
@@ -1620,7 +1624,7 @@ export default function RestaurantDetailsView() {
                     className="snap-start shrink-0 w-full md:w-[280px] bg-white border border-slate-300 rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
                   >
                     <div className="p-5 bg-white pb-6">
-                      <h4 className="font-black text-slate-900 leading-tight text-[20px] md:text-[22px] tracking-tight mb-1">
+                      <h4 className="text-[20px] md:text-[22px] mb-1 text-[#363636] font-normal leading-[1.2]">
                         {offer.title}
                       </h4>
                       <div className="text-[13px] text-slate-400 font-medium tracking-tight">
@@ -1693,6 +1697,7 @@ export default function RestaurantDetailsView() {
               )}
             </div>
           )}
+
 
           {/* Advertisements / Featured Promos */}
           {restaurant.advertisements &&
@@ -1786,36 +1791,6 @@ export default function RestaurantDetailsView() {
                       </div>
                     ))}
                 </div>
-
-                {/* Ad Carousel Dots */}
-                {restaurant.advertisements.filter((ad) => ad.active).length >
-                  1 && (
-                  <div className="flex justify-center items-center gap-2 mt-2 pb-1">
-                    {restaurant.advertisements
-                      .filter((ad) => ad.active)
-                      .map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            if (adsScrollRef.current) {
-                              adsScrollRef.current.scrollTo({
-                                left: i * (adsScrollRef.current.clientWidth + 32),
-                                behavior: "smooth",
-                              });
-                              setActiveAdIndex(i);
-                            }
-                          }}
-                          className={cn(
-                            "h-2 rounded-full transition-all duration-300",
-                            i === activeAdIndex
-                              ? "bg-brand w-6"
-                              : "bg-slate-200 hover:bg-slate-300 w-2",
-                          )}
-                          aria-label={`Go to slide ${i + 1}`}
-                        />
-                      ))}
-                  </div>
-                )}
               </div>
             )}
 
@@ -1834,7 +1809,7 @@ export default function RestaurantDetailsView() {
               (restaurant.signatureDishes &&
                 restaurant.signatureDishes.length > 0)) && (
               <div className="mb-8">
-                <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
+                <h3 className="text-[20px] md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
                   Signature Dishes & Bestsellers
                 </h3>
 
@@ -1861,7 +1836,7 @@ export default function RestaurantDetailsView() {
                       className="flex justify-between items-start group"
                     >
                       <div className="pr-4">
-                        <h4 className="font-bold text-slate-900 text-sm group-hover:text-brand transition-colors">
+                        <h4 className="text-sm group-hover:text-brand transition-colors text-[#363636] font-normal leading-[1.2]">
                           {item.name}
                         </h4>
                         <p className="text-xs text-slate-500 mt-1">
@@ -1869,7 +1844,7 @@ export default function RestaurantDetailsView() {
                         </p>
                       </div>
                       {item.price > 0 && (
-                        <span className="font-black text-slate-900 shrink-0">
+                        <span className="font-normal text-[#363636] leading-[1.2] shrink-0">
                           ₹{item.price}
                         </span>
                       )}
@@ -1888,14 +1863,14 @@ export default function RestaurantDetailsView() {
 
               return (
               <div className="mt-8">
-                <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
+                <h3 className="text-[20px] md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
                   Menu Pages
                 </h3>
                 {(validMenuCategories.length > 0 || hasLegacyMenuImages) && (
                     <div className="flex bg-slate-50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide mb-6 max-w-max">
-                      {validMenuCategories.map((cat: any) => (
+                      {validMenuCategories.map((cat: any, idx: number) => (
                         <button
-                          key={cat.id}
+                          key={cat.id || `menu-cat-${idx}`}
                           onClick={() => {
                             setActiveMenuCategory(cat.id);
                             setMenuSlideIndex(0);
@@ -1991,13 +1966,13 @@ export default function RestaurantDetailsView() {
                           <div className="hidden md:block">
                             <button
                               onClick={() => scroll(menuScrollRef, "left")}
-                              className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                              className="absolute left-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-[#363636] hover:text-brand transition-colors z-10"
                             >
                               <ChevronLeft size={20} />
                             </button>
                             <button
                               onClick={() => scroll(menuScrollRef, "right")}
-                              className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-slate-800 hover:text-brand transition-colors z-10"
+                              className="absolute right-[-20px] top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-xl border border-slate-300 flex items-center justify-center text-[#363636] hover:text-brand transition-colors z-10"
                             >
                               <ChevronRight size={20} />
                             </button>
@@ -2021,7 +1996,7 @@ export default function RestaurantDetailsView() {
               className="scroll-mt-24 pt-8 border-t border-slate-300"
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight">
+                <h2 className="text-[20px] md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Photo Gallery
                 </h2>
 
@@ -2104,18 +2079,18 @@ export default function RestaurantDetailsView() {
             id="overview"
             className="scroll-mt-24 pt-8 border-t border-slate-300"
           >
-            <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-6">
-              {restaurant.name}'s Story
+            <h2 className="text-[20px] md:text-2xl mb-6 text-[#363636] font-normal leading-[1.2]">
+              About {restaurant.name}
             </h2>
             {restaurant.description && (
-              <p className="text-slate-600 text-[14px] md:text-base font-medium leading-relaxed mb-8 text-justify">
+              <p className="text-[#363636] text-sm font-normal leading-[1.2] mb-8 text-justify">
                 {restaurant.description}
               </p>
             )}
 
             {/* Amenities Grid */}
             <div className="mb-8">
-              <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4">
+              <h3 className="text-[20px] md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
                 Facilities
               </h3>
               {restaurant.facilities && restaurant.facilities.length > 0 ? (
@@ -2125,7 +2100,10 @@ export default function RestaurantDetailsView() {
                       key={i}
                       className="flex items-center group transition-all"
                     >
-                      <span className="text-sm font-medium text-slate-700">
+                      <div className="w-[22px] h-[22px] rounded-full border border-slate-200 flex items-center justify-center mr-2 shrink-0">
+                        <Star size={10} className="text-[#363636] fill-[#363636]/20" />
+                      </div>
+                      <span className="text-sm font-normal leading-[1.2] text-[#363636]">
                         {fac}
                       </span>
                     </div>
@@ -2144,16 +2122,16 @@ export default function RestaurantDetailsView() {
             id="reviews"
             className="scroll-mt-24 pt-8 border-t border-slate-300"
           >
-            <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-6">Reviews</h2>
+            <h2 className="text-[20px] md:text-2xl mb-6 text-[#363636] font-normal leading-[1.2]">Reviews</h2>
 
             <div className="bg-slate-50/50 rounded-3xl p-6 md:p-8 space-y-8">
               {/* AI Summary and Leave Review Row */}
               <div className="grid grid-cols-1 gap-6">
                 {/* AI Summary */}
-                <div className="bg-[#0f172a] p-6 md:p-8 rounded-[28px] text-white shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[180px] border border-white/10 group">
+                <div className="bg-[#f8fafc] p-6 md:p-8 rounded-[28px] text-[#363636] shadow-sm relative overflow-hidden flex flex-col justify-center min-h-[180px] border border-slate-200 group">
                   {/* Animated Background Accents */}
-                  <div className="absolute top-0 right-0 w-96 h-96 bg-brand/10 blur-[100px] rounded-full -mr-20 -mt-20 group-hover:bg-brand/20 transition-colors duration-700 pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full -ml-20 -mb-20 pointer-events-none" />
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-brand/5 blur-[100px] rounded-full -mr-20 -mt-20 group-hover:bg-brand/10 transition-colors duration-700 pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full -ml-20 -mb-20 pointer-events-none" />
 
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
@@ -2161,9 +2139,9 @@ export default function RestaurantDetailsView() {
                         <div className="relative w-14 h-14 flex items-center justify-center -ml-2">
                           {/* Ambient blue glow */}
                           <motion.div
-                            animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.7, 0.4] }}
+                            animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
                             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-blue-500 rounded-full blur-[14px] z-0"
+                            className="absolute inset-0 bg-blue-300 rounded-full blur-[14px] z-0"
                           />
                           
                           {/* Sparkling SVG */}
@@ -2172,16 +2150,16 @@ export default function RestaurantDetailsView() {
                              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                              className="relative z-10 flex items-center justify-center mt-1"
                           >
-                            <svg width="44" height="44" viewBox="0 0 100 100" className="drop-shadow-[0_0_8px_rgba(41,121,255,0.6)]">
+                            <svg width="44" height="44" viewBox="0 0 100 100" className="drop-shadow-[0_0_8px_rgba(41,121,255,0.4)]">
                               <defs>
                                 <linearGradient id="aiSparkleGrad" x1="10%" y1="10%" x2="90%" y2="90%">
-                                  <stop offset="0%" stopColor="#8ECAFF" />
-                                  <stop offset="40%" stopColor="#2979FF" />
-                                  <stop offset="100%" stopColor="#0D3B9E" />
+                                  <stop offset="0%" stopColor="#2979FF" />
+                                  <stop offset="40%" stopColor="#0D3B9E" />
+                                  <stop offset="100%" stopColor="#0a2a7a" />
                                 </linearGradient>
                                 <linearGradient id="aiSparkleGradMini" x1="10%" y1="10%" x2="90%" y2="90%">
-                                  <stop offset="0%" stopColor="#D4E6FF" />
-                                  <stop offset="100%" stopColor="#2979FF" />
+                                  <stop offset="0%" stopColor="#2979FF" />
+                                  <stop offset="100%" stopColor="#0a2a7a" />
                                 </linearGradient>
                               </defs>
                               {/* Main Star */}
@@ -2199,48 +2177,61 @@ export default function RestaurantDetailsView() {
                           </motion.div>
                         </div>
                         <div>
-                          <h3 className="text-xl font-black text-white tracking-tight leading-none">
+                          <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">
                             AI Dining Insight
                           </h3>
-                          <p className="text-[10px] md:text-xs font-bold text-white/50 uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                          <p className="text-[10px] md:text-xs font-normal text-slate-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                             Based on Google review
                           </p>
                         </div>
                       </div>
-                      <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10">
-                        <span className="text-[10px] md:text-xs font-black text-white/70">
+                      <div className="bg-slate-200/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-slate-300">
+                        <span className="text-[10px] md:text-xs font-normal leading-[1.2] text-slate-600">
                           BETA
                         </span>
                       </div>
                     </div>
 
                     {isAiLoading ? (
-                      <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl">
+                      <div className="flex items-center gap-3 bg-slate-100 p-4 rounded-2xl">
                         <Loader2
                           size={18}
-                          className="animate-spin text-white/80"
+                          className="animate-spin text-slate-500"
                         />
-                        <p className="text-sm font-medium animate-pulse text-white/80">
+                        <p className="text-sm font-normal leading-[1.2] animate-pulse text-[#363636]">
                           Processing culinary insights and guest experiences...
                         </p>
                       </div>
                     ) : aiSummary ? (
-                      <div className="prose prose-invert max-w-none text-white/90 font-medium text-sm md:text-base leading-relaxed text-opacity-90 max-w-4xl">
-                        <ReactMarkdown>{aiSummary}</ReactMarkdown>
+                      <div className="max-w-4xl space-y-4">
+                        <ReactMarkdown
+                          components={{
+                            p: ({node, ...props}) => <p className="text-sm font-normal leading-[1.2] text-[#363636] text-justify" {...props} />,
+                            li: ({node, ...props}) => <li className="text-sm font-normal leading-[1.2] text-[#363636]" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1.5 my-2" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal pl-4 space-y-1.5 my-2" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-semibold text-[#363636]" {...props} />,
+                            h1: ({node, ...props}) => <h1 className="text-lg font-normal leading-[1.2] text-[#363636] mb-2" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-base font-normal leading-[1.2] text-[#363636] mb-2 mt-4" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-sm font-normal leading-[1.2] text-[#363636] mb-2 mt-4" {...props} />
+                          }}
+                        >
+                          {aiSummary}
+                        </ReactMarkdown>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-start mt-4 bg-white/5 p-5 md:p-6 rounded-2xl border border-white/5 backdrop-blur-sm">
-                        <p className="text-sm md:text-base font-medium text-white/80 mb-5 leading-relaxed max-w-2xl">
+                      <div className="flex flex-col items-start mt-4 bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-normal leading-[1.2] text-[#363636] mb-5 max-w-2xl text-justify">
                           Discover what guests love most. Generate an AI-powered
                           summary of thousands of customer reviews to reveal top
                           dishes, ambiance, and service highlights in seconds.
                         </p>
                         <button
                           onClick={handleGenerateSummary}
-                          className="bg-white text-brand px-6 py-3 rounded-xl text-sm font-black uppercase tracking-widest flex items-center gap-2 hover:bg-white/90 active:scale-95 transition-all shadow-xl hover:shadow-white/20"
+                          className="bg-brand text-white px-6 py-3 rounded-xl text-sm font-normal leading-[1.2] uppercase tracking-[0.1em] flex items-center gap-2 hover:bg-orange-600 active:scale-95 transition-all shadow-md shadow-brand/20"
                         >
-                          <Sparkles size={16} className="fill-brand/20" />{" "}
+                          <Sparkles size={16} className="text-white" />{" "}
                           Generate Culinary Insight
                         </button>
                       </div>
@@ -2250,7 +2241,7 @@ export default function RestaurantDetailsView() {
 
                 {/* Leave Review */}
                 <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-300 shadow-sm flex flex-col justify-center">
-                  <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4 block">
+                  <h3 className="text-[20px] md:text-2xl mb-4 block text-[#363636] font-normal leading-[1.2]">
                     Rate your experience
                   </h3>
 
@@ -2304,13 +2295,13 @@ export default function RestaurantDetailsView() {
               {/* User Reviews */}
               {reviews.length > 0 && (
                 <div className="pt-4 space-y-4">
-                  <h3 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight mb-4 block">
+                  <h3 className="text-[20px] md:text-2xl mb-4 block text-[#363636] font-normal leading-[1.2]">
                     Recent Reviews
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {reviews.slice(0, 4).map((review) => (
+                    {reviews.slice(0, 4).map((review, idx) => (
                       <div
-                        key={review.id}
+                        key={review.id || `rev-${idx}`}
                         className="bg-white p-5 rounded-2xl border border-slate-300 shadow-sm flex flex-col"
                       >
                         <div className="flex items-center gap-3 mb-3">
@@ -2321,7 +2312,7 @@ export default function RestaurantDetailsView() {
                             referrerPolicy="no-referrer"
                           />
                           <div className="overflow-hidden">
-                            <h4 className="font-bold text-slate-900 text-xs truncate">
+                            <h4 className="text-xs truncate text-[#363636] font-normal leading-[1.2]">
                               {review.userName}
                             </h4>
                             <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">
@@ -2334,7 +2325,7 @@ export default function RestaurantDetailsView() {
                           </div>
                         </div>
 
-                        <p className="text-slate-600 text-sm italic line-clamp-3 leading-relaxed flex-grow">
+                        <p className="text-sm font-normal leading-[1.2] text-[#363636] line-clamp-3 flex-grow">
                           "{review.text}"
                         </p>
                       </div>
@@ -2357,7 +2348,7 @@ export default function RestaurantDetailsView() {
                 <Clock size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">
+                <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                   Recently Viewed
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -2367,9 +2358,9 @@ export default function RestaurantDetailsView() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendations.recentlyViewed.slice(0, 4).map((res) => (
+              {recommendations.recentlyViewed.slice(0, 4).map((res, idx) => (
                 <RestaurantCard
-                  key={res.id}
+                  key={res.id || `rec-recent-${idx}`}
                   restaurant={res}
                   className="shadow-vibrant-sm"
                 />
@@ -2386,7 +2377,7 @@ export default function RestaurantDetailsView() {
                 <Utensils size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">
+                <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                   Similar to {restaurant.name}
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -2396,9 +2387,9 @@ export default function RestaurantDetailsView() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendations.similar.map((res) => (
+              {recommendations.similar.map((res, idx) => (
                 <RestaurantCard
-                  key={res.id}
+                  key={res.id || `rec-similar-${idx}`}
                   restaurant={res}
                   className="shadow-vibrant-sm"
                 />
@@ -2415,7 +2406,7 @@ export default function RestaurantDetailsView() {
                 <MapPin size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">
+                <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                   Nearby Restaurants
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -2425,9 +2416,9 @@ export default function RestaurantDetailsView() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendations.nearby.map((res) => (
+              {recommendations.nearby.map((res, idx) => (
                 <RestaurantCard
-                  key={res.id}
+                  key={res.id || `rec-nearby-${idx}`}
                   restaurant={res}
                   className="shadow-vibrant-sm"
                 />
@@ -2444,7 +2435,7 @@ export default function RestaurantDetailsView() {
                 <TrendingUp size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-black text-vibrant-dark tracking-tight">
+                <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">
                   You May Also Like
                 </h2>
                 <p className="text-vibrant-gray font-medium text-sm">
@@ -2454,9 +2445,9 @@ export default function RestaurantDetailsView() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recommendations.youMayLike.map((res) => (
+              {recommendations.youMayLike.map((res, idx) => (
                 <RestaurantCard
-                  key={res.id}
+                  key={res.id || `rec-like-${idx}`}
                   restaurant={res}
                   className="shadow-vibrant-sm"
                 />
@@ -2487,7 +2478,7 @@ export default function RestaurantDetailsView() {
               className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-t-[2rem] md:rounded-[2rem] shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between p-6 md:p-8 border-b border-slate-50 shrink-0">
-                <h2 className="text-[20px] md:text-2xl font-display font-black text-slate-900 tracking-tight">
+                <h2 className="text-[20px] md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Outlet Timings
                 </h2>
                 <button
@@ -2717,7 +2708,7 @@ export default function RestaurantDetailsView() {
             <div className="p-4 md:p-6 border-b flex items-center gap-3 max-w-4xl mx-auto w-full">
               <button
                 onClick={() => setIsSearchOverlayOpen(false)}
-                className="p-2 -ml-2 text-vibrant-dark hover:bg-slate-50 rounded-full transition-colors"
+                className="p-2 -ml-2 text-[#363636] hover:bg-slate-50 rounded-full transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
@@ -2759,9 +2750,9 @@ export default function RestaurantDetailsView() {
                         </span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {searchSuggestions.map((res) => (
+                        {searchSuggestions.map((res, idx) => (
                           <Link
-                            key={res.id}
+                            key={res.id || `search-sugg-${idx}`}
                             to={getRestaurantUrl(res)}
                             onClick={() => {
                               setIsSearchOverlayOpen(false);
@@ -2786,7 +2777,7 @@ export default function RestaurantDetailsView() {
                               />
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">
+                              <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">
                                 {res.name}
                               </h4>
                               <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">
@@ -2832,7 +2823,7 @@ export default function RestaurantDetailsView() {
                 <div className="p-4 md:p-6">
                   {recentSearches.length > 0 && (
                     <div className="mb-10 md:mb-16">
-                      <h4 className="text-xs md:text-sm font-black text-vibrant-gray uppercase tracking-widest mb-6">
+                      <h4 className="text-xs md:text-sm text-vibrant-gray uppercase tracking-widest mb-6 font-normal leading-[1.2]">
                         Recent Searches
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2869,7 +2860,7 @@ export default function RestaurantDetailsView() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-bold text-vibrant-dark md:text-lg truncate">
+                              <h4 className="md:text-lg truncate text-[#363636] font-normal leading-[1.2]">
                                 {res.name}
                               </h4>
                               <p className="text-xs md:text-sm text-vibrant-gray font-medium text-ellipsis overflow-hidden line-clamp-1">

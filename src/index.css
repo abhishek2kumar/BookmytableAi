@@ -26,8 +26,15 @@
     padding-right: env(safe-area-inset-right, 0px);
   }
   
-  h1, h2, h3, h4, h5, h6 {
+  h1, h3, h4, h5, h6 {
     @apply font-display text-vibrant-dark;
+  }
+
+  h2 {
+    @apply font-display text-vibrant-dark;
+    font-size: 3rem;
+    line-height: 1.2;
+    font-weight: 500;
   }
 }
 
