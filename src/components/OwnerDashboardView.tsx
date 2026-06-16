@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
 import { 
   Users, Calendar, Clock, ChevronRight, 
   Settings, Save, AlertCircle, CheckCircle2,
@@ -57,6 +58,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     secondaryImages: [],
     description: '',
     isBookingEnabled: true,
+    isQrMenuEnabled: false,
     bookingSlots: [],
     instantBookingLimit: 4,
     blackoutDates: [],
@@ -133,7 +135,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
 
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
-      'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'bookingSlots', 
+      'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'isQrMenuEnabled', 'bookingSlots', 
       'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
     ];
 
@@ -1012,7 +1014,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
         <div className="flex flex-col md:flex-row gap-12">
           <div className="md:w-1/3">
             <h3 className="text-3xl mb-4 text-[#363636] font-normal leading-[1.2]">Live Menu</h3>
-            <p className="text-slate-400 font-bold leading-relaxed mb-8">Manage your online takeaway orders menu including pricing and availability.</p>
+            <p className="text-slate-400 font-bold leading-relaxed mb-8">Manage your digital menu items including pricing, categories, and availability.</p>
             <button 
               onClick={() => {
                 const newItem = { id: Date.now().toString(), name: '', price: 0, isAvailable: true };
@@ -1028,7 +1030,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             {(!editForm.liveMenu || editForm.liveMenu.length === 0) && (
               <div className="py-24 text-center bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-slate-300">
                  <UtensilsCrossed size={64} className="mx-auto text-slate-200 mb-6" />
-                 <p className="text-slate-400 font-bold">Start adding takeaway menu items.</p>
+                 <p className="text-slate-400 font-bold">Start adding digital menu items.</p>
               </div>
             )}
             
@@ -1233,6 +1235,55 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                      )} />
                   </button>
                 </div>
+                {/* QR Menu Toggle */}
+                <div className="pt-6 border-t border-slate-300 flex items-center justify-between mt-6">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Digital QR Menu</span>
+                  <button
+                    onClick={async () => {
+                        const newVal = !editForm.isQrMenuEnabled;
+                        setEditForm({...editForm, isQrMenuEnabled: newVal});
+                        
+                        if (restaurant?.id) {
+                          try {
+                            await updateDoc(doc(db, 'restaurants', restaurant.id), {
+                              isQrMenuEnabled: newVal,
+                              updatedAt: serverTimestamp()
+                            });
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                    }}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-all relative shrink-0",
+                      editForm.isQrMenuEnabled ? "bg-emerald-500" : "bg-slate-200"
+                    )}
+                  >
+                     <div className={cn(
+                       "absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all shadow-sm",
+                       editForm.isQrMenuEnabled ? "left-7" : "left-1"
+                     )} />
+                  </button>
+                </div>
+                {editForm.isQrMenuEnabled && (
+                  <div className="mt-4 p-5 bg-white rounded-xl border border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest text-center">Scan to order</p>
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="p-3 bg-white border-2 border-slate-100 rounded-2xl shadow-sm">
+                        <QRCodeSVG 
+                          value={`${window.location.origin}/qr-menu/${restaurant?.id}`} 
+                          size={160}
+                          level="H"
+                          includeMargin={false}
+                          fgColor="#0f172a"
+                        />
+                      </div>
+                      <a href={`/qr-menu/${restaurant?.id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-brand hover:underline px-4 py-2 bg-brand/5 rounded-full">
+                        Open Link
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-full blur-3xl -translate-x-4 translate-y-4" />
             </div>

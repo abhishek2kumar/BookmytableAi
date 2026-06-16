@@ -134,6 +134,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage;
   const isHomePage = location.pathname === '/';
   const isPartnersPage = location.pathname.startsWith('/partners');
+  const isQrMenuPage = location.pathname.startsWith('/qr-menu/');
 
   if (isPartnersPage) {
     return <>{children}</>;
@@ -156,7 +157,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {!showComingSoon && (
         <header className={cn(
           "sticky top-0 z-[60] bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 transition-all duration-300",
-          (isBookPage || isOnboardingPage) ? "hidden" : (isRestaurantPage ? "md:block hidden" : "block")
+          (isBookPage || isOnboardingPage || isQrMenuPage) ? "hidden" : (isRestaurantPage ? "md:block hidden" : "block")
         )}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -313,7 +314,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               
                               <Link to="/dashboard?tab=takeawayOrders" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
                                 <ShoppingBag size={16} className="text-slate-400" />
-                                Takeaway Orders
+                                Food Orders
                               </Link>
                               
                               <Link to="/dashboard?tab=favorites" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold mb-2 border-b border-slate-50 pb-3">
@@ -375,6 +376,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer */}
+      {!isQrMenuPage && (
       <footer className={cn("bg-vibrant-dark py-10 md:py-12 text-vibrant-gray pb-24 md:pb-12")}>
         <div className="max-w-7xl mx-auto px-6 md:px-4">
           <div className="flex items-center justify-center gap-3 mb-6 opacity-80 filter grayscale brightness-200">
@@ -409,8 +411,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </footer>
+      )}
       {/* Mobile Bottom Navigation - Hidden on Restaurant and Home pages */}
-      {!showComingSoon && (!isRestaurantPage && !isHomePage) && (
+      {!showComingSoon && (!isRestaurantPage && !isHomePage && !isQrMenuPage) && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
           <Link
             to="/"

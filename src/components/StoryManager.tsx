@@ -4,6 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { db, storage } from '../lib/firebase';
 import { Story, Restaurant } from '../types';
 import { Loader2, Plus, X, Eye, Trash2, Image as ImageIcon, Video, Clock, Users } from 'lucide-react';
+import { generateSeoFriendlyFileName } from '../lib/utils';
 
 interface Props {
   restaurant: Restaurant;
@@ -60,8 +61,8 @@ export default function StoryManager({ restaurant }: Props) {
     setUploading(true);
     setProgress(0);
 
-    const ext = file.name.split('.').pop();
-    const fileName = `stories/${restaurant.id}_${Date.now()}.${ext}`;
+    const seoFileName = generateSeoFriendlyFileName(file.name, 'story', restaurant.name);
+    const fileName = `stories/${seoFileName}`;
     const storageRef = ref(storage, fileName);
     const uploadTask = uploadBytesResumable(storageRef, file);
 

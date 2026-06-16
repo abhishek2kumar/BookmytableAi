@@ -18,7 +18,8 @@ export default function DashboardView() {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [bookingFilter, setBookingFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
-  useEffect(() => { if(!user) return; const q = query(collection(db, 'takeaway_orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})))); return () => un(); }, [user]);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  useEffect(() => { if(!user) return; const q = query(collection(db, 'orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})))); return () => un(); }, [user]);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile' | 'takeawayOrders') || 'bookings';
@@ -69,7 +70,7 @@ export default function DashboardView() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div className="flex flex-col">
             <h1 className="text-4xl mb-2 text-[#363636] font-normal leading-[1.2]">
-              {activeTab === 'favorites' ? 'Your Favorites' : activeTab === 'takeawayOrders' ? 'Your Takeaway Orders' : 'Your Bookings'}
+              {activeTab === 'favorites' ? 'Your Favorites' : activeTab === 'takeawayOrders' ? 'Your Food Orders' : 'Your Bookings'}
             </h1>
             <p className="text-vibrant-gray font-bold opacity-60 uppercase text-[10px] tracking-[0.2em]">
               Manage your dining life
@@ -307,11 +308,20 @@ export default function DashboardView() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8"
+                    className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8 cursor-pointer hover:border-brand/30 transition-colors"
+                    onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                   >
                      <div className="flex justify-between items-start mb-6">
                        <div>
-                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Order #{order.orderId.slice(-8)}</div>
+                         <div className="flex items-center gap-2 mb-2">
+                           <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order #{order.orderId.slice(-8)}</div>
+                           <span className={cn(
+                             "px-2 py-0.5 rounded text-[9px] uppercase font-black tracking-widest",
+                             order.type === 'dine_in' ? "bg-brand flex text-white" : "bg-blue-600 text-white"
+                           )}>
+                             {order.type === 'dine_in' ? (order.tableNumber && order.tableNumber !== 'Unknown' ? `DINE IN at Table ${order.tableNumber}` : 'DINE IN') : 'TAKEAWAY'}
+                           </span>
+                         </div>
                          <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">₹{order.totalPrice} • {order.items?.length || 0} items</h3>
                          <div className="text-xs text-slate-500 font-semibold mt-1">
                            {new Date(order.createdAt).toLocaleString()}
@@ -334,6 +344,42 @@ export default function DashboardView() {
                           </div>
                         ))}
                      </div>
+                     
+                     {/* BIFURCATION CARD - SHOWN ONLY WHEN EXPANDED */}
+                     {expandedOrderId === order.id && (
+                       <motion.div 
+                         initial={{ opacity: 0, height: 0 }} 
+                         animate={{ opacity: 1, height: 'auto' }} 
+                         className="overflow-hidden mt-4 pt-4 border-t border-slate-100 space-y-2 mb-4"
+                       >
+                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Bill Details</h4>
+                         <div className="flex justify-between items-center text-sm text-slate-600">
+                           <span>Item Total</span>
+                           <span>₹{order.itemTotal || order.items?.reduce((acc, item) => acc + (item.price * item.quantity), 0) || 0}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-sm text-slate-600">
+                           <span>Restaurant Packaging</span>
+                           <span>₹{order.packaging !== undefined ? order.packaging : 20}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-sm text-slate-600">
+                           <span>Taxes</span>
+                           <span>₹{order.taxes !== undefined ? order.taxes : Math.round(((5) / 100) * (order.items?.reduce((acc, item) => acc + (item.price * item.quantity), 0) || 0))}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-sm text-slate-600">
+                           <span>Platform Fee</span>
+                           <span>₹{order.platformFee || 0}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-sm text-slate-600">
+                           <span>Discount</span>
+                           <span>-₹{order.discount || 0}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-base font-bold text-[#363636] mt-3 pt-3 border-t border-slate-100">
+                           <span>Bill Total</span>
+                           <span>₹{order.totalPrice}</span>
+                         </div>
+                       </motion.div>
+                     )}
+
                      <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-lg w-max" style={{ background: order.paymentMethod === 'online' ? '#eef2ff' : '#fff7ed', color: order.paymentMethod === 'online' ? '#4f46e5' : '#ea580c' }}>
                         {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
                      </div>
@@ -345,8 +391,8 @@ export default function DashboardView() {
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6">
                   <Utensils size={40} />
                 </div>
-                <h3 className="text-2xl mb-2 text-[#363636] font-normal leading-[1.2]">No takeaway orders</h3>
-                <p className="text-vibrant-gray font-bold opacity-60 mb-8 max-w-sm">You haven't ordered any takeaways yet.</p>
+                <h3 className="text-2xl mb-2 text-[#363636] font-normal leading-[1.2]">No food orders</h3>
+                <p className="text-vibrant-gray font-bold opacity-60 mb-8 max-w-sm">You haven't ordered any food yet.</p>
                 <Link 
                   to="/" 
                   className="bg-brand text-white px-10 py-5 rounded-2xl font-black shadow-xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-widest"

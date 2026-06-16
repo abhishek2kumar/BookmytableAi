@@ -93,14 +93,16 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (isOwner(existing().ownerId) && (
+        ((isOwner(existing().ownerId) || (request.auth.token.email in existing().get('partnerEmails', []))) && (
           // Strictly control which keys can be modified by the owner
           incoming().diff(existing()).affectedKeys().hasOnly([
             'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 'contactNumber',
             'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
             'offers', 'signatureDishes', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt',
             'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'instantBookingLimit', 
-            'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories'
+            'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories',
+            'address', 'lat', 'lng', 'liveMenu', 'isQrMenuEnabled', 'partnerEmails', 'advertisements',
+            'email', 'floor', 'shopNo', 'area', 'landmark', 'state', 'pincode', 'rating', 'reviewsCount'
           ]) &&
           isValidRestaurant(incoming()) &&
           incoming().ownerId == existing().ownerId &&
@@ -119,11 +121,7 @@ service cloud.firestore {
 
     // --- Booking Validation ---
     match /bookings/{bookingId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.restaurantOwnerId == request.auth.uid || 
-        isAdmin()
-      );
+      allow read: if true;
       
       allow create: if isSignedIn() && (
         isAdmin() || (
@@ -153,23 +151,18 @@ service cloud.firestore {
       allow delete: if isAdmin() || isOwner(existing().userId);
     }
 
-    match /takeaway_orders/{orderId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        (exists(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)) && 
-         get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid) || 
-        isAdmin()
-      );
-      
+    match /orders/{orderId} {
+      allow read: if true;
       allow create: if isSignedIn() && incoming().userId == request.auth.uid;
-      
-      allow update: if isSignedIn() && (
-        isAdmin() || 
-        (exists(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)) && 
-         get(/databases/$(database)/documents/restaurants/$(resource.data.restaurantId)).data.ownerId == request.auth.uid)
-      );
-      
-      allow delete: if isAdmin();
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    match /takeaway_orders/{orderId} {
+      allow read: if true;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if true;
+      allow delete: if true;
     }
 
     match /users/{userId} {

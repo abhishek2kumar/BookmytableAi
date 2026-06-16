@@ -42,37 +42,69 @@ async function startServer() {
 
   // API Route for Contact Form
   app.post('/api/contact', async (req, res) => {
-    const { name, email, subject, message } = req.body;
+    const { name, email, subject, message, restaurantName, phone } = req.body;
     
     console.log('--- NEW CONTACT FORM SUBMISSION ---');
-    console.log('To: bookmytableindia@gmail.com');
+    console.log('To: contact@bookmytable.co.in');
     console.log(`From: ${name} (${email})`);
     console.log(`Subject: ${subject}`);
-    console.log(`Message: ${message}`);
+    if (restaurantName) console.log(`Restaurant: ${restaurantName}`);
+    if (phone) console.log(`Phone: ${phone}`);
+    if (message) console.log(`Message: ${message}`);
     console.log('------------------------------------');
 
     const resend = getResend();
     if (resend) {
       try {
-        // Send to User
+        // Send to BookMyTable Admin
         await resend.emails.send({
-          from: 'contact@bookmytable.co.in', // Use verified domain in production
+          from: 'BookMyTable <contact@bookmytable.co.in>',
           to: 'contact@bookmytable.co.in',
-          subject: 'Enquiry from customer' + name,
+          subject: (subject || 'New Enquiry') + ` from ${name}`,
           html: `
-            <h1>Your have received Enquiry from ${name} regarding  !</h1>
-            <p>Customer's e-mail address: ${email},</p>
-            <p>Customer's message: ${message}</p>
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+              <h1 style="color: #f43f5e;">New ${subject || 'Enquiry'} Received!</h1>
+              <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                <p><strong>👤 Name:</strong> ${name}</p>
+                <p><strong>📧 Email:</strong> ${email}</p>
+                ${phone ? `<p><strong>📞 Phone:</strong> ${phone}</p>` : ''}
+                ${restaurantName ? `<p><strong>🏨 Restaurant:</strong> ${restaurantName}</p>` : ''}
+                ${message ? `<p><strong>💬 Message:</strong><br/>${message.replace(/\n/g, '<br/>')}</p>` : ''}
+              </div>
+            </div>
           `
         });
 
+        // Send confirmation auto-reply to the User
+        if (email) {
+          await resend.emails.send({
+            from: 'BookMyTable <contact@bookmytable.co.in>',
+            to: email,
+            subject: 'We received your request - BookMyTable',
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+                <h1 style="color: #6366f1;">Thank you for reaching out!</h1>
+                <p>Hi ${name},</p>
+                <p>We've received your ${subject ? subject.toLowerCase() : 'message'} and our team will get back to you shortly.</p>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+                  <p><strong>Your Details:</strong></p>
+                  ${restaurantName ? `<p>Restaurant: ${restaurantName}</p>` : ''}
+                  <p>Email: ${email}</p>
+                  ${phone ? `<p>Phone: ${phone}</p>` : ''}
+                  ${message ? `<p>Message:<br/>${message.replace(/\n/g, '<br/>')}</p>` : ''}
+                </div>
+                <p>Best regards,<br/>The BookMyTable Team</p>
+              </div>
+            `
+          });
+        }
       } catch (err) {
         console.error('Error sending emails:', err);
       }
     } else {
       console.log('NOTICE: RESEND_API_KEY missing. Email skipped but logged.');
     }
-    res.status(200).json({ success: true, message: 'Message received and logged for delivery to bookmytableindia@gmail.com' });
+    res.status(200).json({ success: true, message: 'Message received and logged.' });
   });
 
   // API Route for Booking Confirmation
@@ -460,7 +492,7 @@ async function startServer() {
 
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Contact notifications set for: bookmytableindia@gmail.com`);
+    console.log(`Contact notifications set for: contact@bookmytable.co.in`);
   });
 
   server.on('error', (error: any) => {
@@ -468,7 +500,7 @@ async function startServer() {
       console.warn(`Warning: Port ${PORT} is in use (likely AI Studio environment). Falling back to port 3000...`);
       app.listen(3000, '0.0.0.0', () => {
         console.log(`Server running on http://localhost:3000`);
-        console.log(`Contact notifications set for: bookmytableindia@gmail.com`);
+        console.log(`Contact notifications set for: contact@bookmytable.co.in`);
       });
     } else {
       console.error('Server error:', error);

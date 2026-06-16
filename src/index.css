@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Arimo:ital,wght@0,400..700;1,400..700&family=Barlow+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Barlow+Semi+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Black+Ops+One&family=Edu+NSW+ACT+Foundation:wght@400..700&family=Iosevka+Charon:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Play:wght@400;700&family=Playwrite+AU+VIC+Guides&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", sans-serif;
+  --font-sans: "Arimo", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Arimo", sans-serif;
   
   --color-brand: #ff5200;
   --color-brand-light: #ffece5;
@@ -35,6 +35,12 @@
     font-size: 3rem;
     line-height: 1.2;
     font-weight: 500;
+  }
+
+  ::placeholder {
+    font-weight: 300 !important;
+    font-size: 0.85rem !important;
+    opacity: 0.7 !important;
   }
 }
 

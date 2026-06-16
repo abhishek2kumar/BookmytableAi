@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useRestaurants } from "../hooks/useFirebase";
 import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -38,8 +38,11 @@ const DietaryIcon = ({ isVeg }: { isVeg?: boolean }) => {
   );
 };
 
-export default function TakeawayView() {
+export default function QrMenuView() {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const tableNumber = searchParams.get('table') || '';
+
   const navigate = useNavigate();
   const { restaurants, loading: restaurantsLoading } = useRestaurants(true);
   const { user, profile, signInWithGoogle } = useAuth();
@@ -107,6 +110,23 @@ export default function TakeawayView() {
     );
   }
 
+  if (!restaurant.isQrMenuEnabled) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <AlertCircle size={48} className="text-slate-400 mb-4" />
+        <h2 className="text-xl text-[#363636] font-normal leading-[1.2] text-center max-w-sm">
+          Digital menu is currently disabled by the restaurant.
+        </h2>
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-6 px-6 py-2 bg-brand text-white rounded-xl font-bold"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
   // Format items with category and veg toggle where possible
   const liveMenu = (restaurant.liveMenu || []).map((item: any) => ({
     ...item,
@@ -151,7 +171,7 @@ export default function TakeawayView() {
   const handleConfirmOrder = async () => {
     const payableAmount =
       cartTotal +
-      Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + 20 + (appSettings?.platformFee || 0);
+      Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + (appSettings?.platformFee || 0);
     const orderId =
       "ORD_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
     const customerId = user?.uid || "CUST_GUEST";
@@ -175,12 +195,13 @@ export default function TakeawayView() {
           userId: user.uid,
           customerName: user.displayName || "Guest",
           customerPhone: profile?.phone || "",
-          type: "takeaway",
+          type: "dine_in",
+          tableNumber: tableNumber || "Unknown",
           items,
           totalPrice: payableAmount,
           itemTotal: cartTotal,
           taxes: Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal),
-          packaging: 20,
+          packaging: 0,
           platformFee: appSettings?.platformFee || 0,
           discount: 0,
           paymentMethod,
@@ -356,7 +377,9 @@ export default function TakeawayView() {
             <div className="flex items-center gap-1 text-slate-500 text-xs">
               <span className="truncate">{restaurant.location}</span>
               <span>•</span>
-              <span className="font-medium text-brand">Online Order</span>
+              <span className="font-medium text-brand">
+                {tableNumber ? `Table ${tableNumber}` : 'Dine In'}
+              </span>
             </div>
           </div>
         </div>
@@ -597,6 +620,12 @@ export default function TakeawayView() {
                           <span>Item Total</span>
                           <span>₹{cartTotal}</span>
                         </div>
+                        {(appSettings?.platformFee || 0) > 0 && (
+                          <div className="flex justify-between text-slate-500">
+                            <span>Platform Fee</span>
+                            <span>₹{appSettings?.platformFee}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-slate-500">
                           <span>GST ({restaurant.gstPercentage || 5}%)</span>
                           <span>
@@ -607,17 +636,12 @@ export default function TakeawayView() {
                             )}
                           </span>
                         </div>
-                        {(appSettings?.platformFee || 0) > 0 && (
-                          <div className="flex justify-between text-slate-500">
-                            <span>Platform Fee</span>
-                            <span>₹{appSettings?.platformFee}</span>
-                          </div>
-                        )}
+                        
                         <div className="flex justify-between font-normal text-[#363636] leading-[1.2] text-lg pt-2 mt-2 border-t border-slate-300">
                           <span>To Pay</span>
                           <span>
                             ₹
-                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + 20 + (appSettings?.platformFee || 0)}
+                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                           </span>
                         </div>
                       </div>
@@ -630,7 +654,7 @@ export default function TakeawayView() {
                         <div className="flex items-center gap-1">
                           <span>
                             ₹
-                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + 20 + (appSettings?.platformFee || 0)}
+                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                           </span>
                           <ChevronRight size={18} />
                         </div>
@@ -710,6 +734,14 @@ export default function TakeawayView() {
                           ₹{cartTotal}
                         </span>
                       </div>
+                      {(appSettings?.platformFee || 0) > 0 && (
+                        <div className="flex justify-between text-slate-600">
+                          <span>Platform Fee</span>
+                          <span className="font-medium text-[#363636]">
+                            ₹{appSettings?.platformFee}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-slate-600">
                         <span>GST ({restaurant.gstPercentage || 5}%)</span>
                         <span className="font-medium text-[#363636]">
@@ -729,7 +761,7 @@ export default function TakeawayView() {
                       <span>To Pay</span>
                       <span className="text-brand">
                         ₹
-                        {cartTotal + Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + 20 + (appSettings?.platformFee || 0)}
+                        {cartTotal + Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + (appSettings?.platformFee || 0)}
                       </span>
                     </div>
                   </div>
@@ -872,10 +904,9 @@ export default function TakeawayView() {
               Order Confirmed!
             </h2>
             <p className="text-slate-500 mb-8">
-              Your order has been placed successfully. The restaurant
-              will notify you when it's ready for pickup.
+              Your table order has been placed successfully. 
               {paymentMethod === "restaurant" &&
-                " Please pay at the restaurant upon collection."}
+                " You can pay at the counter when you finish your meal."}
             </p>
 
             <div className="bg-white rounded-3xl p-6 border border-slate-300 shadow-sm text-left mb-8">
@@ -897,11 +928,7 @@ export default function TakeawayView() {
                       </div>
                       <div className="font-normal text-[#363636] leading-[1.2]">
                         ₹
-                        {cartTotal +
-                          Math.round(
-                            cartTotal * ((restaurant.gstPercentage || 5) / 100),
-                          ) +
-                          20}
+                        {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                       </div>
                     </>
                   ) : (
@@ -909,11 +936,7 @@ export default function TakeawayView() {
                       <div className="text-sm text-slate-500">Total Paid</div>
                       <div className="font-bold text-brand">
                         ₹
-                        {cartTotal +
-                          Math.round(
-                            cartTotal * ((restaurant.gstPercentage || 5) / 100),
-                          ) +
-                          20}
+                        {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                       </div>
                     </>
                   )}
@@ -922,8 +945,7 @@ export default function TakeawayView() {
               <div className="text-sm font-medium text-slate-700 flex items-start gap-3">
                 <Clock className="shrink-0 text-amber-500" size={20} />
                 <span>
-                  Estimated pickup time is approximately 30-45 minutes. Watch
-                  out for SMS updates.
+                  Your food is being prepared. It will be served at your table shortly.
                 </span>
               </div>
             </div>

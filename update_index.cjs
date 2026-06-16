@@ -1,6 +1,12 @@
-<!doctype html>
-<html lang="en">
-    <head>
+const fs = require('fs');
+
+let content = fs.readFileSync('index.html', 'utf8');
+
+// Replace everything between <head> and the GTM scripts
+const headStart = '<head>';
+const headEnd = '    <!-- Global site tag (gtag.js) - Google Analytics -->';
+
+const newHeadContent = `  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0" />
     <meta name="google-site-verification" content="RTJQ89Y5fZCegTCelEYBn-Jxy0I2_7t3oVikmgk480w" />
@@ -44,32 +50,12 @@
     }
     </script>
 
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-129782028-1"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+`;
 
-      gtag('config', 'UA-129782028-1');
-    </script>
-        
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-TMKV454');</script>
-    <!-- End Google Tag Manager -->
-  </head>
-  <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TMKV454"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
+const startIdx = content.indexOf('<head>');
+const endIdx = content.indexOf(headEnd);
+if (startIdx !== -1 && endIdx !== -1) {
+    content = content.substring(0, startIdx) + newHeadContent + content.substring(endIdx);
+}
 
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-
+fs.writeFileSync('index.html', content);

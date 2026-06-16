@@ -992,48 +992,88 @@ export default function RestaurantDetailsView() {
       </div>
     );
 
-  const getSeoData = () => {
+    const getSeoData = () => {
     const cuisineStr = Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine;
-    const locationStr = restaurant.location || city || 'your city';
-    const baseDesc = `${cuisineStr} Cuisine in ${locationStr}.`;
+    const locationStr = restaurant.location || city || restaurant.city || 'your city';
+    const cityStr = city || restaurant.city || 'your city';
+    const addressStr = restaurant.address || locationStr;
+    const baseDesc = `${restaurant.name} ${addressStr}; ${restaurant.name} ${cityStr}; Cuisine ${cuisineStr}. Cost for two: ₹${restaurant.avgPrice || 500}. Avg rating ${restaurant.rating || 4.5}. Famous for ${restaurant.description || 'great food'}. Book table for free, View Menu, check Review, Contact restaurant, phone number, Location, Maps and many more of ${restaurant.name} on Bookmytable.`;
+    const keywords = `book table online, restaurants in ${addressStr}, restaurants in ${cityStr}, online restaurant booking, bookmytable, booking, hotel, restaurant, dineout, table booking`;
+    const defaultTitle = `${restaurant.name}, ${locationStr}, ${cityStr} - Bookmytable`;
+    const ogTitle = `Book table for free at ${restaurant.name}, ${addressStr} with discounts`;
+    const ogDesc = `Instant table booking with discounts at ${restaurant.name}, ${addressStr}`;
+
+    let title = defaultTitle;
+    let description = baseDesc;
 
     switch (tab) {
       case 'book':
-        return {
-          title: `Table Booking at ${restaurant.name} | Bookmytable`,
-          description: `Reserve your table for dining at ${restaurant.name}. Enjoy ${baseDesc}`
-        };
+        title = `Table Booking at ${restaurant.name} | Bookmytable`;
+        break;
       case 'menu':
-        return {
-          title: `Menu of ${restaurant.name} | Bookmytable`,
-          description: `Explore the full menu, prices, and signature dishes of ${restaurant.name}. ${baseDesc}`
-        };
+        title = `Menu of ${restaurant.name} | Bookmytable`;
+        break;
       case 'photos':
-        return {
-          title: `Photos, Images & Ambiance of ${restaurant.name} | Bookmytable`,
-          description: `View food photos, interior scenes, and the dining ambiance of ${restaurant.name} located in ${locationStr}.`
-        };
+        title = `Photos, Images & Ambiance of ${restaurant.name} | Bookmytable`;
+        break;
       case 'reviews':
-        return {
-          title: `Reviews & Ratings of ${restaurant.name} | Bookmytable`,
-          description: `Read customer reviews, ratings, and experiences for ${restaurant.name}. ${baseDesc}`
-        };
+        title = `Reviews & Ratings of ${restaurant.name} | Bookmytable`;
+        break;
       case 'takeaway':
-        return {
-          title: `Order Takeaway from ${restaurant.name} | Bookmytable`,
-          description: `Order food online for takeaway from ${restaurant.name}. Browse the live menu of ${baseDesc}`
-        };
+        title = `Order Takeaway from ${restaurant.name} | Bookmytable`;
+        break;
       case 'offers':
-        return {
-          title: `Offers & Discounts at ${restaurant.name} | Bookmytable`,
-          description: `Find the best dining offers, deals, and discounts for ${restaurant.name} in ${locationStr}.`
-        };
-      default:
-        return {
-          title: `${restaurant.name} | Bookmytable`,
-          description: `Book a table at ${restaurant.name}. ${baseDesc}`
-        };
+        title = `Offers & Discounts at ${restaurant.name} | Bookmytable`;
+        break;
     }
+
+    const jsonLd = {
+      "@context": "http://schema.org",
+      "@type": "Restaurant",
+      "@id": `https://www.bookmytable.co.in/${restaurant.id}`,
+      "name": `${restaurant.name}, ${locationStr}`,
+      "url": `https://www.bookmytable.co.in/${restaurant.id}`,
+      "description": restaurant.description || baseDesc,
+      "hasMenu": `https://www.bookmytable.co.in/${restaurant.id}`,
+      "image": bannerImages[0] || RESTAURANT_IMAGE_FALLBACK,
+      "servesCuisine": cuisineStr,
+      "priceRange": `₹ ${restaurant.avgPrice || 500} (approx)`,
+      "telephone": "+91 9989764575",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": addressStr,
+        "addressLocality": cityStr,
+        "postalCode": restaurant.pincode || "411001",
+        "addressCountry": "IN"
+      },
+      "review": {
+          "@type": "Review",
+          "url": `https://www.bookmytable.co.in/${restaurant.id}`,
+          "author": { "@type": "Person", "name": "Google user" },
+          "publisher": {
+              "@type": "Organization",
+              "name": "Bookmytable",
+              "sameAs": "https://www.bookmytable.co.in"
+          },
+          "reviewRating": {
+              "@type": "Rating", "worstRating": 1, "bestRating": 5, "ratingValue": restaurant.rating || 5
+          }
+      },
+      "currenciesAccepted": "INR",
+      "paymentAccepted": ["Cash", "Credit Cards", "Wallet"],
+      "makesoffer": "Upto 50% off on final bill",
+      "isAccessibleForFree": true,
+      "publicAccess": true
+    };
+
+    return {
+      title,
+      description,
+      keywords,
+      ogTitle,
+      ogDesc,
+      jsonLd
+    };
   };
 
   const seoData = getSeoData();
@@ -1047,9 +1087,24 @@ export default function RestaurantDetailsView() {
       <Helmet>
         <title>{seoData.title}</title>
         <meta name="description" content={seoData.description} />
-        <meta property="og:title" content={seoData.title} />
-        <meta property="og:description" content={seoData.description} />
+        <meta name="keywords" content={seoData.keywords} />
+        <link rel="alternate" hrefLang="en" href={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <meta name="url" content={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <meta name="twitter:app:name:iphone" content="Bookmytable" />
+        <meta name="twitter:app:name:ipad" content="Bookmytable" />
+        <meta name="twitter:app:country" content="in" />
+        <meta property="og:title" content={seoData.ogTitle} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <meta property="og:site_name" content="Bookmytable" />
+        <meta property="og:description" content={seoData.ogDesc} />
         <meta property="og:image" content={bannerImages[0] || RESTAURANT_IMAGE_FALLBACK} />
+        <meta property="product:brand" content="Bookmytable" />
+        <meta property="product:price:amount" content={restaurant.avgPrice?.toString() || "500"} />
+        <meta property="product:price:currency" content="INR" />
+        <script type="application/ld+json">
+          {JSON.stringify(seoData.jsonLd)}
+        </script>
       </Helmet>
 
       {showStoryViewer && usersWithStories && (
@@ -2117,6 +2172,7 @@ export default function RestaurantDetailsView() {
             </div>
           </div>
 
+
           {/* Reviews Section */}
           <div
             id="reviews"
@@ -2334,6 +2390,21 @@ export default function RestaurantDetailsView() {
                 </div>
               )}
             </div>
+            
+            <hr className="my-8 border-slate-300" />
+            
+            {/* Claim Listing Banner */}
+            {(!restaurant.contactEmail || !restaurant.contactNumber || (restaurant.contactNumber || '').includes('9999999999') || (restaurant.contactEmail || '').includes('contact@bookmytable.co.in')) && (
+              <div className="bg-brand/5 border border-brand/20 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                 <div>
+                    <h3 className="text-brand font-bold text-lg mb-1">Is this your restaurant?</h3>
+                    <p className="text-slate-600 text-sm font-medium">Claim this listing to unlock bookings, reply to reviews, and manage your page.</p>
+                 </div>
+                 <Link to={`/onboarding-request?restaurantName=${encodeURIComponent(restaurant.name)}`} className="shrink-0 bg-brand text-white px-6 py-2.5 rounded-xl font-bold hover:bg-brand-dark transition-colors text-sm text-center w-full md:w-auto shadow-sm shadow-brand/20">
+                    Claim Listing
+                 </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

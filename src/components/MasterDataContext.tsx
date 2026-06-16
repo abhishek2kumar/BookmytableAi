@@ -25,6 +25,7 @@ interface Cuisine {
 interface MasterDataContextType {
   cities: City[];
   cuisines: Cuisine[];
+  appSettings: any;
   isComingSoon: boolean;
   loading: boolean;
   seedData: () => Promise<void>;
@@ -37,6 +38,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
   const [cities, setCities] = useState<City[]>([]);
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
   const [isComingSoon, setIsComingSoon] = useState(false);
+  const [appSettings, setAppSettings] = useState<any>({ platformFee: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,6 +56,12 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
       setCities(cityData);
     });
 
+    const unsubGlobalSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        setAppSettings(docSnap.data());
+      }
+    });
+
     const unsubCuisines = onSnapshot(collection(db, 'cuisines'), (snapshot) => {
       const cuisineData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Cuisine[];
       setCuisines(cuisineData);
@@ -69,6 +77,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
     return () => {
       unsubCities();
       unsubCuisines();
+      unsubGlobalSettings();
       unsubSettings();
     };
   }, []);
@@ -123,7 +132,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <MasterDataContext.Provider value={{ cities, cuisines, isComingSoon, loading, seedData, updateComingSoon }}>
+    <MasterDataContext.Provider value={{ cities, cuisines, appSettings, isComingSoon, loading, seedData, updateComingSoon }}>
       {children}
     </MasterDataContext.Provider>
   );

@@ -4,6 +4,7 @@ import { useRestaurants } from '../hooks/useFirebase';
 import { useMasterData } from './MasterDataContext';
 import { Star, MapPin, ChevronLeft, Zap, Info } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
 import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
 import { useLocationContext } from './LocationContext';
 
@@ -85,8 +86,36 @@ export default function CuisineView() {
      )
   }
 
+  
+  const getSeoData = () => {
+    let locName = cuisineName || cuisineId || 'Cuisine';
+    let url = `https://www.bookmytable.co.in/cuisine/${cuisineId}`;
+    let title = `${locName} Restaurants, ${selectedCity} - Bookmytable`;
+    let description = `Explore ${locName} restaurants in ${selectedCity} and book table instantly with discounts on Bookmytable...`;
+    let keywords = `book table online, resturants in ${selectedCity}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
+
+    return { title, url, description, keywords, locName };
+  };
+
+  const seoData = getSeoData();
+
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
+      <Helmet>
+        <title>{seoData.title}</title>
+        <link rel="alternate" hrefLang="en" href={seoData.url} /> 
+        <meta name="description" content={seoData.description} />
+        <meta name="keywords" content={seoData.keywords} />
+        <meta name="url" content={seoData.url} />
+        <meta name="twitter:app:name:iphone" content="Bookmytable" />
+        <meta name="twitter:app:name:ipad" content="Bookmytable" />
+        <meta name="twitter:app:country" content="in" />
+        <meta property="og:title" content={`${seoData.locName} Restaurants, ${selectedCity} - Bookmytable India`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={seoData.url} />
+        <meta property="og:site_name" content="Bookmytable" />
+        <meta property="og:description" content={seoData.description} />
+      </Helmet>
       {/* Immersive Header Section */}
       <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">

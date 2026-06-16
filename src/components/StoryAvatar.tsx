@@ -37,9 +37,18 @@ export default function StoryAvatar({
 
   return (
     <div className={`relative ${className}`}>
+      <div className="absolute inset-[2px]">
+        <div className="w-full h-full rounded-full overflow-hidden bg-white">
+          <img
+            src={userPhoto}
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      </div>
       <svg
         viewBox="0 0 100 100"
-        className="absolute inset-0 w-full h-full -rotate-90"
+        className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none"
       >
         {stories.map((story, i) => {
           const viewed = story.views?.some((v) => v.userId === currentUserId);
@@ -76,15 +85,6 @@ export default function StoryAvatar({
           </linearGradient>
         </defs>
       </svg>
-      <div className="absolute inset-1 p-[3px]">
-        <div className="w-full h-full rounded-full overflow-hidden bg-white border-2 border-white">
-          <img
-            src={userPhoto}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        </div>
-      </div>
     </div>
   );
 }

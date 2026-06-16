@@ -63,7 +63,7 @@ export default function PartnerLoginView() {
                <div className="flex items-center gap-3">
                  <AppIcon size={44} />
                  <span className="hidden sm:block text-2xl font-normal leading-[1.2] text-[#363636] tracking-tighter">
-                   Bookmy<span className="text-brand">Table</span>
+                   Bookmy<span className="text-blue-600">Table</span>
                  </span>
                  <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase tracking-widest ml-2 hidden sm:block">Partner</span>
                </div>

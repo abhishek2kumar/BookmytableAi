@@ -205,17 +205,17 @@ export default function HomeLandingView() {
             className="flex flex-col items-center"
           >
             <h1 className="text-4xl md:text-7xl text-white mb-6 drop-shadow-2xl text-center font-normal leading-[1.2]">
-              Book the perfect table,<br />
-              <span className="text-brand">wherever you are.</span>
+              Dine in, takeaway, or delivery.<br />
+              <span className="text-brand">Your food, your way!</span>
             </h1>
             <p className="text-base md:text-xl text-slate-200 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-md text-center">
-              Discover and book the finest dining experiences at the best restaurants in your city using <span className="text-brand font-bold">AI-powered</span> features.
+              Discover the finest dining experiences, grab a quick takeaway, or get your favorite meals delivered from the best restaurants in your city.
             </p>
             
             <div className="max-w-4xl mx-auto w-full relative px-2 md:px-0">
               <div className="relative group w-full cursor-pointer" onClick={() => setIsSearchOverlayOpen(true)}>
                 <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 text-vibrant-gray group-hover:text-brand transition-colors" size={22} />
-                <div className="w-full pl-14 pr-4 py-3 md:py-4 bg-white border-2 border-slate-300 hover:border-brand/30 rounded-xl md:rounded-2xl text-base md:text-lg font-bold shadow-elevation transition-all text-slate-400 text-left flex items-center h-14 md:h-16">
+                <div className="w-full pl-14 pr-4 py-3 md:py-4 bg-white border-2 border-slate-300 hover:border-brand/30 rounded-xl md:rounded-2xl text-[0.85rem] font-light text-slate-400/80 shadow-elevation transition-all text-left flex items-center h-14 md:h-16">
                   Search cities or restaurants...
                 </div>
               </div>
@@ -530,7 +530,7 @@ export default function HomeLandingView() {
                     autoFocus
                     type="text" 
                     placeholder="Where would you like to eat? Search by cuisine, restaurant or location"
-                    className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-2.5 md:text-base text-sm font-bold focus:ring-0 outline-none h-11"
+                    className="w-full bg-slate-50 border-none rounded-xl pl-12 pr-4 py-2.5 md:text-base text-sm font-bold focus:ring-0 outline-none h-11 placeholder:font-light placeholder:text-[0.85rem] placeholder:opacity-70"
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     onKeyDown={(e) => {

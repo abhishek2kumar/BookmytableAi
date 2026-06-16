@@ -129,6 +129,7 @@ export interface Restaurant {
     [key: string]: DailyTiming;
   };
   isBookingEnabled?: boolean;
+  isQrMenuEnabled?: boolean;
   instantBookingLimit?: number;
   blackoutDates?: string[];
   slotCategories?: SlotCategory[];
@@ -191,6 +192,37 @@ export interface Review {
   rating: number;
   text: string;
   createdAt: any;
+}
+
+export type OrderType = 'dine_in' | 'takeaway';
+export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  isVeg?: boolean;
+}
+
+export interface Order {
+  id: string;
+  userId?: string; // Optional if guest checkout
+  userName: string;
+  userPhone: string;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantOwnerId: string;
+  type: OrderType;
+  tableNumber?: string; // Only for dine_in
+  items: OrderItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: OrderStatus;
+  createdAt: any;
+  updatedAt: any;
 }
 
 export const CUISINES = [

@@ -330,6 +330,25 @@ export function getRatingTextColor(rating: number): string {
   return 'text-[#25D366]'; // green color
 }
 
+export function generateSeoFriendlyFileName(originalName: string, context: string = '', restaurantName: string = ''): string {
+  const ext = originalName.split('.').pop() || 'jpg';
+  const uniqueId = Math.random().toString(36).substring(2, 6);
+  
+  let parts = [];
+  if (restaurantName) parts.push(slugify(restaurantName));
+  if (context) parts.push(slugify(context));
+  
+  // also include a bit of the original name, but slugified
+  const originalWithoutExt = originalName.substring(0, originalName.lastIndexOf('.'));
+  if (originalWithoutExt) {
+      parts.push(slugify(originalWithoutExt).substring(0, 15));
+  }
+  
+  const baseName = parts.filter(Boolean).join('-') || 'media';
+  
+  return `${baseName}-${uniqueId}.${ext.toLowerCase()}`;
+}
+
 export function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>) {
   e.currentTarget.src = RESTAURANT_IMAGE_FALLBACK;
 }

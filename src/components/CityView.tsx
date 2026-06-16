@@ -29,6 +29,7 @@ import {
   getRestaurantUrl,
   getRatingColor,
   isTakeawayAvailable,
+  getRestaurantStatus,
 } from "../lib/utils";
 import { Helmet } from "react-helmet-async";
 import { useLocationContext } from "./LocationContext";
@@ -37,6 +38,96 @@ import { useNavigate } from "react-router-dom";
 import { useStories } from "../hooks/useStories";
 import StoryViewer from "./StoryViewer";
 import StoryAvatar from "./StoryAvatar";
+
+const QuickFiltersBar = ({
+  activeFilters,
+  setActiveFilters,
+  setIsFilterOpen,
+  }: any) => {
+  const getActiveFilterCountInner = () => {
+    let count = activeFilters.cuisines.length;
+    if (activeFilters.minRating > 0) count++;
+    if (activeFilters.onlyWithOffers) count++;
+    if (activeFilters.onlyTakeaway) count++;
+    if (activeFilters.openNow) count++;
+    if (activeFilters.pureVeg) count++;
+    if (activeFilters.servesAlcohol) count++;
+    if (activeFilters.bookTable) count++;
+    if (activeFilters.delivery) count++;
+    return count;
+  };
+
+  const count = getActiveFilterCountInner();
+
+  const toggleFilter = (key: string) => {
+    setActiveFilters((prev: any) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+  
+  const toggleRating = () => {
+    setActiveFilters((prev: any) => ({
+      ...prev,
+      minRating: prev.minRating === 4.5 ? 0 : 4.5,
+    }));
+  };
+
+  const buttonClass = (isActive: boolean) => 
+    cn("flex items-center gap-1.5 px-4 py-2 rounded-lg text-[15px] font-normal transition-all shrink-0", 
+        isActive ? "bg-[#ef4f5f] text-white border border-[#ef4f5f]" : "bg-white border border-[#cfcfcf] text-[#696969] hover:border-[#9c9c9c]");
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0 mt-4 md:mt-2 max-w-[100vw] sm:max-w-none">
+      <button
+        onClick={() => setIsFilterOpen(true)}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[15px] font-normal transition-all bg-white border border-[#cfcfcf] text-[#696969] hover:border-[#9c9c9c] shrink-0"
+      >
+        {count > 0 ? (
+          <span className="w-[20px] h-[20px] flex items-center justify-center bg-[#ef4f5f] text-white rounded-[4px] text-[13px] font-medium leading-none">
+            {count}
+          </span>
+        ) : (
+          <Filter size={16} />
+        )}
+        Filters
+      </button>
+
+      <button onClick={() => toggleFilter('onlyWithOffers')} className={buttonClass(activeFilters.onlyWithOffers)}>
+        Offers {activeFilters.onlyWithOffers && <X size={16} />}
+      </button>
+
+      <button onClick={toggleRating} className={buttonClass(activeFilters.minRating >= 4.5)}>
+        Rating: 4.5+ {activeFilters.minRating >= 4.5 && <X size={16} />}
+      </button>
+      
+      <button onClick={() => toggleFilter('openNow')} className={buttonClass(activeFilters.openNow)}>
+        Open Now {activeFilters.openNow && <X size={16} />}
+      </button>
+
+      <button onClick={() => toggleFilter('pureVeg')} className={buttonClass(activeFilters.pureVeg)}>
+        Pure Veg {activeFilters.pureVeg && <X size={16} />}
+      </button>
+
+      <button onClick={() => toggleFilter('servesAlcohol')} className={buttonClass(activeFilters.servesAlcohol)}>
+        Serves Alcohol {activeFilters.servesAlcohol && <X size={16} />}
+      </button>
+      
+      <button onClick={() => toggleFilter('bookTable')} className={buttonClass(activeFilters.bookTable)}>
+        Book a Table {activeFilters.bookTable && <X size={16} />}
+      </button>
+
+      <button onClick={() => toggleFilter('onlyTakeaway')} className={buttonClass(activeFilters.onlyTakeaway)}>
+        Take Away {activeFilters.onlyTakeaway && <X size={16} />}
+      </button>
+
+      <button onClick={() => toggleFilter('delivery')} className={buttonClass(activeFilters.delivery)}>
+        Delivery {activeFilters.delivery && <X size={16} />}
+      </button>
+    </div>
+  );
+};
+
 
 export default function CityView() {
   const { cityId, locationSlug } = useParams();
@@ -84,12 +175,32 @@ export default function CityView() {
   };
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({
+    const [activeFilters, setActiveFilters] = useState({
+    openNow: false,
+    pureVeg: false,
+    servesAlcohol: false,
+    bookTable: false,
+    delivery: false,
     cuisines: [] as string[],
     minRating: 0,
     onlyWithOffers: false,
     onlyTakeaway: false,
   });
+
+  const getActiveFilterCount = () => {
+    let count = activeFilters.cuisines.length;
+    if (activeFilters.minRating > 0) count++;
+    if (activeFilters.onlyWithOffers) count++;
+    if (activeFilters.onlyTakeaway) count++;
+    if (activeFilters.openNow) count++;
+    if (activeFilters.pureVeg) count++;
+    if (activeFilters.servesAlcohol) count++;
+    if (activeFilters.bookTable) count++;
+    if (activeFilters.delivery) count++;
+    return count;
+  };
+  const hasActiveFilters = getActiveFilterCount() > 0;
+
 
   // Validate cityId on mount
   useEffect(() => {
@@ -317,8 +428,16 @@ export default function CityView() {
         const matchesTakeaway = 
           !activeFilters.onlyTakeaway || 
           (res.liveMenu && res.liveMenu.length > 0);
+          
+        const status = getRestaurantStatus(res);
+        const matchesOpenNow = !activeFilters.openNow || status.isOpen;
+        
+        const matchesPureVeg = !activeFilters.pureVeg || res.facilities?.includes("Vegetarian Friendly") || (res as any).isVeg === true;
+        const matchesAlcohol = !activeFilters.servesAlcohol || res.facilities?.includes("Bar") || res.facilities?.includes("Serves Alcohol");
+        const matchesBookTable = !activeFilters.bookTable || res.isBookingEnabled;
+        const matchesDelivery = !activeFilters.delivery || res.facilities?.includes("Home Delivery");
 
-        return matchesCuisine && matchesRating && matchesOffers && matchesTakeaway;
+        return matchesCuisine && matchesRating && matchesOffers && matchesTakeaway && matchesOpenNow && matchesPureVeg && matchesAlcohol && matchesBookTable && matchesDelivery;
       })
       .sort((a, b) => {
         if (
@@ -391,7 +510,19 @@ export default function CityView() {
     ? ""
     : user
       ? `Hi ${profile?.displayName?.split(" ")[0] || "User"}, What's on your mind?`
-      : `Hey ${cityName}, What's on your mind?`;
+      : `Hey, What's on your mind?`;
+
+  const getSeoData = () => {
+    const locName = locationSlug ? locationSlug.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') : 'Best';
+    let url = locationSlug ? `https://www.bookmytable.co.in/${cityId}/location/${locationSlug}` : `https://www.bookmytable.co.in/${cityId}`;
+    let title = locationSlug ? `${locName} Restaurants, ${cityName} - Bookmytable` : `${locName} Restaurants, ${cityName} - Bookmytable`;
+    let description = locationSlug ? `Explore restaurants in ${locName}, ${cityName} and book table instantly with discounts on Bookmytable...` : `Explore restaurants in ${cityName} and book table instantly with discounts on Bookmytable...`;
+    let keywords = locationSlug ? `book table online, resturants in ${cityName}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant` : `book table online, resturants in ${cityName}, online table booking, bookmytable, booking, hotel, resturant`;
+
+    return { title, url, description, keywords, locName };
+  };
+
+  const seoData = getSeoData();
 
   return (
     <motion.div
@@ -400,8 +531,19 @@ export default function CityView() {
       className="pb-20 bg-vibrant-bg min-h-screen"
     >
       <Helmet>
-        <title>{locationSlug ? `${locationSlug.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')} | Bookmytable` : `Best Restaurants in ${cityName} | Bookmytable`}</title>
-        <meta name="description" content={locationSlug ? `Explore ${locationSlug.split('-').join(' ')} restaurants on Bookmytable. Find menus, reviews, photos and book a table.` : `Discover the best restaurants in ${cityName}. Find menus, reviews, photos and book your table online on Bookmytable.`} />
+        <title>{seoData.title}</title>
+        <link rel="alternate" hrefLang="en" href={seoData.url} /> 
+        <meta name="description" content={seoData.description} />
+        <meta name="keywords" content={seoData.keywords} />
+        <meta name="url" content={seoData.url} />
+        <meta name="twitter:app:name:iphone" content="Bookmytable" />
+        <meta name="twitter:app:name:ipad" content="Bookmytable" />
+        <meta name="twitter:app:country" content="in" />
+        <meta property="og:title" content={`${seoData.locName} Restaurants, ${cityName} - Bookmytable India`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={seoData.url} />
+        <meta property="og:site_name" content="Bookmytable" />
+        <meta property="og:description" content={seoData.description} />
       </Helmet>
       {portalTarget &&
         createPortal(
@@ -433,7 +575,7 @@ export default function CityView() {
 
       {/* Categories & Cuisines */}
       {!locationSlug && (
-      <section className="relative bg-white pt-4 pb-8 overflow-hidden">
+      <section className="relative bg-white pt-4 pb-8">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           {/* Welcome Banner */}
           <div className="relative mb-8 rounded-none overflow-hidden h-[130px] md:h-40 w-[calc(100%+48px)] md:w-[calc(100%+64px)] -mx-6 md:-mx-8 flex items-center bg-slate-100">
@@ -456,19 +598,25 @@ export default function CityView() {
               </>
             )}
           </div>
+          <QuickFiltersBar activeFilters={activeFilters} setActiveFilters={setActiveFilters} setIsFilterOpen={setIsFilterOpen} />
+        </div>
+      </section>
+      )}
 
-          {/* Cuisine Circle Carousel */}
+      {/* CUISINE CAROUSEL */}
+      {!locationSlug && !hasActiveFilters && (
+      <section className="relative bg-white pb-8">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          {/* Cuisine Cards Carousel */}
+          {!hasActiveFilters && (
           <div>
-            <div className="flex items-start gap-4 md:gap-10 overflow-x-auto pb-4 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
+            <div className="flex items-start gap-4 md:gap-6 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex flex-col items-center gap-2 md:gap-3 shrink-0 snap-start animate-pulse"
-                    >
-                      <div className="w-16 md:w-32 h-16 md:h-32 rounded-full bg-slate-200" />
-                      <div className="h-3 md:h-4 w-12 md:w-20 bg-slate-200 rounded" />
-                    </div>
+                      className="w-[100px] md:w-[140px] h-[140px] md:h-[190px] rounded-2xl bg-slate-200 shrink-0 snap-start animate-pulse"
+                    />
                   ))
                 : cuisines.map((cuisine) => (
                     <Link
@@ -477,24 +625,25 @@ export default function CityView() {
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
                         .replace(/^-+|-+$/g, "")}`}
-                      className="flex flex-col items-center gap-2 md:gap-3 shrink-0 snap-start group"
+                      className="relative flex flex-col justify-end w-[100px] md:w-[140px] h-[140px] md:h-[190px] rounded-2xl overflow-hidden shrink-0 snap-start group shadow border border-slate-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                     >
-                      <div className="w-16 md:w-32 h-16 md:h-32 rounded-full overflow-hidden shadow-vibrant group-hover:shadow-2xl transition-all duration-300 group-hover:-translate-y-1 relative ring-4 ring-transparent group-hover:ring-brand/10">
-                        <img
-                          src={cuisine.image || RESTAURANT_IMAGE_FALLBACK}
-                          alt={cuisine.name}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                        />
-                      </div>
-                      <span className="text-[10px] md:text-base font-normal leading-[1.2] text-[#363636] group-hover:text-brand transition-colors text-center max-w-[80px] md:max-w-[120px]">
+                      <img
+                        src={cuisine.image || RESTAURANT_IMAGE_FALLBACK}
+                        alt={cuisine.name}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 h-1/3 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
+                      <span className="relative z-10 text-[13px] md:text-base font-medium leading-[1.2] text-white px-3 pb-4 text-center tracking-wide">
                         {cuisine.name}
                       </span>
                     </Link>
                   ))}
             </div>
           </div>
+          )}
         </div>
       </section>
       )}
@@ -517,47 +666,16 @@ export default function CityView() {
                 <span>{filteredListing.length} places to explore</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsFilterOpen(true)}
-                className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
-                  activeFilters.cuisines.length > 0 ||
-                    activeFilters.minRating > 0 ||
-                    activeFilters.onlyWithOffers ||
-                    activeFilters.onlyTakeaway
-                    ? "bg-brand text-white border-brand border"
-                    : "bg-white border-gray-200 text-[#363636] border hover:border-brand shadow-sm",
-                )}
-              >
-                <Filter size={16} />
-                Filters
-                {(activeFilters.cuisines.length > 0 ||
-                  activeFilters.minRating > 0 ||
-                  activeFilters.onlyWithOffers ||
-                  activeFilters.onlyTakeaway) && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px] leading-tight">
-                    {(activeFilters.cuisines.length > 0 ? 1 : 0) +
-                      (activeFilters.minRating > 0 ? 1 : 0) +
-                      (activeFilters.onlyTakeaway ? 1 : 0) +
-                      (activeFilters.onlyWithOffers ? 1 : 0)}
-                  </span>
-                )}
-              </button>
-            </div>
           </div>
+          <QuickFiltersBar activeFilters={activeFilters} setActiveFilters={setActiveFilters} setIsFilterOpen={setIsFilterOpen} />
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 mt-8 md:mt-12 space-y-12 md:space-y-20">
-
-        {/* Stories Section */}
-        {(!storiesLoading && usersWithStories.length > 0) && (
+      {/* Stories Section */}
+      {!hasActiveFilters && (!storiesLoading && usersWithStories.length > 0) && (
+        <div className="max-w-7xl mx-auto px-6 mt-4 md:mt-6 mb-2">
           <section className="relative">
-            <h2 className="text-xl md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
-              Stories from Restaurants
-            </h2>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x -mx-6 px-6 md:mx-0 md:px-0">
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-6 px-6 md:mx-0 md:px-0">
                {usersWithStories.map((storyUser, idx) => (
                   <div key={storyUser.restaurantId} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer snap-start" onClick={() => setActiveStoryIndex(idx)}>
                       <StoryAvatar 
@@ -582,10 +700,13 @@ export default function CityView() {
                )}
             </AnimatePresence>
           </section>
-        )}
+        </div>
+      )}
+
+      <div className={cn("max-w-7xl mx-auto px-6 mt-4 md:mt-6", locationSlug ? "space-y-4 md:space-y-6" : "space-y-12 md:space-y-20")}>
 
         {/* Featured Section */}
-        {!locationSlug && (loading || featuredRestaurants.length > 0) && (
+        {!hasActiveFilters && !locationSlug && (loading || featuredRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -642,7 +763,7 @@ export default function CityView() {
         )}
 
         {/* Spotlight Section */}
-        {!locationSlug && !loading && spotlightRestaurants.length > 0 && (
+        {!hasActiveFilters && !locationSlug && !loading && spotlightRestaurants.length > 0 && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -724,106 +845,8 @@ export default function CityView() {
           </section>
         )}
 
-        {/* Famous Locations */}
-        {!locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section">
-            <div className="mb-6">
-              <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
-                Browse by Famous locations
-              </h2>
-              <p className="text-vibrant-gray font-medium text-sm">
-                Explore top areas in {cityName}
-              </p>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 snap-x">
-              {famousLocations.map((locationName, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => {
-                    navigate(`/${cityId}/${locationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`);
-                    setTimeout(() => {
-                      document
-                        .getElementById("all-restaurants")
-                        ?.scrollIntoView({ behavior: "smooth" });
-                    }, 100);
-                  }}
-                  className="snap-start bg-white border border-gray-100 hover:border-brand rounded-2xl p-6 cursor-pointer min-w-[140px] md:min-w-[160px] shadow-sm hover:shadow transition-all group flex flex-col items-center justify-center shrink-0"
-                >
-                  <MapPin
-                    size={28}
-                    className="text-brand mb-3 group-hover:scale-110 transition-transform"
-                  />
-                  <span className="text-sm md:text-base text-[#363636] text-center font-normal leading-[1.2]">
-                    {locationName}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Takeaway Restaurants */}
-        {!loading && takeawayRestaurants.length > 0 && (
-          <section className="relative group/section">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
-                  {locationSlug ? `Take Away Restaurants in ${famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}` : "Takeaway restaurants near You"}
-                </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
-                  {locationSlug ? "Quick bites ready for pickup" : "Order online & pick up quickly"}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <ShoppingBag className="text-brand" size={24} />
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(takeawayRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(takeawayRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div
-              ref={takeawayRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
-            >
-              {takeawayRestaurants.map((restaurant) => {
-                const isAvailable = isTakeawayAvailable(restaurant);
-                return (
-                  <div
-                    key={restaurant.id}
-                    className={cn(
-                      "relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start",
-                      !isAvailable && "opacity-50 grayscale pointer-events-none"
-                    )}
-                  >
-                    <RestaurantCard restaurant={restaurant} />
-                    {!isAvailable && (
-                      <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
-                         <div className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md">
-                           Takeaway Closed
-                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
         {/* Top Discount Section */}
-        {!locationSlug && (loading || discountedRestaurants.length > 0) && (
+        {!hasActiveFilters && !locationSlug && (loading || discountedRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -884,7 +907,7 @@ export default function CityView() {
         )}
 
         {/* Nearby Section */}
-        {!locationSlug && (loading || nearbyRestaurants.length > 0) && (
+        {!hasActiveFilters && !locationSlug && (loading || nearbyRestaurants.length > 0) && (
           <section className="relative group/section">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -940,40 +963,131 @@ export default function CityView() {
           </section>
         )}
 
+        {/* Famous Locations */}
+        {!hasActiveFilters && !locationSlug && !loading && famousLocations.length > 0 && (
+          <section className="relative group/section">
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
+                Browse by Famous locations
+              </h2>
+              <p className="text-vibrant-gray font-medium text-sm">
+                Explore top areas in {cityName}
+              </p>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 snap-x">
+              {famousLocations.map((locationName, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    navigate(`/${cityId}/${locationName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`);
+                    setTimeout(() => {
+                      document
+                        .getElementById("all-restaurants")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }, 100);
+                  }}
+                  className="snap-start bg-white border border-gray-100 hover:border-brand rounded-2xl p-6 cursor-pointer min-w-[140px] md:min-w-[160px] shadow-sm hover:shadow transition-all group flex flex-col items-center justify-center shrink-0"
+                >
+                  <MapPin
+                    size={28}
+                    className="text-brand mb-3 group-hover:scale-110 transition-transform"
+                  />
+                  <span className="text-sm md:text-base text-[#363636] text-center font-normal leading-[1.2]">
+                    {locationName}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Takeaway Restaurants */}
+        {!hasActiveFilters && !loading && takeawayRestaurants.length > 0 && (
+          <section className="relative group/section">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
+                  {locationSlug ? `Take Away Restaurants in ${famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}` : "Takeaway restaurants near You"}
+                </h2>
+                <p className="text-vibrant-gray font-medium text-sm">
+                  {locationSlug ? "Quick bites ready for pickup" : "Order online & pick up quickly"}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <ShoppingBag className="text-brand" size={24} />
+                <div className="hidden md:flex gap-2">
+                  <button
+                    onClick={() => scroll(takeawayRef, "left")}
+                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                  >
+                    <ChevronLeft size={20} className="text-[#363636]" />
+                  </button>
+                  <button
+                    onClick={() => scroll(takeawayRef, "right")}
+                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
+                  >
+                    <ChevronRight size={20} className="text-[#363636]" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              ref={takeawayRef}
+              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
+            >
+              {takeawayRestaurants.map((restaurant) => {
+                const isAvailable = isTakeawayAvailable(restaurant);
+                return (
+                  <div
+                    key={restaurant.id}
+                    className={cn(
+                      "relative w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start",
+                      !isAvailable && "opacity-50 grayscale pointer-events-none"
+                    )}
+                  >
+                    <RestaurantCard restaurant={restaurant} />
+                    {!isAvailable && (
+                      <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
+                         <div className="bg-black/70 text-white text-xs font-bold px-3 py-1.5 rounded-full backdrop-blur-md">
+                           Takeaway Closed
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Main Listing Section */}
         <section
           id="all-restaurants"
-          className={cn("pt-8 md:pt-12", !locationSlug && "border-t border-gray-100")}
+          className={cn(!locationSlug && "pt-8 md:pt-12 border-t border-gray-100")}
         >
-          {!locationSlug && (
+          {!hasActiveFilters && !locationSlug && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
             <h2 className="text-2xl md:text-3xl text-[#363636] font-normal leading-[1.2]">
               {searchQuery
                 ? `Search results for "${searchQuery}"`
                 : `Explore All in ${cityName}`}
             </h2>
-
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsFilterOpen(true)}
                 className={cn(
                   "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
-                  activeFilters.cuisines.length > 0 ||
-                    activeFilters.minRating > 0 ||
-                    activeFilters.onlyWithOffers
-                    ? "bg-brand text-white border-brand border"
-                    : "bg-white border-gray-200 text-[#363636] border hover:border-brand shadow-sm",
+                  hasActiveFilters
+                    ? "bg-brand text-white shadow-lg shadow-brand/30"
+                    : "bg-white border border-slate-200 text-slate-700 hover:border-brand/30 hover:bg-slate-50",
                 )}
               >
-                <Filter size={16} />
+                <Filter size={18} />
                 Filters
-                {(activeFilters.cuisines.length > 0 ||
-                  activeFilters.minRating > 0 ||
-                  activeFilters.onlyWithOffers) && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-[10px] leading-tight">
-                    {(activeFilters.cuisines.length > 0 ? 1 : 0) +
-                      (activeFilters.minRating > 0 ? 1 : 0) +
-                      (activeFilters.onlyWithOffers ? 1 : 0)}
+                {hasActiveFilters && (
+                  <span className="flex items-center justify-center w-5 h-5 ml-1 bg-white text-brand rounded-full text-xs font-black">
+                    {getActiveFilterCount()}
                   </span>
                 )}
               </button>
@@ -992,7 +1106,7 @@ export default function CityView() {
               ))}
             </div>
           ) : filteredListing.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 gap-y-8 sm:gap-8 md:gap-x-10 md:gap-y-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-x-6 md:gap-y-10">
               {filteredListing
                 .slice(0, visibleCount)
                 .map((restaurant, index) => (
@@ -1030,9 +1144,10 @@ export default function CityView() {
           )}
         </section>
 
-        {/* Famous Locations on Location Page */}
-        {locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section mt-8 md:mt-12 pt-8 md:pt-12 border-t border-gray-100">
+
+        {/* Famous Locations on Area Page */}
+        {!hasActiveFilters && locationSlug && !loading && famousLocations.length > 0 && (
+          <section className="relative group/section pt-12 border-t border-gray-100">
             <div className="mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
@@ -1493,6 +1608,11 @@ export default function CityView() {
                 <button
                   onClick={() => {
                     setActiveFilters({
+                      openNow: false,
+                      pureVeg: false,
+                      servesAlcohol: false,
+                      bookTable: false,
+                      delivery: false,
                       cuisines: [],
                       minRating: 0,
                       onlyWithOffers: false,
