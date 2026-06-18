@@ -795,6 +795,11 @@ export default function PartnerDashboardView() {
                         )}>
                           {order.type === 'dine_in' ? (order.tableNumber && order.tableNumber !== 'Unknown' ? `Table ${order.tableNumber}` : 'Dine In') : 'Takeaway'}
                         </span>
+                        {order.tokenNumber && (
+                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-widest bg-yellow-100 text-yellow-700">
+                            Token: {order.tokenNumber}
+                          </span>
+                        )}
                         <span className="text-xs font-bold text-slate-400">ID: {order.orderId}</span>
                       </div>
                       <div className="text-lg text-[#363636] font-normal leading-[1.2]">{order.customerName}</div>
@@ -1055,6 +1060,9 @@ export default function PartnerDashboardView() {
                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
                      <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Address Details</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                       <div className="md:col-span-2">
+                         <InputText label="Mall / Food Court Name (Optional - Only for outlets)" value={formData.mallName} onChange={(v:any) => updateForm('mallName', v)} />
+                       </div>
                        <InputText label="Floor / Tower" value={formData.floor} onChange={(v:any) => updateForm('floor', v)} />
                        <InputText label="Shop / Building No." value={formData.shopNo} onChange={(v:any) => updateForm('shopNo', v)} />
                        <InputText label="Area / Locality *" value={formData.area} onChange={(v:any) => updateForm('area', v)} />

@@ -53,7 +53,7 @@ export default function PrivacyView() {
             <section className="bg-slate-50 p-8 rounded-[2rem] border border-gray-100">
               <h3 className="text-xl mb-4 text-[#363636] font-normal leading-[1.2]">Contact Us Regarding Privacy</h3>
               <p className="text-vibrant-gray text-base m-0">If you have any questions about this Privacy Policy, please contact us at:</p>
-              <p className="text-brand font-bold mt-2">bookmytableindia@gmail.com</p>
+              <p className="text-brand font-bold mt-2">contact@bookmytable.co.in</p>
             </section>
           </div>
         </div>

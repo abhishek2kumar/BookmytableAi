@@ -118,6 +118,7 @@ export interface Restaurant {
   lng?: number;
   ownerId: string;
   partnerEmails?: string[];
+  mallName?: string;
   isOpen: boolean; // Live on Portal
   approved: boolean;
   openingHours?: {
@@ -221,6 +222,7 @@ export interface Order {
   tax: number;
   total: number;
   status: OrderStatus;
+  tokenNumber?: string;
   createdAt: any;
   updatedAt: any;
 }

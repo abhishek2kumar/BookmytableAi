@@ -22,9 +22,11 @@ import PartnerDashboardView from './components/PartnerDashboardView';
 import ContactView from './components/ContactView';
 import PrivacyView from './components/PrivacyView';
 import TermsView from './components/TermsView';
+import CookiePolicyView from './components/CookiePolicyView';
 import ErrorView from './components/ErrorView';
 import OnboardingRequestView from './components/OnboardingRequestView';
 import AboutView from './components/AboutView';
+import MallFoodCourtView from './components/MallFoodCourtView';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Capacitor } from '@capacitor/core';
@@ -83,6 +85,7 @@ export default function App() {
                   <Route path="/restaurant/:slug/takeaway" element={<TakeawayView />} />
                   <Route path="/takeaway/:slug" element={<TakeawayView />} />
                   <Route path="/qr-menu/:slug" element={<QrMenuView />} />
+                  <Route path="/mall/:mallSlug" element={<MallFoodCourtView />} />
                   <Route path="/:city/restaurant/:slug/:tab" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/book/:slug" element={<BookTableView />} />
@@ -96,6 +99,7 @@ export default function App() {
                   <Route path="/contact-us" element={<ContactView />} />
                   <Route path="/privacy" element={<PrivacyView />} />
                   <Route path="/terms" element={<TermsView />} />
+                  <Route path="/cookie-policy" element={<CookiePolicyView />} />
                   <Route path="/onboarding-request" element={<OnboardingRequestView />} />
                   <Route path="/about" element={<AboutView />} />
                   <Route path="/error" element={<ErrorView />} />

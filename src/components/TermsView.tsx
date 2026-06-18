@@ -57,7 +57,7 @@ export default function TermsView() {
             <div className="bg-indigo-50 p-8 rounded-[2rem] border border-indigo-100">
               <h3 className="text-xl mb-4 text-[#363636] font-normal leading-[1.2]">Legal Inquiries</h3>
               <p className="text-vibrant-gray text-base m-0">For all legal questions regarding our terms, please reach out to our legal department at:</p>
-              <p className="text-indigo-600 font-bold mt-2">bookmytableindia@gmail.com</p>
+              <p className="text-indigo-600 font-bold mt-2">contact@bookmytable.co.in</p>
             </div>
           </div>
         </div>

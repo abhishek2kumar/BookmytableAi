@@ -449,7 +449,34 @@ export default function CityView() {
         }
         return a.name.localeCompare(b.name);
       });
-  }, [cityRestaurants, searchQuery, cityName, activeFilters]);
+  }, [cityRestaurants, searchQuery, cityName, activeFilters, locationSlug]);
+
+  const mallGroups = useMemo(() => {
+    const groups: { [slug: string]: { mallName: string, location: string, outlets: any[] } } = {};
+    
+    cityRestaurants.forEach(r => {
+      if (r.mallName) {
+        const slug = r.mallName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
+                     "-" + 
+                     (r.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+                     
+        if (!groups[slug]) {
+          groups[slug] = {
+            mallName: r.mallName,
+            location: r.location || '',
+            outlets: []
+          };
+        }
+        groups[slug].outlets.push(r);
+      }
+    });
+
+    return Object.entries(groups).map(([slug, data]) => ({
+      ...data,
+      slug,
+      image: "https://images.unsplash.com/photo-1519567281727-84bc7bf3a200?w=800&auto=format&fit=crop"
+    }));
+  }, [cityRestaurants]);
 
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -902,6 +929,52 @@ export default function CityView() {
                       showFullOffer
                     />
                   ))}
+            </div>
+          </section>
+        )}
+
+        {/* Food Courts Section */}
+        {!hasActiveFilters && !locationSlug && mallGroups.length > 0 && (
+          <section className="relative group/section mb-12">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
+                  Food Courts in <span className="text-brand">{currentCity?.name || queryCityName}</span>
+                </h2>
+                <p className="text-vibrant-gray font-medium text-sm">
+                  Skip the queue and order from your favorite mall outlets
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
+              {mallGroups.map((group) => (
+                <Link
+                  key={group.slug}
+                  to={`/mall/${group.slug}`}
+                  className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start bg-white rounded-2xl border border-slate-100 shadow hover:shadow-xl transition-all block group/card"
+                >
+                  <div className="relative overflow-hidden rounded-t-2xl aspect-video bg-slate-100">
+                    <img 
+                      src={group.image} 
+                      alt={group.mallName} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                      loading="lazy" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-4 left-4 text-white">
+                      <h3 className="font-bold text-lg leading-tight">{group.mallName}</h3>
+                      <p className="text-sm opacity-90">{group.location}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 flex items-center justify-between">
+                     <span className="text-sm font-medium text-slate-600">
+                       {group.outlets.length} Outlets available
+                     </span>
+                     <span className="bg-brand text-white text-xs font-bold px-2 py-1 rounded">View All</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </section>
         )}

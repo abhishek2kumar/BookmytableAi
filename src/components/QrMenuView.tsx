@@ -82,6 +82,7 @@ export default function QrMenuView() {
     "online",
   );
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<any>(null);
 
   if (restaurantsLoading) {
     return (
@@ -189,7 +190,7 @@ export default function QrMenuView() {
     const createOrderRecord = async (paymentStatus: string, txnId?: string) => {
       if (!user) return;
       try {
-        await addDoc(collection(db, "orders"), {
+        const orderData = {
           orderId,
           restaurantId: restaurant.id,
           userId: user.uid,
@@ -203,13 +204,16 @@ export default function QrMenuView() {
           taxes: Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal),
           packaging: 0,
           platformFee: appSettings?.platformFee || 0,
+          tokenNumber: orderId.substring(orderId.length - 4),
           discount: 0,
           paymentMethod,
           status: "Received",
           paymentStatus,
           txnId: txnId || "",
           createdAt: Date.now()
-        });
+        };
+        await addDoc(collection(db, "orders"), orderData);
+        setCompletedOrder(orderData);
       } catch (e) {
         console.error("Error creating order record", e);
       }
@@ -917,9 +921,15 @@ export default function QrMenuView() {
                 <div>
                   <div className="text-sm text-slate-500">Order ID</div>
                   <div className="font-normal text-[#363636] leading-[1.2]">
-                    #BMT-{Math.floor(Math.random() * 1000000)}
+                    {completedOrder?.orderId || `#BMT-${Math.floor(Math.random() * 1000000)}`}
                   </div>
                 </div>
+                {completedOrder?.tokenNumber && (
+                  <div className="text-center bg-yellow-100 px-4 py-2 rounded-xl">
+                    <div className="text-[10px] uppercase font-bold text-yellow-700 tracking-widest">Token Number</div>
+                    <div className="text-2xl font-black text-yellow-800">{completedOrder.tokenNumber}</div>
+                  </div>
+                )}
                 <div className="text-right">
                   {paymentMethod === "restaurant" ? (
                     <>
@@ -927,16 +937,14 @@ export default function QrMenuView() {
                         Payment Pending
                       </div>
                       <div className="font-normal text-[#363636] leading-[1.2]">
-                        ₹
-                        {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
+                        ₹{completedOrder?.totalPrice || cartTotal}
                       </div>
                     </>
                   ) : (
                     <>
                       <div className="text-sm text-slate-500">Total Paid</div>
                       <div className="font-bold text-brand">
-                        ₹
-                        {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
+                        ₹{completedOrder?.totalPrice || cartTotal}
                       </div>
                     </>
                   )}

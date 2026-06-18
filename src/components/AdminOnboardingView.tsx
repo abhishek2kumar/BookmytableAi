@@ -70,6 +70,7 @@ export default function AdminOnboardingView() {
     location: '',
     address: '',
     city: 'Bangalore',
+    mallName: '',
     lat: 0,
     lng: 0,
     ownerId: '',
@@ -475,6 +476,16 @@ export default function AdminOnboardingView() {
                       value={form.floor}
                       onChange={e => updateLocationField('floor', e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Mall / Food Court Name (Optional)</label>
+                    <input 
+                      placeholder="e.g. Phoenix Marketcity"
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
+                      value={form.mallName}
+                      onChange={e => setForm({ ...form, mallName: e.target.value })}
+                    />
+                    <p className="text-xs text-slate-500 px-2 mt-1">If specified, this outlet will appear grouped under this food court in the city view.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Area / Sector / Locality *</label>
