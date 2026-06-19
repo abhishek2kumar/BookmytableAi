@@ -234,5 +234,10 @@ service cloud.firestore {
       allow create: if isValidId(subscriptionId) && isValidSubscription(incoming()) && incoming().createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
+
+    match /malls/{mallId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

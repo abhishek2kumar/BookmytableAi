@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
-import { useRestaurants } from "../hooks/useFirebase";
+import { useRestaurants, useMalls } from "../hooks/useFirebase";
 import { Restaurant } from "../types";
 import { RestaurantCard } from "./RestaurantCard";
 import { useMasterData } from "./MasterDataContext";
@@ -135,6 +135,7 @@ export default function CityView() {
   const navigate = useNavigate();
   const { cities, cuisines, loading: masterDataLoading } = useMasterData();
   const { restaurants, loading: restaurantsLoading } = useRestaurants(true);
+  const { malls } = useMalls();
 
   const queryCityName = cityId || "delhi";
   const { usersWithStories, loading: storiesLoading } = useStories(queryCityName);
@@ -452,7 +453,7 @@ export default function CityView() {
   }, [cityRestaurants, searchQuery, cityName, activeFilters, locationSlug]);
 
   const mallGroups = useMemo(() => {
-    const groups: { [slug: string]: { mallName: string, location: string, outlets: any[] } } = {};
+    const groups: { [slug: string]: { mallName: string, location: string, outlets: any[], customImage?: string } } = {};
     
     cityRestaurants.forEach(r => {
       if (r.mallName) {
@@ -471,12 +472,23 @@ export default function CityView() {
       }
     });
 
-    return Object.entries(groups).map(([slug, data]) => ({
-      ...data,
-      slug,
-      image: "https://images.unsplash.com/photo-1519567281727-84bc7bf3a200?w=800&auto=format&fit=crop"
-    }));
-  }, [cityRestaurants]);
+    // Merge with predefined malls if any
+    return Object.entries(groups).map(([slug, data]) => {
+      const predefinedMall = malls.find(m => 
+        (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
+        "-" + 
+        (m.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) === slug
+      );
+
+      return {
+        ...data,
+        slug,
+        mallName: predefinedMall?.name || data.mallName,
+        location: predefinedMall?.location || data.location,
+        image: predefinedMall?.image || data.outlets[0]?.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop"
+      };
+    });
+  }, [cityRestaurants, malls]);
 
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
@@ -961,10 +973,10 @@ export default function CityView() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
                       loading="lazy" 
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-4 left-4 text-white">
-                      <h3 className="font-bold text-lg leading-tight">{group.mallName}</h3>
-                      <p className="text-sm opacity-90">{group.location}</p>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="absolute bottom-4 left-4 text-white z-10">
+                      <h3 className="font-bold text-lg leading-tight text-white">{group.mallName}</h3>
+                      <p className="text-sm opacity-90 text-white">{group.location}</p>
                     </div>
                   </div>
                   <div className="p-4 flex items-center justify-between">

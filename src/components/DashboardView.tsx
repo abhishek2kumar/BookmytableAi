@@ -4,8 +4,8 @@ import { useBookings, useFavoriteRestaurants, useRestaurants } from '../hooks/us
 import { db } from '../lib/firebase';
 import { doc, updateDoc, serverTimestamp, query, collection, where, onSnapshot } from 'firebase/firestore';
 import { formatDate, formatTime, formatAddress, cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getRatingColor } from '../lib/utils';
-import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star, Tag, User, Phone, CornerUpRight } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader2, Heart, Search, Star, Tag, User, Phone, CornerUpRight, ArrowLeft } from 'lucide-react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import AppIcon from './AppIcon';
 
@@ -19,7 +19,8 @@ export default function DashboardView() {
   const [bookingFilter, setBookingFilter] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  useEffect(() => { if(!user) return; const q = query(collection(db, 'orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})))); return () => un(); }, [user]);
+  const navigate = useNavigate();
+  useEffect(() => { if(!user) return; const q = query(collection(db, 'orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))); return () => un(); }, [user]);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile' | 'takeawayOrders') || 'bookings';
@@ -65,10 +66,10 @@ export default function DashboardView() {
   });
 
   return (
-    <div className={cn("max-w-7xl mx-auto pb-32", activeTab === 'profile' ? "px-0 md:px-6 lg:px-8 py-0 md:py-6 lg:py-12" : "px-4 py-12")}>
+    <div className={cn("max-w-7xl mx-auto pb-32", activeTab === 'profile' ? "px-0 md:px-6 lg:px-8 py-0 md:py-6 lg:py-12" : "px-0 md:px-4 py-0 md:py-12")}>
       {activeTab !== 'profile' && (
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-          <div className="flex flex-col">
+          <div className="hidden md:flex flex-col">
             <h1 className="text-4xl mb-2 text-[#363636] font-normal leading-[1.2]">
               {activeTab === 'favorites' ? 'Your Favorites' : activeTab === 'takeawayOrders' ? 'Your Food Orders' : 'Your Bookings'}
             </h1>
@@ -77,8 +78,17 @@ export default function DashboardView() {
             </p>
           </div>
           
+          <div className="md:hidden flex items-center p-4 border-b border-slate-100 bg-white sticky top-0 z-10 shadow-sm">
+             <button onClick={() => navigate("/")} className="mr-3 text-slate-700">
+                <ArrowLeft size={20} />
+             </button>
+             <span className="font-bold text-[#363636] font-mono text-lg">
+                {activeTab === 'favorites' ? 'Favorites' : activeTab === 'takeawayOrders' ? 'Food Orders' : 'Bookings'}
+             </span>
+          </div>
+          
           {activeTab === 'bookings' && (
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 pb-1">
+              <div className="flex flex-wrap items-center gap-2 px-4 md:px-0 md:gap-4 pb-1">
                 <button
                   onClick={() => setBookingFilter('past')}
                   className={`px-5 py-2 md:px-8 md:py-2.5 flex justify-center items-center gap-2 rounded-xl text-[14px] md:text-sm font-medium transition-colors ${bookingFilter === 'past' ? 'bg-brand text-white hover:bg-brand-dark border border-brand' : 'bg-white text-slate-500 border border-slate-300 hover:bg-slate-50'}`}
@@ -159,13 +169,13 @@ export default function DashboardView() {
             exit={{ opacity: 0, y: -10 }}
           >
             {bookingsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 md:px-0">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="bg-white p-6 rounded-[24px] border border-gray-100 animate-pulse h-40 shadow-sm" />
                 ))}
               </div>
             ) : filteredBookings.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 md:px-0">
                 {filteredBookings.map((booking, index) => {
                   const restaurant = restaurants.find(r => r.id === booking.restaurantId);
                   const bookedOnDate = booking.createdAt?.toDate ? booking.createdAt.toDate().toLocaleDateString() : (booking.createdAt?.seconds ? new Date(booking.createdAt.seconds * 1000).toLocaleDateString() : (booking.createdAt && !isNaN(new Date(booking.createdAt).getTime()) ? new Date(booking.createdAt).toLocaleDateString() : 'N/A'));
@@ -282,7 +292,7 @@ export default function DashboardView() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-24 flex flex-col items-center">
+              <div className="text-center py-24 flex flex-col items-center px-4 md:px-0">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6">
                   <Calendar size={40} />
                 </div>
@@ -301,41 +311,43 @@ export default function DashboardView() {
             exit={{ opacity: 0, y: -10 }}
           >
             {takeawayOrders.length > 0 ? (
-              <div className="grid gap-6">
+              <div className="grid gap-6 px-4 md:px-0">
                 {takeawayOrders.map((order, index) => (
                   <motion.div
                     key={order.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8 cursor-pointer hover:border-brand/30 transition-colors"
+                    className="bg-white rounded-[24px] border border-gray-200 shadow-sm p-5 md:p-8 cursor-pointer hover:border-brand/30 transition-colors"
                     onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                   >
-                     <div className="flex justify-between items-start mb-6">
-                       <div>
-                         <div className="flex items-center gap-2 mb-2">
-                           <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order #{order.orderId.slice(-8)}</div>
-                           <span className={cn(
-                             "px-2 py-0.5 rounded text-[9px] uppercase font-black tracking-widest",
-                             order.type === 'dine_in' ? "bg-brand flex text-white" : "bg-blue-600 text-white"
-                           )}>
-                             {order.type === 'dine_in' ? (order.tableNumber && order.tableNumber !== 'Unknown' ? `DINE IN at Table ${order.tableNumber}` : 'DINE IN') : 'TAKEAWAY'}
-                           </span>
+                       <div className="flex justify-between items-start mb-6">
+                         <div>
+                           <div className="flex items-center gap-2 mb-2">
+                             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order #{order.orderId}</div>
+                           </div>
+                           <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">₹{order.totalPrice} • {order.items?.length || 0} items</h3>
+                           <div className="text-xs text-slate-500 font-semibold mt-1">
+                             {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '')}, {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                           </div>
                          </div>
-                         <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">₹{order.totalPrice} • {order.items?.length || 0} items</h3>
-                         <div className="text-xs text-slate-500 font-semibold mt-1">
-                           {new Date(order.createdAt).toLocaleString()}
+                         <div className="text-right">
+                            <div className={cn(
+                              "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm inline-block mb-3",
+                              order.status === 'Completed' ? "bg-emerald-500 text-white" :
+                              order.status === 'Cancelled' ? "bg-red-500 text-white" :
+                              "bg-amber-500 text-white"
+                            )}>
+                              {order.status}
+                            </div>
+                            {order.tokenNumber && (
+                              <div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Token</div>
+                                <div className="text-3xl font-black text-[#363636] leading-none">{order.tokenNumber}</div>
+                              </div>
+                            )}
                          </div>
                        </div>
-                       <div className={cn(
-                          "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm",
-                          order.status === 'Completed' ? "bg-emerald-500 text-white" :
-                          order.status === 'Cancelled' ? "bg-red-500 text-white" :
-                          "bg-amber-500 text-white"
-                        )}>
-                          {order.status}
-                       </div>
-                     </div>
                      <div className="space-y-2 bg-slate-50 p-4 rounded-xl mb-4">
                         {order.items?.map((item: any, i: number) => (
                           <div key={i} className="flex justify-between text-sm">
@@ -387,7 +399,7 @@ export default function DashboardView() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center">
+              <div className="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center mx-4 md:mx-0">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6">
                   <Utensils size={40} />
                 </div>
@@ -410,13 +422,13 @@ export default function DashboardView() {
             exit={{ opacity: 0, y: -10 }}
           >
             {favoritesLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 md:px-0">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="aspect-square bg-white rounded-3xl border border-gray-100 animate-pulse" />
                 ))}
               </div>
             ) : favorites.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 md:px-0">
                 {favorites.map((res, index) => (
                   <motion.div
                     key={res.id}
@@ -460,7 +472,7 @@ export default function DashboardView() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center">
+              <div className="text-center py-24 bg-white rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center mx-4 md:mx-0">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6">
                   <Heart size={40} />
                 </div>

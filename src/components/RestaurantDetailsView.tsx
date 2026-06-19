@@ -81,6 +81,7 @@ import {
   getRatingColor,
   isTakeawayAvailable,
   formatAddress as formatAddressGlobal,
+  slugify,
 } from "../lib/utils";
 import { summarizeGoogleReviews } from "../services/aiService";
 import ReactMarkdown from "react-markdown";
@@ -107,14 +108,8 @@ export default function RestaurantDetailsView() {
     let found = allRestaurants.find((r) => r.id === slug);
     if (!found) {
       found = allRestaurants.find((r) => {
-        const rNameSlug = (r.name || "restaurant")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-        const rLocSlug = (r.location || "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
+        const rNameSlug = slugify(r.name || "restaurant");
+        const rLocSlug = slugify(r.location || "");
         const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
         return combined === slug;
       });
@@ -141,15 +136,9 @@ export default function RestaurantDetailsView() {
   // SEO Redirect
   useEffect(() => {
     if (foundRestaurant && !city) {
-      const seoCity = (foundRestaurant.city || "city")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-");
-      const seoName = (foundRestaurant.name || "restaurant")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-");
-      const seoLoc = (foundRestaurant.location || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-");
+      const seoCity = slugify(foundRestaurant.city || "ind");
+      const seoName = slugify(foundRestaurant.name || "restaurant");
+      const seoLoc = slugify(foundRestaurant.location || "");
       const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
       const targetUrl = `/${seoCity}/restaurant/${combined}${tab ? `/${tab}` : ""}${location.hash}`;
 

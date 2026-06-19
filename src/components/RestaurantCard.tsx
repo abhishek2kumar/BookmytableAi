@@ -8,9 +8,11 @@ interface RestaurantCardProps {
   restaurant: Restaurant & { distance?: number | null };
   className?: string;
   showFullOffer?: boolean;
+  hideCost?: boolean;
+  hideLocation?: boolean;
 }
 
-export function RestaurantCard({ restaurant, className, showFullOffer }: RestaurantCardProps) {
+export function RestaurantCard({ restaurant, className, showFullOffer, hideCost, hideLocation }: RestaurantCardProps) {
   const status = getRestaurantStatus(restaurant);
   const ratingBg = getRatingColor(restaurant.rating || 0);
 
@@ -71,16 +73,18 @@ export function RestaurantCard({ restaurant, className, showFullOffer }: Restaur
           <span className="uppercase tracking-widest opacity-60 line-clamp-1">
             {Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine}
           </span>
-          <span className="text-[#363636] shrink-0 ml-2">₹{restaurant.avgPrice} for 2</span>
+          {!hideCost && <span className="text-[#363636] shrink-0 ml-2">₹{restaurant.avgPrice} for 2</span>}
         </div>
 
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-50">
-          <div className="flex items-center gap-1 truncate text-slate-400 font-medium">
-            <MapPin size={12} className="shrink-0" />
-            <span className="text-[11px] truncate">{restaurant.location}</span>
+        {!hideLocation && (
+          <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-50">
+            <div className="flex items-center gap-1 truncate text-slate-400 font-medium">
+              <MapPin size={12} className="shrink-0" />
+              <span className="text-[11px] truncate">{restaurant.location}</span>
+            </div>
+            <ArrowRight size={16} className="text-brand opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
           </div>
-          <ArrowRight size={16} className="text-brand opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-        </div>
+        )}
       </div>
     </Link>
   );

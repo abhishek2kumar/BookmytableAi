@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Store } from 'lucide-react';
-import { useRestaurants } from '../hooks/useFirebase';
+import { useRestaurants, useMalls } from '../hooks/useFirebase';
 import { cn } from '../lib/utils';
 import { RestaurantCard } from './RestaurantCard';
 
@@ -9,9 +9,10 @@ export default function MallFoodCourtView() {
   const { mallSlug } = useParams();
   const navigate = useNavigate();
   const { restaurants, loading } = useRestaurants(true);
+  const { malls } = useMalls();
 
-  const { mallName, location, outlets } = useMemo(() => {
-    if (!mallSlug) return { mallName: '', location: '', outlets: [] };
+  const { mallName, location, outlets, mallImage } = useMemo(() => {
+    if (!mallSlug) return { mallName: '', location: '', outlets: [], mallImage: '' };
 
     // Group all by mallName + location slug
     const groups: { [slug: string]: { mallName: string, location: string, outlets: any[] } } = {};
@@ -33,8 +34,24 @@ export default function MallFoodCourtView() {
       }
     });
 
-    return groups[mallSlug] || { mallName: '', location: '', outlets: [] };
-  }, [mallSlug, restaurants]);
+    const parsedGroup = groups[mallSlug] || { mallName: '', location: '', outlets: [] };
+
+    // Find custom mall from db
+    const predefinedMall = malls.find(m => 
+      (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
+      "-" + 
+      (m.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) === mallSlug
+    );
+
+    let displayImage = predefinedMall?.image || parsedGroup.outlets[0]?.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop";
+
+    return { 
+      mallName: predefinedMall?.name || parsedGroup.mallName, 
+      location: predefinedMall?.location || parsedGroup.location, 
+      outlets: parsedGroup.outlets, 
+      mallImage: displayImage 
+    };
+  }, [mallSlug, restaurants, malls]);
 
   if (loading) {
     return (
@@ -59,9 +76,9 @@ export default function MallFoodCourtView() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 pt-16 md:pt-20">
+    <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <div className="bg-white sticky top-16 md:top-20 z-40 shadow-sm border-b border-slate-200">
+      <div className="bg-white sticky top-16 z-40 shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
@@ -80,6 +97,21 @@ export default function MallFoodCourtView() {
         </div>
       </div>
 
+      <div className="w-full h-48 md:h-64 relative bg-slate-100">
+        <img 
+          src={mallImage} 
+          alt={mallName} 
+          className="w-full h-full object-cover" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="absolute bottom-4 left-4 md:left-8 text-white z-10">
+          <h2 className="text-3xl font-bold text-white">{mallName}</h2>
+          <p className="text-lg opacity-90 text-white flex items-center gap-1">
+             <MapPin size={16} /> {location}
+          </p>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg md:text-xl font-bold text-[#363636] flex items-center gap-2">
@@ -92,11 +124,11 @@ export default function MallFoodCourtView() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {outlets.map((restaurant) => (
-            <div key={restaurant.id} className="relative group">
-              <RestaurantCard restaurant={restaurant} />
+            <div key={restaurant.id} className="relative group flex flex-col h-full">
+              <RestaurantCard restaurant={restaurant} className="h-auto" hideCost hideLocation />
               
               {/* Overlay for quick takeaway action */}
-              <div className="mt-3">
+              <div className="mt-auto pt-3">
                 <Link 
                   to={`/takeaway/${restaurant.id}`}
                   className="w-full block text-center py-2.5 bg-brand text-white bg-opacity-10 text-brand font-bold rounded-xl border border-brand hover:bg-brand hover:text-white transition-colors"

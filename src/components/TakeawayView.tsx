@@ -19,9 +19,10 @@ import {
   Menu as MenuIcon,
   UserCheck,
   Loader2,
+  Home,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { cn, getRestaurantUrl } from "../lib/utils";
+import { cn, getRestaurantUrl, slugify } from "../lib/utils";
 import { useAuth } from "./AuthProvider";
 import { useMasterData } from "./MasterDataContext";
 
@@ -51,14 +52,8 @@ export default function TakeawayView() {
     let found = restaurants.find((r) => r.id === slug);
     if (!found) {
       found = restaurants.find((r) => {
-        const rNameSlug = (r.name || "restaurant")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-        const rLocSlug = (r.location || "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
+        const rNameSlug = slugify(r.name || "restaurant");
+        const rLocSlug = slugify(r.location || "");
         const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
         return combined === slug;
       });
@@ -152,7 +147,7 @@ export default function TakeawayView() {
   const handleConfirmOrder = async () => {
     const payableAmount =
       cartTotal +
-      Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + 20 + (appSettings?.platformFee || 0);
+      Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal) + (appSettings?.platformFee || 0);
     const orderId =
       "ORD_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
     const customerId = user?.uid || "CUST_GUEST";
@@ -181,7 +176,7 @@ export default function TakeawayView() {
           totalPrice: payableAmount,
           itemTotal: cartTotal,
           taxes: Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal),
-          packaging: 20,
+          packaging: 0,
           platformFee: appSettings?.platformFee || 0,
           tokenNumber: orderId.substring(orderId.length - 4),
           discount: 0,
@@ -621,7 +616,7 @@ export default function TakeawayView() {
                           <span>To Pay</span>
                           <span>
                             ₹
-                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + 20 + (appSettings?.platformFee || 0)}
+                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                           </span>
                         </div>
                       </div>
@@ -634,7 +629,7 @@ export default function TakeawayView() {
                         <div className="flex items-center gap-1">
                           <span>
                             ₹
-                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + 20 + (appSettings?.platformFee || 0)}
+                            {cartTotal + Math.round(cartTotal * ((restaurant.gstPercentage || 5) / 100)) + (appSettings?.platformFee || 0)}
                           </span>
                           <ChevronRight size={18} />
                         </div>
@@ -863,77 +858,168 @@ export default function TakeawayView() {
         )}
 
         {step === "success" && (
-          <div className="max-w-md mx-auto text-center pt-8 md:pt-12 pb-12 px-4">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
-            >
-              <CheckCircle2 size={48} className="text-green-500" />
-            </motion.div>
-            <h2 className="text-3xl mb-2 text-[#363636] font-normal leading-[1.2]">
-              Order Confirmed!
-            </h2>
-            <p className="text-slate-500 mb-8">
-              Your order has been placed successfully. The restaurant
-              will notify you when it's ready for pickup.
-              {paymentMethod === "restaurant" &&
-                " Please pay at the restaurant upon collection."}
-            </p>
+          <div className="max-w-md mx-auto text-left md:text-center pt-0 md:pt-12 pb-0 md:pb-12 px-0 md:px-4 md:bg-transparent min-h-screen md:min-h-0 bg-white md:bg-slate-50">
+            <div className="hidden md:block">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6"
+              >
+                <CheckCircle2 size={48} className="text-green-500" />
+              </motion.div>
+              <h2 className="text-3xl mb-2 text-[#363636] font-normal leading-[1.2]">
+                Order Confirmed!
+              </h2>
+              <p className="text-slate-500 mb-8">
+                Your order has been placed successfully. The restaurant
+                will notify you when it's ready for pickup.
+                {paymentMethod === "restaurant" &&
+                  " Please pay at the restaurant upon collection."}
+              </p>
+            </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-slate-300 shadow-sm text-left mb-8">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-                Order Summary
-              </div>
-              <div className="flex justify-between items-center pb-4 border-b border-slate-300 mb-4">
-                <div>
-                  <div className="text-sm text-slate-500">Order ID</div>
-                  <div className="font-normal text-[#363636] leading-[1.2]">
-                    {completedOrder?.orderId || `#BMT-${Math.floor(Math.random() * 1000000)}`}
-                  </div>
+            {/* Mobile Header */}
+            <div className="md:hidden flex items-center p-4 border-b border-slate-100 bg-white sticky top-0 z-10 shadow-sm">
+               <span className="font-bold text-[#363636] font-mono text-lg">Order #{completedOrder?.orderId || "..."}</span>
+            </div>
+            
+            {/* Mobile Title */}
+            <div className="md:hidden flex items-center gap-2 p-4 pb-0 mb-4">
+               <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+               <span className="text-sm font-medium text-slate-500">Takeaway Order</span>
+            </div>
+
+            <div className="bg-white rounded-none md:rounded-[24px] border-y md:border border-slate-200 md:shadow-sm text-left mb-8 md:overflow-hidden shadow-none md:shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+               
+              <div className="p-5 md:p-6 pb-4 border-b border-dashed border-slate-200">
+                <div className="flex justify-between items-start mb-6">
+                   <div>
+                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                        Token Number
+                     </div>
+                     <div className="text-4xl font-black text-[#363636]">{completedOrder?.tokenNumber || "..."}</div>
+                   </div>
+                   <div className="text-right">
+                      {paymentMethod === "restaurant" ? (
+                        <>
+                          <div className="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded mb-1">
+                            Payment Pending
+                          </div>
+                          <div className="font-bold text-[#363636] text-xl">
+                            ₹{completedOrder?.totalPrice || cartTotal}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="inline-block px-2 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded mb-1">
+                            Paid via Online
+                          </div>
+                          <div className="font-bold text-[#363636] text-xl">
+                            ₹{completedOrder?.totalPrice || cartTotal}
+                          </div>
+                        </>
+                      )}
+                   </div>
                 </div>
-                {completedOrder?.tokenNumber && (
-                  <div className="text-center bg-yellow-100 px-4 py-2 rounded-xl">
-                    <div className="text-[10px] uppercase font-bold text-yellow-700 tracking-widest">Token Number</div>
-                    <div className="text-2xl font-black text-yellow-800">{completedOrder.tokenNumber}</div>
+
+                <div className="hidden md:block">
+                   <div className="text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-widest">Order ID</div>
+                   <div className="text-sm font-medium text-[#363636]">{completedOrder?.orderId || "..."}</div>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="p-5 md:p-6 border-b border-slate-100">
+                <div className="space-y-4">
+                  {(completedOrder?.items || Object.entries(cart).map(([id, q]) => ({ name: restaurant.liveMenu?.find((i:any)=>i.id===id)?.name, price: restaurant.liveMenu?.find((i:any)=>i.id===id)?.price, quantity: q }))).map((item: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-start gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="mt-1 w-3.5 h-3.5 rounded border border-green-500 flex items-center justify-center shrink-0 bg-green-50/50">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-[#363636] text-sm line-clamp-2">{item.name}</div>
+                          <div className="text-xs text-slate-500 mt-1">{item.quantity} x ₹{item.price}</div>
+                        </div>
+                      </div>
+                      <div className="font-medium text-[#363636] text-sm shrink-0">₹{(item.price * item.quantity).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="p-5 md:p-6 border-b border-slate-100 bg-slate-50/50">
+                <div className="text-sm font-bold text-[#363636] mb-4">Order Summary</div>
+                <div className="space-y-3 text-sm text-slate-500">
+                  <div className="flex justify-between">
+                    <span>Item Sub Total</span>
+                    <span className="font-medium text-[#363636]">₹{(completedOrder?.itemTotal || cartTotal).toFixed(2)}</span>
                   </div>
-                )}
-                <div className="text-right">
-                  {paymentMethod === "restaurant" ? (
-                    <>
-                      <div className="text-sm text-amber-600 font-bold">
-                        Payment Pending
-                      </div>
-                      <div className="font-normal text-[#363636] leading-[1.2]">
-                        ₹{completedOrder?.totalPrice || cartTotal}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="text-sm text-slate-500">Total Paid</div>
-                      <div className="font-bold text-brand">
-                        ₹{completedOrder?.totalPrice || cartTotal}
-                      </div>
-                    </>
+                  {((restaurant.gstPercentage || 5) > 0) && (
+                    <div className="flex justify-between">
+                      <span>Taxes ({restaurant.gstPercentage || 5}%)</span>
+                      <span className="font-medium text-[#363636]">₹{(completedOrder?.taxes || Math.round(((restaurant.gstPercentage || 5) / 100) * cartTotal)).toFixed(2)}</span>
+                    </div>
                   )}
+                  {(completedOrder?.platformFee || appSettings?.platformFee) ? (
+                    <div className="flex justify-between">
+                      <span>Platform Fee</span>
+                      <span className="font-medium text-[#363636]">₹{(completedOrder?.platformFee || appSettings?.platformFee).toFixed(2)}</span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between pt-3 border-t border-slate-200 font-bold text-[#363636] text-base">
+                    <span>Total Payable Amount</span>
+                    <span>₹{(completedOrder?.totalPrice || cartTotal).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-              <div className="text-sm font-medium text-slate-700 flex items-start gap-3">
-                <Clock className="shrink-0 text-amber-500" size={20} />
-                <span>
-                  Estimated pickup time is approximately 30-45 minutes. Watch
-                  out for SMS updates.
-                </span>
+
+              {/* Tracker */}
+              <div className="p-5 md:p-6 bg-slate-50/30">
+                <div className="relative pl-6 space-y-7">
+                  {/* Line */}
+                  <div className="absolute left-[11px] top-2 bottom-6 w-px bg-slate-200 border-l border-dashed border-slate-300"></div>
+                  
+                  {/* Step 1 */}
+                  <div className="relative">
+                    <div className="absolute -left-[30px] bg-white w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center z-10 box-content">
+                       <CheckCircle2 size={12} className="text-green-500" />
+                    </div>
+                    <div className="font-medium text-sm text-[#363636]">Order Created</div>
+                    <div className="text-xs text-slate-500 mt-0.5">Waiting for Confirmation</div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="relative">
+                    <div className="absolute -left-[30px] bg-white w-5 h-5 rounded-full border-2 border-brand flex items-center justify-center z-10 box-content text-brand">
+                       <Clock size={12} strokeWidth={3} />
+                    </div>
+                    <div className="font-medium text-sm text-[#363636]">Order Confirmed</div>
+                    <div className="text-xs text-brand/80 mt-0.5">Order is being prepared.</div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="relative">
+                    <div className="absolute -left-[30px] bg-white w-5 h-5 rounded-full border-2 border-slate-200 flex items-center justify-center z-10 box-content text-slate-300">
+                       <ShoppingBag size={12} />
+                    </div>
+                    <div className="font-medium text-sm text-slate-400">Order Ready</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Ready for pickup.</div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={() => navigate(getRestaurantUrl(restaurant))}
-              className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
-            >
-              Back to Restaurant
-            </button>
+            <div className="hidden md:block">
+              <button
+                onClick={() => navigate(getRestaurantUrl(restaurant))}
+                className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-colors"
+              >
+                Back to Restaurant
+              </button>
+            </div>
           </div>
         )}
       </div>

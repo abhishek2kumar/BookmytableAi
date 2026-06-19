@@ -131,7 +131,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   const isBookPage = location.pathname.endsWith('/book') || location.pathname.startsWith('/book/');
-  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage;
+  const isTakeawayPage = location.pathname.includes('/takeaway');
+  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage || isTakeawayPage;
   const isHomePage = location.pathname === '/';
   const isPartnersPage = location.pathname.startsWith('/partners');
   const isQrMenuPage = location.pathname.startsWith('/qr-menu/');
@@ -309,7 +310,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               
                               <Link to="/dashboard?tab=bookings" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">
                                 <Calendar size={16} className="text-slate-400" />
-                                Bookings
+                                Table Booking
                               </Link>
                               
                               <Link to="/dashboard?tab=takeawayOrders" onClick={() => setIsProfileOpen(false)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors font-semibold">

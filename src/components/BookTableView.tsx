@@ -10,7 +10,7 @@ import {
   Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { cn, getRestaurantUrl } from "../lib/utils";
+import { cn, getRestaurantUrl, slugify } from "../lib/utils";
 import { useAuth } from "./AuthProvider";
 import { useRestaurants } from "../hooks/useFirebase";
 
@@ -35,14 +35,8 @@ export default function BookTableView() {
     let found = restaurants.find((r) => r.id === slug);
     if (!found) {
       found = restaurants.find((r) => {
-        const rNameSlug = (r.name || "restaurant")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
-        const rLocSlug = (r.location || "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
+        const rNameSlug = slugify(r.name || "restaurant");
+        const rLocSlug = slugify(r.location || "");
         const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
         return combined === slug;
       });

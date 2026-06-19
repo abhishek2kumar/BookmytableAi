@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { db } from './lib/firebase';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { LocationProvider } from './components/LocationContext';
@@ -17,6 +19,7 @@ import DashboardView from './components/DashboardView';
 import OwnerDashboardView from './components/OwnerDashboardView';
 import AdminDashboardView from './components/AdminDashboardView';
 import AdminOnboardingView from './components/AdminOnboardingView';
+import AdminMallOnboardingView from './components/AdminMallOnboardingView';
 import PartnerLoginView from './components/PartnerLoginView';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import ContactView from './components/ContactView';
@@ -52,6 +55,17 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode, role?: 
 
 export default function App() {
   useEffect(() => {
+    const fixUnapproved = async () => {
+      try {
+        const q = query(collection(db, 'restaurants'), where('status', '==', 'Pending'));
+        const snapshot = await getDocs(q);
+        snapshot.docs.forEach(d => {
+          updateDoc(doc(db, 'restaurants', d.id), { status: 'Active', approved: true });
+        });
+      } catch(e) {}
+    };
+    fixUnapproved();
+
     const initCapacitor = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
@@ -93,6 +107,7 @@ export default function App() {
                   <Route path="/owner" element={<ProtectedRoute role="owner"><OwnerDashboardView /></ProtectedRoute>} />
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
                   <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
+                  <Route path="/admin/onboard-mall" element={<ProtectedRoute role="admin"><AdminMallOnboardingView /></ProtectedRoute>} />
                   <Route path="/partners/login" element={<PartnerLoginView />} />
                   <Route path="/partners/dashboard" element={<PartnerDashboardView />} />
                   <Route path="/contact" element={<ContactView />} />

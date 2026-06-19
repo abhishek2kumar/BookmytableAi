@@ -173,3 +173,19 @@ export function useFavoriteRestaurants(favoriteIds: string[] | undefined) {
 
   return { favorites, loading };
 }
+
+export function useMalls() {
+  const [malls, setMalls] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, "malls"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMalls(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return { malls, loading };
+}

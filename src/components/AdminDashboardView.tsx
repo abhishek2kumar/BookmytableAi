@@ -74,6 +74,7 @@ import { useMasterData } from "./MasterDataContext";
 import { INDIAN_STATES } from "../constants";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import AdminMallsTab from "./AdminMallsTab";
 
 const DEFAULT_BOOKING_SLOTS = [
   "12:00",
@@ -3809,6 +3810,7 @@ export default function AdminDashboardView() {
           <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-300 shadow-sm w-fit mb-12">
             {[
               { id: "fleet", label: "Fleet Control", icon: Store },
+              { id: "malls", label: "Malls & Food Courts", icon: MapPin },
               {
                 id: "approvals",
                 label: "Review Queue",
@@ -4439,6 +4441,17 @@ export default function AdminDashboardView() {
                     </div>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === "malls" && (
+              <motion.div
+                key="malls"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AdminMallsTab />
               </motion.div>
             )}
 

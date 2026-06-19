@@ -95,6 +95,21 @@ export interface Advertisement {
   validUntil?: string;
 }
 
+export interface Mall {
+  id: string;
+  name: string;
+  image?: string;
+  location: string;
+  address?: string;
+  area: string;
+  city: string;
+  pincode?: string;
+  lat?: number;
+  lng?: number;
+  createdAt: any;
+  updatedAt?: any;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
