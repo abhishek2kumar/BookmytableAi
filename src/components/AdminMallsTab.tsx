@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Mall } from '../types';
 import { db } from '../lib/firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Plus, Store, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function AdminMallsTab() {
   const [malls, setMalls] = useState<Mall[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMalls = async () => {
@@ -26,41 +27,56 @@ export default function AdminMallsTab() {
   }, []);
 
   const handlePrintQR = (mall: Mall) => {
-    const mallSlug = mall.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
-                     "-" + 
-                     (mall.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    
-    const qrUrl = `https://www.bookmytable.co.in/mall/${mallSlug}`;
-    
-    const printWin = window.open('', '_blank');
-    if (!printWin) return;
+    const citySlug = (mall.city || "Pune").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    // Hardcode viman-nagar override for "Phoenix Avenue Of Stars" if location is "Nagar Road"
+    let loc = (mall.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if(mall.name.includes("Phoenix Avenue") && loc.includes("nagar-road")) {
+       loc = "viman-nagar";
+    }
+    const mallSlug = mall.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc;
     
     // We need to render the SVG to string, an easy hack is to find it in DOM or re-render 
     // But since we can't easily wait, let's just create an HTML
     const svgElement = document.getElementById(`qr-mall-${mall.id}`);
     const svgData = new XMLSerializer().serializeToString(svgElement!);
     
+    const printWin = window.open('', '_blank');
+    if (!printWin) return;
+
+    // Get full original URL of the current app for the logo
+    const baseUrl = window.location.origin;
+    
     printWin.document.write(`
       <html>
         <head>
           <title>Print QR - ${mall.name}</title>
           <style>
-            body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .qr-container { padding: 40px; border: 2px dashed #ccc; border-radius: 20px; text-align: center; }
-            h1 { margin: 0 0 10px 0; font-size: 24px; }
-            p { margin: 0 0 20px 0; color: #666; }
-            svg { width: 300px; height: 300px; }
+            body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fff; }
+            .qr-container { padding: 40px; border: 2px dashed #ccc; border-radius: 20px; text-align: center; background: #fff; max-width: 400px; width: 100%; border: 1px solid #eee; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+            .logo-text { font-size: 24px; font-weight: 900; color: #ff5a25; margin: 0 0 5px 0; letter-spacing: -0.5px; }
+            .logo-sub { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 30px 0; font-weight: 700; }
+            h1 { margin: 0 0 10px 0; font-size: 24px; color: #363636; }
+            p { margin: 0 0 20px 0; color: #666; font-size: 14px; }
+            svg { width: 300px; height: 300px; margin: 0 auto; display: block; }
+            .scan-text { margin-top: 25px; font-weight: 800; color: #363636; font-size: 18px; letter-spacing: 0.5px; }
+            .scan-subtext { font-size: 13px; color: #888; margin-top: 5px; }
             @media print {
-              .qr-container { border: none; }
+              body, .qr-container { max-width: none; border: none; box-shadow: none; padding: 0; height: auto; }
             }
           </style>
         </head>
         <body>
           <div class="qr-container">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px;">
+              <div style="width: 28px; height: 28px; background: #ff5a25; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">B</div>
+              <div class="logo-text" style="margin-bottom: 0;"><span style="color:#363636;">Bookmy</span><span style="color:#ff5a25;">Table</span></div>
+            </div>
+            <div class="logo-sub">Skip The Queue</div>
             <h1>${mall.name}</h1>
             <p>${mall.location}, ${mall.city}</p>
             ${svgData}
-            <p style="margin-top: 20px; font-weight: bold;">Scan to Order</p>
+            <div class="scan-text">Scan & Order</div>
+            <div class="scan-subtext">Order from any outlet in the food court</div>
           </div>
           <script>
             setTimeout(() => {
@@ -75,6 +91,8 @@ export default function AdminMallsTab() {
   };
 
   if (loading) return <div className="p-8 text-center text-slate-500">Loading malls...</div>;
+
+  const currentOrigin = window.location.origin.includes('localhost') ? 'https://www.bookmytable.co.in' : window.location.origin;
 
   return (
     <div className="space-y-6">
@@ -94,7 +112,11 @@ export default function AdminMallsTab() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {malls.map(mall => (
-          <div key={mall.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col">
+          <div key={mall.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col hover:border-slate-300 transition-colors cursor-pointer" onClick={(e) => {
+            // Prevent going to edit if clicking the print button
+            if ((e.target as HTMLElement).closest('button')) return;
+            navigate(`/admin/malls/${mall.id}/edit`);
+          }}>
             <div className="flex gap-4 mb-4">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 shrink-0 overflow-hidden">
                 {mall.image ? (
@@ -117,7 +139,7 @@ export default function AdminMallsTab() {
                 <div className="bg-slate-50 p-2 rounded-xl inline-block border border-slate-200">
                   <QRCodeSVG 
                     id={`qr-mall-${mall.id}`}
-                    value={`https://www.bookmytable.co.in/mall/${mall.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}-${(mall.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`} 
+                    value={`${currentOrigin.replace(/\/$/, '')}/${(mall.city || "Pune").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}/mall/${mall.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}-${(mall.name.includes("Phoenix Avenue") && mall.location?.includes("Nagar Road") ? "viman-nagar" : (mall.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))}`} 
                     size={80} 
                   />
                 </div>

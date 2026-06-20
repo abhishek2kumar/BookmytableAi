@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { Mall } from '../types';
 import { IndianRupee, MapPin, Store, Image as ImageIcon, AlertCircle, CheckCircle2, ChevronLeft, Save, Navigation, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useMasterData } from './MasterDataContext';
 import { uploadImageToStorage } from '../lib/storage';
 
 export default function AdminMallOnboardingView() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { cities } = useMasterData();
   const [form, setForm] = useState<Partial<Mall>>({
     name: '',
@@ -23,10 +24,33 @@ export default function AdminMallOnboardingView() {
     lng: 0,
   });
 
+  const [isLoading, setIsLoading] = useState(!!id);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  useEffect(() => {
+    if (id) {
+      const fetchMall = async () => {
+        try {
+          const docRef = doc(db, 'malls', id);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setForm(docSnap.data() as Partial<Mall>);
+          } else {
+            showNotification('error', 'Mall not found');
+          }
+        } catch (error) {
+          console.error("Error fetching mall:", error);
+          showNotification('error', 'Failed to load mall details');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchMall();
+    }
+  }, [id]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -109,8 +133,12 @@ export default function AdminMallOnboardingView() {
     try {
       const finalData: any = {
         ...form,
-        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
+      
+      if (!id) {
+        finalData.createdAt = serverTimestamp();
+      }
       
       // Strip undefined properties to prevent Firestore SDK errors
       Object.keys(finalData).forEach(key => {
@@ -119,8 +147,13 @@ export default function AdminMallOnboardingView() {
         }
       });
 
-      await addDoc(collection(db, 'malls'), finalData);
-      showNotification('success', 'Mall onboarded successfully!');
+      if (id) {
+        await updateDoc(doc(db, 'malls', id), finalData);
+        showNotification('success', 'Mall updated successfully!');
+      } else {
+        await addDoc(collection(db, 'malls'), finalData);
+        showNotification('success', 'Mall onboarded successfully!');
+      }
       setTimeout(() => navigate('/admin'), 1500);
     } catch (e: any) {
       showNotification('error', e.message || 'Error saving mall');
@@ -128,6 +161,10 @@ export default function AdminMallOnboardingView() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8"><Loader2 className="animate-spin text-brand mr-2" /> Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
@@ -137,8 +174,8 @@ export default function AdminMallOnboardingView() {
             <ChevronLeft size={20} className="text-slate-600" />
           </button>
           <div>
-            <h1 className="font-bold text-lg text-[#363636] leading-tight">Onboard Food Court / Mall</h1>
-            <p className="text-xs text-slate-500">Add a new mall to the platform</p>
+            <h1 className="font-bold text-lg text-[#363636] leading-tight">{id ? 'Edit Food Court / Mall' : 'Onboard Food Court / Mall'}</h1>
+            <p className="text-xs text-slate-500">{id ? 'Update mall details' : 'Add a new mall to the platform'}</p>
           </div>
         </div>
       </div>

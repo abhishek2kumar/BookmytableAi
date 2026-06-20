@@ -99,6 +99,7 @@ export default function App() {
                   <Route path="/restaurant/:slug/takeaway" element={<TakeawayView />} />
                   <Route path="/takeaway/:slug" element={<TakeawayView />} />
                   <Route path="/qr-menu/:slug" element={<QrMenuView />} />
+                  <Route path="/:city/mall/:mallSlug" element={<MallFoodCourtView />} />
                   <Route path="/mall/:mallSlug" element={<MallFoodCourtView />} />
                   <Route path="/:city/restaurant/:slug/:tab" element={<RestaurantDetailsView />} />
                   <Route path="/restaurant/:slug" element={<RestaurantDetailsView />} />
@@ -108,6 +109,7 @@ export default function App() {
                   <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboardView /></ProtectedRoute>} />
                   <Route path="/admin/onboard" element={<ProtectedRoute role="admin"><AdminOnboardingView /></ProtectedRoute>} />
                   <Route path="/admin/onboard-mall" element={<ProtectedRoute role="admin"><AdminMallOnboardingView /></ProtectedRoute>} />
+                  <Route path="/admin/malls/:id/edit" element={<ProtectedRoute role="admin"><AdminMallOnboardingView /></ProtectedRoute>} />
                   <Route path="/partners/login" element={<PartnerLoginView />} />
                   <Route path="/partners/dashboard" element={<PartnerDashboardView />} />
                   <Route path="/contact" element={<ContactView />} />

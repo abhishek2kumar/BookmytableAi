@@ -204,12 +204,11 @@ export default function HomeLandingView() {
             transition={{ duration: 0.8 }}
             className="flex flex-col items-center"
           >
-            <h1 className="text-4xl md:text-7xl text-white mb-6 drop-shadow-2xl text-center font-normal leading-[1.2]">
-              Dine in, takeaway, or delivery.<br />
-              <span className="text-brand">Your food, your way!</span>
+            <h1 className="text-2xl md:text-5xl text-white mb-3 md:mb-4 max-w-4xl mx-auto drop-shadow-2xl text-center font-normal leading-[1.3]">
+              Discover the finest <span className="text-brand">Dining</span> experiences
             </h1>
-            <p className="text-base md:text-xl text-slate-200 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-md text-center">
-              Discover the finest dining experiences, grab a quick takeaway, or get your favorite meals delivered from the best restaurants in your city.
+            <p className="text-sm md:text-lg text-slate-200 mb-8 md:mb-12 max-w-2xl mx-auto drop-shadow-xl text-center font-medium">
+              Grab a quick <span className="text-brand">Takeaway</span>, or get your favorite meals <span className="text-brand">Delivered</span> at your doorstep!
             </p>
             
             <div className="max-w-4xl mx-auto w-full relative px-2 md:px-0">
@@ -344,8 +343,7 @@ export default function HomeLandingView() {
       <section className="py-24 md:py-32 bg-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-4xl md:text-6xl mb-10 text-[#363636] font-normal leading-[1.2]">
-            Ready to explore the best<br />
-            cuisines in your town?
+            Explore the best cuisines around you!
           </h2>
           <button 
             onClick={() => handleCitySelect('Bangalore', 12.9716, 77.5946)}

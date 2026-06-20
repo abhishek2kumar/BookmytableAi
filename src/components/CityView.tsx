@@ -457,9 +457,11 @@ export default function CityView() {
     
     cityRestaurants.forEach(r => {
       if (r.mallName) {
-        const slug = r.mallName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
-                     "-" + 
-                     (r.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        let loc = (r.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        if (r.mallName.includes("Phoenix Avenue") && loc.includes("nagar-road")) {
+           loc = "viman-nagar";
+        }
+        const slug = r.mallName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc;
                      
         if (!groups[slug]) {
           groups[slug] = {
@@ -474,11 +476,13 @@ export default function CityView() {
 
     // Merge with predefined malls if any
     return Object.entries(groups).map(([slug, data]) => {
-      const predefinedMall = malls.find(m => 
-        (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + 
-        "-" + 
-        (m.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) === slug
-      );
+      const predefinedMall = malls.find(m => {
+        let loc = (m.location || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        if (m.name.includes("Phoenix Avenue") && loc.includes("nagar-road")) {
+           loc = "viman-nagar";
+        }
+        return (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc) === slug;
+      });
 
       return {
         ...data,
@@ -963,7 +967,7 @@ export default function CityView() {
               {mallGroups.map((group) => (
                 <Link
                   key={group.slug}
-                  to={`/mall/${group.slug}`}
+                  to={`/${currentCity?.slug || queryCityName?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "pune"}/mall/${group.slug}`}
                   className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start bg-white rounded-2xl border border-slate-100 shadow hover:shadow-xl transition-all block group/card"
                 >
                   <div className="relative overflow-hidden rounded-t-2xl aspect-video bg-slate-100">
