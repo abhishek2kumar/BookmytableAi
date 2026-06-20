@@ -30,6 +30,7 @@ import ErrorView from './components/ErrorView';
 import OnboardingRequestView from './components/OnboardingRequestView';
 import AboutView from './components/AboutView';
 import MallFoodCourtView from './components/MallFoodCourtView';
+import CollectionView from './components/CollectionView';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Capacitor } from '@capacitor/core';
@@ -92,6 +93,8 @@ export default function App() {
                   <Route path="/:cityId" element={<CityView />} />
                   <Route path="/:cityId/:locationSlug" element={<CityView />} />
                   <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
+                  <Route path="/:city/collections/:collectionSlug" element={<CollectionView />} />
+                  <Route path="/collections/:collectionSlug" element={<CollectionView />} />
                   <Route path="/:city/restaurant/:slug" element={<RestaurantDetailsView />} />
                   <Route path="/:city/restaurant/:slug/book" element={<BookTableView />} />
                   <Route path="/restaurant/:slug/book" element={<BookTableView />} />

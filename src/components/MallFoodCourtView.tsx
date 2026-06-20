@@ -45,7 +45,8 @@ export default function MallFoodCourtView() {
       if (m.name.includes("Phoenix Avenue") && loc.includes("nagar-road")) {
          loc = "viman-nagar";
       }
-      return (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc) === mallSlug;
+      const mSlug = (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc);
+      return mSlug === mallSlug || m.name.toLowerCase().trim() === parsedGroup.mallName.toLowerCase().trim();
     });
 
     let displayImage = predefinedMall?.image || parsedGroup.outlets[0]?.image || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop";

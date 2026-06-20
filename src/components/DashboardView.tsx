@@ -8,6 +8,7 @@ import { Calendar, Clock, Users, MapPin, ChevronRight, Utensils, XCircle, Loader
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import AppIcon from './AppIcon';
+import { RestaurantCard } from './RestaurantCard';
 
 export default function DashboardView() {
   const { user, profile } = useAuth();
@@ -435,39 +436,9 @@ export default function DashboardView() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group"
+                    className="shrink-0"
                   >
-                    <Link to={getRestaurantUrl(res)} className="block bg-white rounded-[24px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 overflow-hidden relative">
-                      <div className="aspect-square relative overflow-hidden">
-                        <img 
-                          src={res.image || RESTAURANT_IMAGE_FALLBACK} 
-                          alt={res.name}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                          referrerPolicy="no-referrer"
-                          onError={handleImageError}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-80" />
-                        
-                        <div className="absolute top-4 right-4">
-                           <div className="bg-white/20 backdrop-blur-md rounded-xl p-2 text-white">
-                              <Heart size={16} className="fill-red-500 text-red-500" />
-                           </div>
-                        </div>
-
-                        <div className="absolute bottom-4 left-4 right-4 text-white">
-                          <div className="flex items-center gap-1.5 mb-2">
-                             <div className={cn("px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1 bg-white/20 backdrop-blur-md", getRatingColor(res.rating || 0))}>
-                                {res.rating} <Star size={10} className="fill-current" />
-                             </div>
-                             <span className="text-[10px] font-bold uppercase tracking-widest opacity-90 text-white shadow-sm">{res.cuisine}</span>
-                          </div>
-                          <h3 className="text-xl mb-1 text-white font-normal leading-[1.2]">{res.name}</h3>
-                          <p className="text-xs font-medium opacity-90 flex items-center gap-1 text-white shadow-sm">
-                            <MapPin size={12} /> {formatAddress(res.address || res.location)}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
+                     <RestaurantCard restaurant={res as any} />
                   </motion.div>
                 ))}
               </div>

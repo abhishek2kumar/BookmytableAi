@@ -239,5 +239,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    match /dining_collections/{collectionId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

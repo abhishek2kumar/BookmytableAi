@@ -9,16 +9,18 @@ import { cn, handleImageError, RESTAURANT_IMAGE_FALLBACK, getRestaurantUrl, getR
 import { RestaurantCard } from './RestaurantCard';
 import { useLocationContext } from './LocationContext';
 
-export default function CuisineView() {
-  const { cuisineId } = useParams();
+export default function CollectionView() {
+  const { collectionSlug, city: paramsCity } = useParams();
   const navigate = useNavigate();
-  const { cuisines } = useMasterData();
+  const { diningCollections } = useMasterData();
   const { restaurants, loading } = useRestaurants(true);
   const { coords: userCoords, city: selectedCity } = useLocationContext();
   const [visibleCount, setVisibleCount] = useState(8);
 
-  const cuisineInfo = cuisines.find(c => c.id === cuisineId || c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === cuisineId);
-  const cuisineName = cuisineInfo?.name || cuisineId?.replace(/-/g, ' ');
+  const cityToUse = paramsCity || selectedCity;
+
+  const collectionInfo = diningCollections.find(c => c.slug === collectionSlug);
+  const collectionName = collectionInfo?.name || collectionSlug?.replace(/-/g, ' ');
 
   // Distance calculator
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -35,19 +37,30 @@ export default function CuisineView() {
 
   const filteredRestaurants = restaurants
     .filter(res => {
-        const matchesCuisine = Array.isArray(res.cuisine) 
-          ? res.cuisine.some((c: string) => c.toLowerCase() === cuisineName?.toLowerCase())
-          : (res.cuisine as unknown as string)?.toLowerCase() === cuisineName?.toLowerCase();
-        
-        // Normalize city names for comparison
         const resCityNorm = res.city ? res.city.toLowerCase() : '';
-        const selectedCityNorm = selectedCity.toLowerCase();
+        const selectedCityNorm = cityToUse.toLowerCase();
         
-        // Match by city field or location string containing the city name
         const matchesCity = resCityNorm === selectedCityNorm || 
                           (res.location && res.location.toLowerCase().includes(selectedCityNorm));
         
-        return matchesCuisine && matchesCity;
+        const hasExplicitCollections = Array.isArray(res.collections) && res.collections.length > 0;
+        let matchesCollection = false;
+        
+        if (hasExplicitCollections && collectionSlug) {
+           matchesCollection = res.collections!.includes(collectionSlug);
+        } else if (!hasExplicitCollections) {
+          matchesCollection = false; 
+          // Old mock filtering logic
+          if (collectionSlug === 'pure-veg') {
+             matchesCollection = Array.isArray(res.cuisine) && (res.cuisine.includes('South Indian') || res.cuisine.includes('North Indian') || res.cuisine.includes('Vegetarian'));
+          } else if (collectionSlug === 'cafe') {
+             matchesCollection = Array.isArray(res.cuisine) && (res.cuisine.includes('Cafe') || res.cuisine.includes('Desserts') || res.cuisine.includes('Healthy Food'));
+          } else if (collectionSlug === 'live-music' || collectionSlug === 'microbrewery') {
+             matchesCollection = Array.isArray(res.cuisine) && (res.cuisine.includes('Continental') || res.cuisine.includes('Italian') || res.cuisine.includes('Bar Food'));
+          }
+        }
+        
+        return matchesCity && matchesCollection;
     })
     .map(res => ({
       ...res,
@@ -68,7 +81,7 @@ export default function CuisineView() {
         document.documentElement.offsetHeight
       ) {
         if (visibleCount < filteredRestaurants.length) {
-          setVisibleCount(prev => prev + 4);
+           setVisibleCount(prev => prev + 4);
         }
       }
     };
@@ -77,11 +90,11 @@ export default function CuisineView() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [visibleCount, filteredRestaurants.length]);
 
-  if (!cuisineInfo && !loading && restaurants.length > 0) {
+  if (!collectionInfo && !loading && restaurants.length > 0) {
      return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
              <Info size={48} className="text-slate-300 mb-4" />
-             <h2 className="text-xl font-normal leading-[1.2]">Cuisine not found</h2>
+             <h2 className="text-xl font-normal leading-[1.2]">Collection not found</h2>
              <button onClick={() => navigate('/')} className="mt-4 text-brand font-bold">Back to Home</button>
         </div>
      )
@@ -89,11 +102,11 @@ export default function CuisineView() {
 
   
   const getSeoData = () => {
-    let locName = cuisineName || cuisineId || 'Cuisine';
-    let url = `https://www.bookmytable.co.in/cuisine/${cuisineId}`;
-    let title = `${locName} Restaurants, ${selectedCity} - Bookmytable`;
-    let description = `Explore ${locName} restaurants in ${selectedCity} and book table instantly with discounts on Bookmytable...`;
-    let keywords = `book table online, resturants in ${selectedCity}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
+    let locName = collectionName || collectionSlug || 'Collection';
+    let url = `https://www.bookmytable.co.in/${cityToUse}/collections/${collectionSlug}`;
+    let title = `${locName} Restaurants, ${cityToUse} - Bookmytable`;
+    let description = `Explore ${locName} restaurants in ${cityToUse} and book table instantly with discounts on Bookmytable...`;
+    let keywords = `book table online, resturants in ${cityToUse}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
 
     return { title, url, description, keywords, locName };
   };
@@ -107,26 +120,19 @@ export default function CuisineView() {
         <link rel="alternate" hrefLang="en" href={seoData.url} /> 
         <meta name="description" content={seoData.description} />
         <meta name="keywords" content={seoData.keywords} />
-        <meta name="url" content={seoData.url} />
-        <meta name="twitter:app:name:iphone" content="Bookmytable" />
-        <meta name="twitter:app:name:ipad" content="Bookmytable" />
-        <meta name="twitter:app:country" content="in" />
-        <meta property="og:title" content={`${seoData.locName} Restaurants, ${selectedCity} - Bookmytable India`} />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={seoData.url} />
-        <meta property="og:site_name" content="Bookmytable" />
+        <meta property="og:title" content={`${seoData.locName} Restaurants, ${cityToUse} - Bookmytable India`} />
         <meta property="og:description" content={seoData.description} />
       </Helmet>
       {/* Immersive Header Section */}
       <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
           <img 
-            src={cuisineInfo?.image} 
-            alt={cuisineName || 'Cuisine'} 
-            className="w-full h-full object-cover scale-105"
+            src={collectionInfo?.image} 
+            alt={collectionName || 'Collection'} 
+            className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         </div>
         
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
@@ -135,7 +141,7 @@ export default function CuisineView() {
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6"
           >
-            <Link to="/" className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
+            <Link to={`/${cityToUse}`} className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
                <ChevronLeft size={12} /> Back to explore
             </Link>
           </motion.div>
@@ -145,7 +151,7 @@ export default function CuisineView() {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-7xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
           >
-            {cuisineName}
+            {collectionName}
           </motion.h1>
           
           <motion.p 
@@ -154,7 +160,7 @@ export default function CuisineView() {
             transition={{ delay: 0.1 }}
             className="text-white font-bold text-lg md:text-2xl max-w-2xl mx-auto drop-shadow-lg mb-8"
           >
-            {cuisineInfo?.description}
+            {collectionInfo?.description}
           </motion.p>
 
           <motion.div
@@ -194,8 +200,8 @@ export default function CuisineView() {
           </div>
         ) : (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-            <h3 className="text-xl mb-2 text-[#363636] font-normal leading-[1.2]">No {cuisineName} restaurants yet</h3>
-            <p className="text-slate-500">We couldn't find any results in this category.</p>
+            <h3 className="text-xl mb-2 text-[#363636] font-normal leading-[1.2]">No {collectionName} restaurants yet</h3>
+            <p className="text-slate-500">We couldn't find any results in this collection.</p>
           </div>
         )}
         

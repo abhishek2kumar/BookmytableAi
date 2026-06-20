@@ -48,6 +48,18 @@ export interface SlotCategory {
   slots: string[];
 }
 
+export interface DiningCollection {
+  id: string;
+  name: string;
+  image: string;
+  slug: string;
+  description?: string;
+  city?: string; // Optional: specify if it belongs to a specific city e.g. "Dubai"
+  restaurantIds?: string[];
+  isActive: boolean;
+  order: number;
+}
+
 export interface MenuCategory {
   id: string;
   name: string;
@@ -151,6 +163,7 @@ export interface Restaurant {
   slotCategories?: SlotCategory[];
   bookingSlots?: string[];
   facilities?: string[];
+  collections?: string[]; // Array of collection slugs
   offers?: Offer[];
   advertisements?: Advertisement[];
   signatureDishes?: {

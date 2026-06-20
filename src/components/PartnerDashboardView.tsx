@@ -11,6 +11,7 @@ import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, Chevr
 import StoryManager from './StoryManager';
 import { cn, convertTo12Hour, convertTo24Hour, generateSeoFriendlyFileName } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { useMalls } from '../hooks/useFirebase';
 
 import { useMasterData } from './MasterDataContext';
 
@@ -246,7 +247,9 @@ const Toggle = ({ label, checked, onChange }: any) => (
 
 export default function PartnerDashboardView() {
   const { user, signOut, loading: authLoading } = useAuth();
-  const { cuisines, cities } = useMasterData();
+  const { cuisines, cities, diningCollections } = useMasterData();
+  const { malls } = useMalls();
+  const sortedCollections = React.useMemo(() => [...diningCollections].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
   const sortedCuisines = React.useMemo(() => [...cuisines].sort((a, b) => a.name.localeCompare(b.name)), [cuisines]);
   const navigate = useNavigate();
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -1061,7 +1064,7 @@ export default function PartnerDashboardView() {
                      <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Address Details</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                        <div className="md:col-span-2">
-                         <InputText label="Mall / Food Court Name (Optional - Only for outlets)" value={formData.mallName} onChange={(v:any) => updateForm('mallName', v)} />
+                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Mall / Food Court Name (Optional - Only for outlets)</label><select value={formData.mallName || ''} onChange={(e) => updateForm('mallName', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm appearance-none"><option value="">None (Standalone Outlet)</option>{malls.filter((m: any) => !formData.city || m.city?.toLowerCase() === formData.city?.toLowerCase()).sort((a: any, b: any) => a.name.localeCompare(b.name)).map((m: any) => (<option key={m.id} value={m.name}>{m.name}</option>))}</select></div>
                        </div>
                        <InputText label="Floor / Tower" value={formData.floor} onChange={(v:any) => updateForm('floor', v)} />
                        <InputText label="Shop / Building No." value={formData.shopNo} onChange={(v:any) => updateForm('shopNo', v)} />
@@ -1186,6 +1189,32 @@ export default function PartnerDashboardView() {
                                  {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                                </div>
                                <span className="text-xs font-bold leading-tight">{amenity}</span>
+                             </button>
+                           );
+                         })}
+                       </div>
+                     </div>
+
+                     <div>
+                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Associate Collections (Optional)</label>
+                       <div className="flex flex-wrap gap-2 mb-4">
+                         {sortedCollections.map(c => {
+                           const collectionArray = Array.isArray(formData.collections) ? formData.collections : typeof formData.collections === 'string' ? (formData.collections as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                           const isSelected = collectionArray.includes(c.slug);
+                           return (
+                             <button
+                               key={c.slug}
+                               type="button"
+                               onClick={() => {
+                                 if (isSelected) updateForm('collections', collectionArray.filter((x:any) => x !== c.slug));
+                                 else updateForm('collections', [...collectionArray, c.slug]);
+                               }}
+                               className={cn(
+                                 "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                                 isSelected ? "bg-blue-600 text-white border-blue-600 shadow-md" : "bg-white text-slate-600 border-slate-300 hover:border-blue-600/30"
+                               )}
+                             >
+                               {c.name}
                              </button>
                            );
                          })}

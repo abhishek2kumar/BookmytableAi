@@ -33,6 +33,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { uploadImageToStorage } from '../lib/storage';
+import { useMalls } from '../hooks/useFirebase';
+
 
 const BANGALORE_COORDS = { lat: 12.9716, lng: 77.5946 };
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -40,9 +42,11 @@ const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'S
 export default function AdminOnboardingView() {
   const navigate = useNavigate();
 
-  const { cities, cuisines } = useMasterData();
+  const { cities, cuisines, diningCollections } = useMasterData();
+  const { malls } = useMalls();
   const sortedCities = React.useMemo(() => [...cities].sort((a, b) => a.name.localeCompare(b.name)), [cities]);
   const sortedCuisines = React.useMemo(() => [...cuisines].sort((a, b) => a.name.localeCompare(b.name)), [cuisines]);
+  const sortedCollections = React.useMemo(() => [...diningCollections].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
   const [step, setStep] = useState(1);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -56,6 +60,7 @@ export default function AdminOnboardingView() {
     name: '',
     description: '',
     cuisine: [],
+    collections: [],
     avgPrice: 500,
     contactNumber: '',
     contactEmail: '',
@@ -479,12 +484,19 @@ export default function AdminOnboardingView() {
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Mall / Food Court Name (Optional)</label>
-                    <input 
-                      placeholder="e.g. Phoenix Marketcity"
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium"
-                      value={form.mallName}
+                    <select
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium appearance-none"
+                      value={form.mallName || ''}
                       onChange={e => setForm({ ...form, mallName: e.target.value })}
-                    />
+                    >
+                      <option value="">None (Standalone Outlet)</option>
+                      {malls
+                        .filter(m => !form.city || m.city.toLowerCase() === form.city.toLowerCase())
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(m => (
+                          <option key={m.id} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
                     <p className="text-xs text-slate-500 px-2 mt-1">If specified, this outlet will appear grouped under this food court in the city view.</p>
                   </div>
                   <div className="space-y-2">
@@ -1003,6 +1015,38 @@ export default function AdminOnboardingView() {
                                    return;
                                 }
                                 setForm({...form, cuisine: [...current, c.name]});
+                              }
+                            }}
+                            className={cn(
+                              "px-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold transition-all hover:border-brand/40",
+                              isSelected ? "bg-brand text-white border-brand shadow-lg shadow-brand/20" : "text-slate-600"
+                            )}
+                          >
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Associate Collections (Optional)</label>
+                       <span className="text-[10px] font-bold text-slate-400">Selected: {form.collections?.length || 0}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-300 max-h-[250px] overflow-y-auto">
+                      {sortedCollections.map(c => {
+                        const isSelected = form.collections?.includes(c.slug);
+                        return (
+                          <button
+                            key={c.slug}
+                            type="button"
+                            onClick={() => {
+                              const current = form.collections || [];
+                              if (current.includes(c.slug)) {
+                                setForm({...form, collections: current.filter(item => item !== c.slug)});
+                              } else {
+                                setForm({...form, collections: [...current, c.slug]});
                               }
                             }}
                             className={cn(

@@ -1157,9 +1157,9 @@ export default function RestaurantDetailsView() {
             onClick={() =>
               navigate(`/${(restaurant.city || "").toLowerCase()}`)
             }
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all"
+            className="p-2 transition-all drop-shadow-sm text-slate-600 hover:text-black hover:scale-110 active:scale-95"
           >
-            <ChevronLeft size={24} />
+            <ChevronLeft size={28} strokeWidth={2.5} />
           </button>
 
           <AnimatePresence>
@@ -1181,20 +1181,22 @@ export default function RestaurantDetailsView() {
             onClick={toggleBookmark}
             disabled={isBookmarking}
             className={cn(
-              "w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all",
+              "p-2 transition-all drop-shadow-sm",
+              isBookmarked ? "text-red-500 scale-110" : "text-slate-600 hover:text-red-500 hover:scale-110",
               isBookmarking && "opacity-50",
             )}
           >
             <Heart
-              size={20}
+              size={24}
+              strokeWidth={2.5}
               className={cn(
-                isBookmarked ? "fill-red-500 text-red-500" : "",
+                isBookmarked ? "fill-current" : "",
                 isBookmarking && "animate-pulse",
               )}
             />
           </button>
           <button
-            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-[#363636] active:scale-95 transition-all"
+            className="p-2 transition-all drop-shadow-sm text-slate-600 hover:text-brand hover:scale-110"
             onClick={() => {
               if (navigator.share) {
                 navigator
@@ -1207,7 +1209,7 @@ export default function RestaurantDetailsView() {
               }
             }}
           >
-            <Share2 size={20} />
+            <Share2 size={24} strokeWidth={2.5} />
           </button>
         </div>
       </div>
@@ -1268,25 +1270,45 @@ export default function RestaurantDetailsView() {
             <div className="hidden md:flex flex-col md:absolute md:right-10 lg:right-16 top-1/2 -translate-y-1/2 md:w-[360px] lg:w-[420px] z-20 bg-white/95 backdrop-blur-xl rounded-[24px] shadow-[0_20px_40px_rgb(0,0,0,0.12)] border border-white/50 p-4 pb-2 lg:p-5 lg:pb-3 shrink-0 transition-all">
               <div className="space-y-3 relative">
                 {/* Favourite Icon at Top Right */}
-                <button
-                  onClick={toggleBookmark}
-                  disabled={isBookmarking}
-                  className={cn(
-                    "absolute top-0 right-0 flex items-center justify-center font-bold w-[38px] h-[38px] rounded-full border transition-all shrink-0 z-10 bg-white shadow-sm",
-                    isBookmarked
-                      ? "text-red-600 border-red-100 bg-red-50 hover:bg-red-100"
-                      : "text-slate-400 border-slate-300 hover:bg-slate-50",
-                    isBookmarking && "opacity-50 animate-pulse",
-                  )}
-                  aria-label={isBookmarked ? "Saved" : "Save"}
-                >
-                  <Heart
-                    size={18}
-                    className={cn(isBookmarked && "fill-current")}
-                  />
-                </button>
+                <div className="absolute top-0 right-0 flex items-center gap-2 z-10">
+                  <button
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator
+                          .share({
+                            title: restaurant.name,
+                            text: restaurant.description,
+                            url: window.location.href,
+                          })
+                          .catch(() => {});
+                      }
+                    }}
+                    className="p-1.5 transition-all text-slate-400 hover:text-brand hover:scale-110"
+                    aria-label="Share"
+                  >
+                    <Share2 size={20} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    onClick={toggleBookmark}
+                    disabled={isBookmarking}
+                    className={cn(
+                      "p-1.5 transition-all",
+                      isBookmarked
+                        ? "text-red-500 scale-110"
+                        : "text-slate-400 hover:text-red-500 hover:scale-110",
+                      isBookmarking && "opacity-50 animate-pulse",
+                    )}
+                    aria-label={isBookmarked ? "Saved" : "Save"}
+                  >
+                    <Heart
+                      size={20}
+                      strokeWidth={2.5}
+                      className={cn(isBookmarked ? "fill-current" : "")}
+                    />
+                  </button>
+                </div>
 
-                <div className="flex flex-col gap-2 pr-12">
+                <div className="flex flex-col gap-2 pr-24">
                   <div className="flex items-center gap-2 text-[#363636] flex-wrap">
                     <div
                       className={cn(
@@ -1654,7 +1676,7 @@ export default function RestaurantDetailsView() {
 
               <div
                 ref={offersScrollRef}
-                className="flex gap-4 md:gap-5 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 snap-x scroll-smooth"
+                className="flex gap-4 md:gap-5 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 scroll-px-4 md:scroll-px-0 md:mx-0 md:px-0 snap-x scroll-smooth"
                 onScroll={() => {
                   if (offersScrollRef.current) {
                     const { scrollLeft, clientWidth } = offersScrollRef.current;
@@ -1983,7 +2005,7 @@ export default function RestaurantDetailsView() {
                         <div className="relative group/slides">
                           <div
                             ref={menuScrollRef}
-                            className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-6 md:mx-0 md:px-0"
+                            className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
                             style={{ scrollBehavior: "smooth" }}
                           >
                             {images.map((img: string, i: number) => (

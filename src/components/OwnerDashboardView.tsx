@@ -11,6 +11,7 @@ import {
   History, Eye, LogOut, Loader2, Globe, Shield,
   ArrowRight, Heart, Share2, MoreVertical, Snowflake, Sun, Gift
 } from 'lucide-react';
+import { useMasterData } from './MasterDataContext';
 import { db, auth } from '../lib/firebase';
 import { 
   collection, query, where, getDocs, 
@@ -36,6 +37,8 @@ const MEAL_CATEGORIES = [
 ];
 
 export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashboardViewProps) {
+  const { diningCollections } = useMasterData();
+  const sortedCollections = React.useMemo(() => [...diningCollections].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
   const currentUserId = auth.currentUser?.uid;
   const ownerId = propOwnerId || currentUserId;
   
@@ -135,7 +138,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
 
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
-      'isOpen', 'facilities', 'secondaryImages', 'isBookingEnabled', 'isQrMenuEnabled', 'bookingSlots', 
+      'isOpen', 'facilities', 'collections', 'secondaryImages', 'isBookingEnabled', 'isQrMenuEnabled', 'bookingSlots', 
       'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
     ];
 
@@ -507,6 +510,38 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 onChange={e => setEditForm({...editForm, address: e.target.value})}
                 placeholder="Full street address..."
               />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Associate Collections (Optional)</label>
+                <span className="text-[10px] font-bold text-slate-400">Selected: {editForm.collections?.length || 0}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 p-5 bg-white border-2 border-slate-300 rounded-[28px] max-h-[250px] overflow-y-auto">
+                {sortedCollections.map(c => {
+                  const isSelected = editForm.collections?.includes(c.slug);
+                  return (
+                    <button
+                      key={c.slug}
+                      type="button"
+                      onClick={() => {
+                        const current = editForm.collections || [];
+                        if (current.includes(c.slug)) {
+                          setEditForm({...editForm, collections: current.filter((item: string) => item !== c.slug)});
+                        } else {
+                          setEditForm({...editForm, collections: [...current, c.slug]});
+                        }
+                      }}
+                      className={cn(
+                        "px-4 py-2 border-2 rounded-xl text-xs font-bold transition-all hover:border-orange-500/40",
+                        isSelected ? "bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20" : "bg-slate-50 border-slate-200 text-slate-600"
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">

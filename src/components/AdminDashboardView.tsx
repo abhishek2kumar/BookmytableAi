@@ -75,6 +75,7 @@ import { INDIAN_STATES } from "../constants";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import AdminMallsTab from "./AdminMallsTab";
+import AdminCollectionsTab from "./AdminCollectionsTab";
 
 const DEFAULT_BOOKING_SLOTS = [
   "12:00",
@@ -117,7 +118,9 @@ export default function AdminDashboardView() {
     loading: masterLoading,
     isComingSoon,
     updateComingSoon,
+    diningCollections,
   } = useMasterData();
+  const sortedCollections = React.useMemo(() => [...(diningCollections || [])].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -263,7 +266,7 @@ export default function AdminDashboardView() {
   const [citySearchQuery, setCitySearchQuery] = useState("");
   const [cuisineSearchQuery, setCuisineSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<
-    "fleet" | "pulse" | "inventory" | "approvals" | "portal"
+    "fleet" | "pulse" | "inventory" | "approvals" | "portal" | "malls" | "collections"
   >("fleet");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "approved" | "pending"
@@ -1176,6 +1179,42 @@ export default function AdminDashboardView() {
                 })}
               </div>
             </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                Associate Collections (Optional)
+              </label>
+              <div className="flex flex-wrap gap-2 p-5 bg-slate-50 rounded-3xl border border-slate-300">
+                {sortedCollections.map((c) => {
+                  const collectionArray = Array.isArray(editingRestaurant.collections) ? editingRestaurant.collections : typeof editingRestaurant.collections === 'string' ? (editingRestaurant.collections as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                  const isSelected = collectionArray.includes(c.slug);
+                  return (
+                    <button
+                      key={c.slug}
+                      type="button"
+                      onClick={() => {
+                        const next = isSelected
+                          ? collectionArray.filter((slug: any) => slug !== c.slug)
+                          : [...collectionArray, c.slug];
+                        setEditingRestaurant({
+                          ...editingRestaurant,
+                          collections: next,
+                        });
+                      }}
+                      className={cn(
+                        "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all",
+                        isSelected
+                          ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10"
+                          : "bg-white text-slate-400 border-slate-300 hover:border-slate-300 shadow-sm",
+                      )}
+                    >
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </motion.div>
         );
       case "operational":
@@ -3821,6 +3860,7 @@ export default function AdminDashboardView() {
               },
               { id: "pulse", label: "Live Pulse", icon: TrendingUp },
               { id: "inventory", label: "System Master", icon: Database },
+              { id: "collections", label: "Collections", icon: LayoutGrid },
               { id: "portal", label: "Portal Config", icon: Settings2 },
             ].map((tab) => (
               <button
@@ -4452,6 +4492,17 @@ export default function AdminDashboardView() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <AdminMallsTab />
+              </motion.div>
+            )}
+
+            {activeTab === "collections" && (
+              <motion.div
+                key="collections"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <AdminCollectionsTab />
               </motion.div>
             )}
 

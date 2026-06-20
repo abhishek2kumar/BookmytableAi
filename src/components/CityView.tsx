@@ -38,6 +38,7 @@ import { useNavigate } from "react-router-dom";
 import { useStories } from "../hooks/useStories";
 import StoryViewer from "./StoryViewer";
 import StoryAvatar from "./StoryAvatar";
+import ScrollCarousel from "./ScrollCarousel";
 
 const QuickFiltersBar = ({
   activeFilters,
@@ -74,55 +75,51 @@ const QuickFiltersBar = ({
   };
 
   const buttonClass = (isActive: boolean) => 
-    cn("flex items-center gap-1.5 px-4 py-2 rounded-lg text-[15px] font-normal transition-all shrink-0", 
-        isActive ? "bg-[#ef4f5f] text-white border border-[#ef4f5f]" : "bg-white border border-[#cfcfcf] text-[#696969] hover:border-[#9c9c9c]");
+    cn("flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[14px] font-medium transition-all shrink-0 border shadow-sm", 
+        isActive ? "bg-orange-50 text-[#ff5a25] border-[#ff5a25]" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50");
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0 mt-4 md:mt-2 max-w-[100vw] sm:max-w-none">
+    <div className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-hide -mx-6 pl-4 pr-6 md:mx-0 md:px-0 mt-4 md:mt-2 max-w-[100vw] sm:max-w-none">
       <button
         onClick={() => setIsFilterOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-[15px] font-normal transition-all bg-white border border-[#cfcfcf] text-[#696969] hover:border-[#9c9c9c] shrink-0"
+        className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-[14px] font-medium transition-all shrink-0 bg-white border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm"
       >
         {count > 0 ? (
-          <span className="w-[20px] h-[20px] flex items-center justify-center bg-[#ef4f5f] text-white rounded-[4px] text-[13px] font-medium leading-none">
+          <span className="w-[18px] h-[18px] flex items-center justify-center bg-[#ff5a25] text-white rounded-full text-[12px] font-bold leading-none">
             {count}
           </span>
         ) : (
-          <Filter size={16} />
+          <Filter size={14} className="text-slate-500" />
         )}
         Filters
       </button>
 
       <button onClick={() => toggleFilter('onlyWithOffers')} className={buttonClass(activeFilters.onlyWithOffers)}>
-        Offers {activeFilters.onlyWithOffers && <X size={16} />}
+        🔥 Offers
       </button>
 
       <button onClick={toggleRating} className={buttonClass(activeFilters.minRating >= 4.5)}>
-        Rating: 4.5+ {activeFilters.minRating >= 4.5 && <X size={16} />}
+        ⭐ 4.5+
       </button>
       
       <button onClick={() => toggleFilter('openNow')} className={buttonClass(activeFilters.openNow)}>
-        Open Now {activeFilters.openNow && <X size={16} />}
+        🟢 Open
       </button>
 
       <button onClick={() => toggleFilter('pureVeg')} className={buttonClass(activeFilters.pureVeg)}>
-        Pure Veg {activeFilters.pureVeg && <X size={16} />}
+        🥗 Veg
       </button>
 
       <button onClick={() => toggleFilter('servesAlcohol')} className={buttonClass(activeFilters.servesAlcohol)}>
-        Serves Alcohol {activeFilters.servesAlcohol && <X size={16} />}
-      </button>
-      
-      <button onClick={() => toggleFilter('bookTable')} className={buttonClass(activeFilters.bookTable)}>
-        Book a Table {activeFilters.bookTable && <X size={16} />}
-      </button>
-
-      <button onClick={() => toggleFilter('onlyTakeaway')} className={buttonClass(activeFilters.onlyTakeaway)}>
-        Take Away {activeFilters.onlyTakeaway && <X size={16} />}
+        🍺 Bar
       </button>
 
       <button onClick={() => toggleFilter('delivery')} className={buttonClass(activeFilters.delivery)}>
-        Delivery {activeFilters.delivery && <X size={16} />}
+        🛵 Delivery
+      </button>
+
+      <button onClick={() => toggleFilter('bookTable')} className={buttonClass(activeFilters.bookTable)}>
+        🍽 Dine In
       </button>
     </div>
   );
@@ -133,13 +130,37 @@ export default function CityView() {
   const { cityId, locationSlug } = useParams();
   const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { cities, cuisines, loading: masterDataLoading } = useMasterData();
+  const { cities, cuisines, diningCollections, loading: masterDataLoading } = useMasterData();
   const { restaurants, loading: restaurantsLoading } = useRestaurants(true);
   const { malls } = useMalls();
 
   const queryCityName = cityId || "delhi";
   const { usersWithStories, loading: storiesLoading } = useStories(queryCityName);
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
+
+  const sortedCuisines = React.useMemo(() => {
+    const priority = ["Italian", "Chinese", "Desserts", "Pubs", "Continental"];
+    return [...cuisines].sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      
+      const aIsLast = aName.includes("multi") && aName.includes("cuisine") ? 1 : 0;
+      const bIsLast = bName.includes("multi") && bName.includes("cuisine") ? 1 : 0;
+      
+      if (aIsLast !== bIsLast) {
+        return aIsLast - bIsLast;
+      }
+      
+      const aIndex = priority.findIndex(p => p.toLowerCase() === aName);
+      const bIndex = priority.findIndex(p => p.toLowerCase() === bName);
+      
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      return a.name.localeCompare(b.name);
+    });
+  }, [cuisines]);
 
   const loading = restaurantsLoading || masterDataLoading;
   const { coords: userCoords, city: contextCity } = useLocationContext();
@@ -225,23 +246,6 @@ export default function CityView() {
       }
     }
   }, [cityId, navigate, cities]);
-
-  const featuredRef = useRef<HTMLDivElement>(null);
-  const discountRef = useRef<HTMLDivElement>(null);
-  const nearbyRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
-  const takeawayRef = useRef<HTMLDivElement>(null);
-  const locationRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (
-    ref: React.RefObject<HTMLDivElement>,
-    direction: "left" | "right",
-  ) => {
-    if (ref.current) {
-      const scrollAmount = direction === "left" ? -400 : 400;
-      ref.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-    }
-  };
 
   const cityName = useMemo(() => {
     if (!cityId || cityId.toLowerCase() === "nearby") {
@@ -384,6 +388,20 @@ export default function CityView() {
       .slice(0, 5);
   }, [cityRestaurants]);
 
+  const cuisineCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    cityRestaurants.forEach(res => {
+      const resCuisines = Array.isArray(res.cuisine) ? res.cuisine : res.cuisine ? [res.cuisine] : [];
+      resCuisines.forEach(c => {
+        const cName = typeof c === 'string' ? c.trim() : '';
+        if (cName) {
+          counts.set(cName, (counts.get(cName) || 0) + 1);
+        }
+      });
+    });
+    return counts;
+  }, [cityRestaurants]);
+
   const filteredListing = useMemo(() => {
     return cityRestaurants
       .filter((res) => {
@@ -481,7 +499,8 @@ export default function CityView() {
         if (m.name.includes("Phoenix Avenue") && loc.includes("nagar-road")) {
            loc = "viman-nagar";
         }
-        return (m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc) === slug;
+        const mSlug = m.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + loc;
+        return mSlug === slug || m.name.toLowerCase().trim() === data.mallName.toLowerCase().trim();
       });
 
       return {
@@ -548,12 +567,6 @@ export default function CityView() {
     () => cities.find((c) => c.name.toLowerCase() === cityName?.toLowerCase()),
     [cities, cityName],
   );
-
-  const welcomeText = authLoading
-    ? ""
-    : user
-      ? `Hi ${profile?.displayName?.split(" ")[0] || "User"}, What's on your mind?`
-      : `Hey, What's on your mind?`;
 
   const getSeoData = () => {
     const locName = locationSlug ? locationSlug.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') : 'Best';
@@ -635,9 +648,14 @@ export default function CityView() {
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                <h2 className="relative z-10 text-xl sm:text-2xl md:text-3xl text-white px-6 md:px-10 w-full md:max-w-2xl font-normal leading-[1.2]">
-                  {welcomeText}
-                </h2>
+                <div className="relative z-10 px-6 md:px-10 w-full md:max-w-2xl">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl text-white font-normal leading-[1.2] mb-1.5 md:mb-2 drop-shadow-md">
+                    Book your perfect dining experience
+                  </h2>
+                  <p className="text-xs sm:text-sm md:text-base text-slate-200 font-medium drop-shadow-sm leading-snug">
+                    Reserve tables, order takeaway, or enjoy food delivered to your doorstep.
+                  </p>
+                </div>
               </>
             )}
           </div>
@@ -653,7 +671,7 @@ export default function CityView() {
           {/* Cuisine Cards Carousel */}
           {!hasActiveFilters && (
           <div>
-            <div className="flex items-start gap-4 md:gap-6 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex items-start gap-4 md:gap-6 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <div
@@ -661,7 +679,7 @@ export default function CityView() {
                       className="w-[100px] md:w-[140px] h-[140px] md:h-[190px] rounded-2xl bg-slate-200 shrink-0 snap-start animate-pulse"
                     />
                   ))
-                : cuisines.map((cuisine) => (
+                : sortedCuisines.map((cuisine) => (
                     <Link
                       key={cuisine.id}
                       to={`/cuisine/${cuisine.name
@@ -679,17 +697,63 @@ export default function CityView() {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 h-1/3 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
-                      <span className="relative z-10 text-[13px] md:text-base font-medium leading-[1.2] text-white px-3 pb-4 text-center tracking-wide">
-                        {cuisine.name}
-                      </span>
+                      <div className="relative z-10 p-3 flex flex-col items-center text-center">
+                        <span className="text-[13px] md:text-base font-medium leading-[1.2] text-white tracking-wide break-words drop-shadow-sm">{cuisine.name}</span>
+                        <span className="text-[10px] md:text-[11px] text-zinc-100 font-medium mt-0.5 drop-shadow">{cuisineCounts.get(cuisine.name) || 0} Restaurants</span>
+                      </div>
                     </Link>
                   ))}
-            </div>
+            </ScrollCarousel>
           </div>
           )}
         </div>
       </section>
       )}
+
+      {/* COLLECTIONS SECTION */}
+      {!locationSlug && !hasActiveFilters && diningCollections.some(c => c.isActive && (!c.city || c.city.toLowerCase() === queryCityName.toLowerCase())) && (
+      <section className="relative bg-slate-50 py-12 md:py-16 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <div className="mb-6">
+            <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
+              Collections
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">
+              Explore curated lists of top restaurants, cafes, pubs, and bars in {cityName}, based on trends
+            </p>
+          </div>
+          
+          <ScrollCarousel className="flex gap-4 md:gap-6 pb-4 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+            {diningCollections.filter(c => c.isActive && (!c.city || c.city.toLowerCase() === queryCityName.toLowerCase())).sort((a, b) => a.order - b.order).map(collection => (
+               <Link
+                 key={collection.id}
+                 to={`/${queryCityName.toLowerCase()}/collections/${collection.slug}`}
+                 className="relative flex flex-col justify-end w-[240px] md:w-[280px] h-[300px] md:h-[340px] rounded-2xl overflow-hidden shrink-0 snap-start group shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 block"
+               >
+                 <img
+                   src={collection.image || RESTAURANT_IMAGE_FALLBACK}
+                   alt={collection.name}
+                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                   loading="lazy"
+                 />
+                  <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 backdrop-blur-[2px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
+                  
+                  <div className="relative z-10 p-5 w-full">
+                    <h3 className="text-lg md:text-xl font-medium leading-[1.2] text-white text-left tracking-wide drop-shadow-sm mb-1">{collection.name}</h3>
+                    <div className="flex items-center text-sm text-zinc-200 font-medium drop-shadow group-hover:text-white transition-colors">
+                      {collection.description ? <span className="line-clamp-1 flex-1 text-left">{collection.description}</span> : <span className="flex-1 text-left">Explore Places</span>}
+                      <ChevronRight size={14} className="ml-1 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 shrink-0" />
+                    </div>
+                  </div>
+               </Link>
+            ))}
+          </ScrollCarousel>
+        </div>
+      </section>
+      )}
+
+        {/* END COLLECTIONS SECTION */}
 
       {locationSlug && (
         <div className="max-w-7xl mx-auto px-6 mt-6 md:mt-8 mb-6 md:mb-8">
@@ -718,7 +782,7 @@ export default function CityView() {
       {!hasActiveFilters && (!storiesLoading && usersWithStories.length > 0) && (
         <div className="max-w-7xl mx-auto px-6 mt-4 md:mt-6 mb-2">
           <section className="relative">
-            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x -mx-6 px-6 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex gap-4 pb-2 scrollbar-hide snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
                {usersWithStories.map((storyUser, idx) => (
                   <div key={storyUser.restaurantId} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer snap-start" onClick={() => setActiveStoryIndex(idx)}>
                       <StoryAvatar 
@@ -730,7 +794,7 @@ export default function CityView() {
                       <span className="text-xs font-bold text-slate-700 w-16 md:w-20 truncate text-center">{storyUser.restaurantName}</span>
                   </div>
                ))}
-            </div>
+            </ScrollCarousel>
             
             {/* Fullscreen Viewer */}
             <AnimatePresence>
@@ -746,11 +810,12 @@ export default function CityView() {
         </div>
       )}
 
-      <div className={cn("max-w-7xl mx-auto px-6 mt-4 md:mt-6", locationSlug ? "space-y-4 md:space-y-6" : "space-y-12 md:space-y-20")}>
+      <div id="restaurant-list" className={cn("w-full mb-12", locationSlug ? "space-y-4 md:space-y-6" : "space-y-0")}>
 
         {/* Featured Section */}
         {!hasActiveFilters && !locationSlug && (loading || featuredRestaurants.length > 0) && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -762,27 +827,10 @@ export default function CityView() {
               </div>
               <div className="flex items-center gap-3">
                 <TrendingUp className="text-brand" size={24} />
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(featuredRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(featuredRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div
-              ref={featuredRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
-            >
+            <ScrollCarousel className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <div
@@ -801,13 +849,15 @@ export default function CityView() {
                       className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start"
                     />
                   ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Spotlight Section */}
         {!hasActiveFilters && !locationSlug && !loading && spotlightRestaurants.length > 0 && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -819,26 +869,11 @@ export default function CityView() {
               </div>
               <div className="flex items-center gap-3">
                 <Star className="text-amber-500 fill-amber-500" size={24} />
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(spotlightRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(spotlightRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div
-              ref={spotlightRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
+            <ScrollCarousel
+              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
             >
               {spotlightRestaurants.map((restaurant) => {
                 const activeAd = restaurant.advertisements?.find(ad => ad.active);
@@ -884,13 +919,15 @@ export default function CityView() {
                   </div>
                 </div>
               )})}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Top Discount Section */}
         {!hasActiveFilters && !locationSlug && (loading || discountedRestaurants.length > 0) && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -905,26 +942,11 @@ export default function CityView() {
                   <Percent size={14} />
                   LTD TIME
                 </div>
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(discountRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(discountRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div
-              ref={discountRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
+            <ScrollCarousel
+              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
             >
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
@@ -945,13 +967,15 @@ export default function CityView() {
                       showFullOffer
                     />
                   ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Food Courts Section */}
         {!hasActiveFilters && !locationSlug && mallGroups.length > 0 && (
-          <section className="relative group/section mb-12">
+          <section className="relative group/section py-12 md:py-16 bg-orange-50/50">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -963,11 +987,11 @@ export default function CityView() {
               </div>
             </div>
 
-            <div className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
               {mallGroups.map((group) => (
                 <Link
                   key={group.slug}
-                  to={`/${currentCity?.slug || queryCityName?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "pune"}/mall/${group.slug}`}
+                  to={`/${(currentCity as any)?.slug || queryCityName?.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "pune"}/mall/${group.slug}`}
                   className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start bg-white rounded-2xl border border-slate-100 shadow hover:shadow-xl transition-all block group/card"
                 >
                   <div className="relative overflow-hidden rounded-t-2xl aspect-video bg-slate-100">
@@ -991,13 +1015,15 @@ export default function CityView() {
                   </div>
                 </Link>
               ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Nearby Section */}
         {!hasActiveFilters && !locationSlug && (loading || nearbyRestaurants.length > 0) && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -1009,26 +1035,11 @@ export default function CityView() {
               </div>
               <div className="flex items-center gap-4">
                 <Navigation className="text-brand" size={24} />
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(nearbyRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(nearbyRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div
-              ref={nearbyRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
+            <ScrollCarousel
+              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
             >
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
@@ -1048,13 +1059,15 @@ export default function CityView() {
                       className="w-[85vw] max-w-[280px] md:max-w-none md:w-[320px] shrink-0 snap-start"
                     />
                   ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Famous Locations */}
         {!hasActiveFilters && !locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
@@ -1063,7 +1076,7 @@ export default function CityView() {
                 Explore top areas in {cityName}
               </p>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 snap-x">
+            <ScrollCarousel className="flex gap-4 pb-4 scrollbar-none -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0 snap-x">
               {famousLocations.map((locationName, idx) => (
                 <div
                   key={idx}
@@ -1086,13 +1099,15 @@ export default function CityView() {
                   </span>
                 </div>
               ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
 
         {/* Takeaway Restaurants */}
         {!hasActiveFilters && !loading && takeawayRestaurants.length > 0 && (
-          <section className="relative group/section">
+          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -1104,26 +1119,11 @@ export default function CityView() {
               </div>
               <div className="flex items-center gap-3">
                 <ShoppingBag className="text-brand" size={24} />
-                <div className="hidden md:flex gap-2">
-                  <button
-                    onClick={() => scroll(takeawayRef, "left")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronLeft size={20} className="text-[#363636]" />
-                  </button>
-                  <button
-                    onClick={() => scroll(takeawayRef, "right")}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-slate-50 transition-colors"
-                  >
-                    <ChevronRight size={20} className="text-[#363636]" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div
-              ref={takeawayRef}
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-6 scrollbar-none snap-x -mx-6 px-6 md:mx-0 md:px-0"
+            <ScrollCarousel
+              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
             >
               {takeawayRestaurants.map((restaurant) => {
                 const isAvailable = isTakeawayAvailable(restaurant);
@@ -1146,6 +1146,7 @@ export default function CityView() {
                   </div>
                 );
               })}
+            </ScrollCarousel>
             </div>
           </section>
         )}
@@ -1153,8 +1154,9 @@ export default function CityView() {
         {/* Main Listing Section */}
         <section
           id="all-restaurants"
-          className={cn(!locationSlug && "pt-8 md:pt-12 border-t border-gray-100")}
+          className={cn("py-12 md:py-16 bg-slate-50")}
         >
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
           {!hasActiveFilters && !locationSlug && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
             <h2 className="text-2xl md:text-3xl text-[#363636] font-normal leading-[1.2]">
@@ -1231,12 +1233,14 @@ export default function CityView() {
               </div>
             </div>
           )}
+          </div>
         </section>
 
 
         {/* Famous Locations on Area Page */}
         {!hasActiveFilters && locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section pt-12 border-t border-gray-100">
+          <section className="relative group/section py-12 md:py-16 bg-white border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-6 md:px-8">
             <div className="mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
@@ -1245,7 +1249,7 @@ export default function CityView() {
                 Explore top areas in {cityName}
               </p>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none -mx-6 px-6 md:mx-0 md:px-0 snap-x">
+            <ScrollCarousel className="flex gap-4 pb-4 scrollbar-none -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0 snap-x">
               {famousLocations.map((locationName, idx) => (
                 <div
                   key={idx}
@@ -1268,6 +1272,7 @@ export default function CityView() {
                   </span>
                 </div>
               ))}
+            </ScrollCarousel>
             </div>
           </section>
         )}
@@ -1566,7 +1571,7 @@ export default function CityView() {
                     Cuisines
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {cuisines.map((c) => {
+                    {sortedCuisines.map((c) => {
                       const isSelected = activeFilters.cuisines.includes(
                         c.name,
                       );
