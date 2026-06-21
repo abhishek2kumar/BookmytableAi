@@ -56,17 +56,6 @@ function ProtectedRoute({ children, role }: { children: React.ReactNode, role?: 
 
 export default function App() {
   useEffect(() => {
-    const fixUnapproved = async () => {
-      try {
-        const q = query(collection(db, 'restaurants'), where('status', '==', 'Pending'));
-        const snapshot = await getDocs(q);
-        snapshot.docs.forEach(d => {
-          updateDoc(doc(db, 'restaurants', d.id), { status: 'Active', approved: true });
-        });
-      } catch(e) {}
-    };
-    fixUnapproved();
-
     const initCapacitor = async () => {
       if (Capacitor.isNativePlatform()) {
         try {

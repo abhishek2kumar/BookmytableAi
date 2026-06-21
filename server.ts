@@ -117,14 +117,18 @@ async function startServer() {
       ownerEmail,
       dateTime,
       guests,
-      userPhone
+      userPhone,
+      status
     } = req.body;
+
+    const isPending = status === 'pending';
 
     console.log('--- NEW BOOKING CONFIRMATION ---');
     console.log(`User: ${userName} (${userEmail})`);
     console.log(`Restaurant: ${restaurantName} (${restaurantLocation})`);
     console.log(`DateTime: ${dateTime}`);
     console.log(`Guests: ${guests}`);
+    console.log(`Status: ${status}`);
     console.log('--------------------------------');
 
     const resend = getResend();
@@ -134,12 +138,12 @@ async function startServer() {
         await resend.emails.send({
           from: 'BookMyTable <bookings@bookmytable.co.in>', // Use verified domain in production
           to: userEmail,
-          subject: 'Reservation Confirmed: ' + restaurantName,
+          subject: isPending ? `Reservation Pending Approval: ${restaurantName}` : `Reservation Confirmed: ${restaurantName}`,
           html: `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-              <h1 style="color: #6366f1;">Your Reservation is Confirmed!</h1>
+              <h1 style="color: ${isPending ? '#f59e0b' : '#6366f1'};">${isPending ? 'Your Reservation is Pending Approval!' : 'Your Reservation is Confirmed!'}</h1>
               <p>Hi ${userName},</p>
-              <p>Your table at <strong>${restaurantName}</strong> has been booked successfully.</p>
+              <p>Your table request at <strong>${restaurantName}</strong> has been ${isPending ? 'sent to the restaurant for approval since the group size is over 10 guests.' : 'booked successfully.'}</p>
               <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
                 <p><strong>📅 Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
                 <p><strong>👥 Guests:</strong> ${guests}</p>
@@ -156,7 +160,7 @@ async function startServer() {
           await resend.emails.send({
             from: 'BookMyTable <bookings@bookmytable.co.in>',
             to: ownerEmail,
-            subject: 'New Booking Alert: ' + restaurantName,
+            subject: isPending ? `New Pending Booking Alert: ${restaurantName}` : `New Booking Alert: ${restaurantName}`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
                 <h1 style="color: #f43f5e;">New Reservation Received!</h1>
@@ -393,7 +397,7 @@ async function startServer() {
       });
 
       // Fetch Collections
-      const collectionsSnap = await getDocs(collection(db, 'collections'));
+      const collectionsSnap = await getDocs(collection(db, 'dining_collections'));
       collectionsSnap.forEach(doc => {
         const colData = doc.data();
         if (colData.slug && colData.isActive !== false) {

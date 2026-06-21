@@ -602,7 +602,8 @@ export default function AdminDashboardView() {
           ownerId: currentUser.uid,
           isOpen: true,
           rating: 4.0, // Default for imported
-          approved: true,
+          approved: false,
+          status: 'Pending',
           isBookingEnabled: true,
           createdAt: serverTimestamp(),
         }),

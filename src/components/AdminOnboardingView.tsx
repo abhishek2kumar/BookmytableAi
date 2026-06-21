@@ -290,8 +290,8 @@ export default function AdminOnboardingView() {
     try {
       const finalData: any = {
         ...form,
-        status: 'Active',
-        approved: true,
+        status: 'Pending',
+        approved: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

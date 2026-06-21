@@ -60,6 +60,7 @@ export default function BookTableView() {
   }, [profile?.phone]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingResultStatus, setBookingResultStatus] = useState<"confirmed" | "pending" | null>(null);
 
   useEffect(() => {
     if (bookingSuccess) {
@@ -235,6 +236,8 @@ return allDates;
         await updateDoc(doc(db, "users", user.uid), { phone: userPhone });
       }
 
+      const finalStatus = guests <= 10 ? "confirmed" : "pending";
+
       await addDoc(collection(db, "bookings"), {
         restaurantId: restaurant?.id,
         restaurantOwnerId: restaurant?.ownerId || null,
@@ -246,7 +249,7 @@ return allDates;
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedTime,
         guests,
-        status: "pending",
+        status: finalStatus,
         source: "Self",
         offer: activeOffers[selectedOffer] || null,
         createdAt: serverTimestamp(),
@@ -266,12 +269,14 @@ return allDates;
             dateTime: `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`,
             guests,
             userPhone,
+            status: finalStatus,
           }),
         });
       } catch (emailErr) {
         console.error("Email API failed (might be missing API key):", emailErr);
       }
 
+      setBookingResultStatus(finalStatus);
       setBookingSuccess(true);
     } catch (err) {
       console.error(err);
@@ -300,17 +305,20 @@ return allDates;
   }
 
   if (bookingSuccess) {
+    const isPending = bookingResultStatus === "pending";
     return (
       <div className="min-h-screen bg-slate-50 pt-4 px-4 md:pt-20 pb-12 flex flex-col items-center">
         <div className="max-w-md w-full bg-white rounded-3xl p-6 md:p-8 shadow-vibrant text-center border border-slate-300 mt-4 md:mt-0">
-          <div className="w-20 h-20 bg-brand text-white rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-brand/20">
-            <Check size={40} strokeWidth={3} />
+          <div className={`w-20 h-20 ${isPending ? 'bg-amber-500 shadow-amber-500/20' : 'bg-brand shadow-brand/20'} text-white rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-xl`}>
+            {isPending ? <Clock size={40} strokeWidth={3} /> : <Check size={40} strokeWidth={3} />}
           </div>
           <h3 className="text-2xl mb-2 text-[#363636] font-normal leading-[1.2]">
-            Booking Confirmed!
+            {isPending ? "Booking Pending Approval!" : "Booking Confirmed!"}
           </h3>
           <p className="text-sm font-bold text-slate-500 mb-8">
-            A confirmation has been sent to your email and phone.
+            {isPending 
+              ? "Your request for a group size over 10 guests has been sent to the restaurant for approval." 
+              : "A confirmation has been sent to your email and phone."}
           </p>
 
           <div className="bg-slate-50/80 rounded-2xl p-6 w-full text-left space-y-4 mb-8 font-medium border border-slate-300">
