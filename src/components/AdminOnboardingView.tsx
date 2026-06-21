@@ -491,8 +491,8 @@ export default function AdminOnboardingView() {
                     >
                       <option value="">None (Standalone Outlet)</option>
                       {malls
-                        .filter(m => !form.city || m.city.toLowerCase() === form.city.toLowerCase())
-                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .filter(m => !form.city || m.city?.toLowerCase() === form.city?.toLowerCase())
+                        .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
                         .map(m => (
                           <option key={m.id} value={m.name}>{m.name}</option>
                       ))}

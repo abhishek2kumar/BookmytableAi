@@ -363,27 +363,24 @@ async function startServer() {
   app.get('/sitemap.xml', async (req, res) => {
     try {
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+      const addUrl = (url: string, priority = '0.8', changefreq = 'daily') => {
+        sitemap += `
   <url>
-    <loc>https://www.bookmytable.co.in/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.bookmytable.co.in/about</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.bookmytable.co.in/contact</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://www.bookmytable.co.in/onboarding-request</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://www.bookmytable.co.in${url}</loc>
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
   </url>`;
+      };
+
+      addUrl('/', '1.0');
+      addUrl('/about', '0.8', 'weekly');
+      addUrl('/contact', '0.8', 'monthly');
+      addUrl('/privacy', '0.5', 'monthly');
+      addUrl('/terms', '0.5', 'monthly');
+      addUrl('/cookie-policy', '0.5', 'monthly');
+      addUrl('/onboarding-request', '0.7', 'monthly');
 
       // Fetch Cities
       const citiesSnap = await getDocs(collection(db, 'cities'));
@@ -391,12 +388,20 @@ async function startServer() {
         const cityData = doc.data();
         if (cityData.name) {
           const citySlug = cityData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          sitemap += `
-  <url>
-    <loc>https://www.bookmytable.co.in/city/${citySlug}</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`;
+          addUrl(`/${citySlug}`, '0.9');
+        }
+      });
+
+      // Fetch Collections
+      const collectionsSnap = await getDocs(collection(db, 'collections'));
+      collectionsSnap.forEach(doc => {
+        const colData = doc.data();
+        if (colData.slug && colData.isActive !== false) {
+           addUrl(`/collections/${colData.slug}`, '0.8', 'weekly');
+           if (colData.city && colData.city.toLowerCase() !== 'all') {
+              const citySlug = colData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+              addUrl(`/${citySlug}/collections/${colData.slug}`, '0.8', 'weekly');
+           }
         }
       });
 
@@ -405,23 +410,32 @@ async function startServer() {
       restaurantsSnap.forEach(doc => {
         const resData = doc.data();
         const id = doc.id;
-        if (resData.name && resData.city) {
+        if (resData.isActive !== false && resData.name && resData.city) {
           const citySlug = resData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          const nameSlug = resData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          const locationSlug = (resData.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          const combinedSlug = locationSlug ? `${nameSlug}-${locationSlug}` : nameSlug;
+          
+          // You could use resData.slug if available, else id
+          const slug = resData.slug || id;
 
-          sitemap += `
-  <url>
-    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${combinedSlug}</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.bookmytable.co.in/restaurant/${citySlug}/${combinedSlug}/book</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>`;
+          // Main Restaurant entry
+          addUrl(`/${citySlug}/restaurant/${slug}`, '0.8', 'daily');
+          // Old Canonical Style: The user requested $resturant_link format, wait, let's keep the active app routes which works
+          addUrl(`/${slug}`, '0.8', 'daily'); // Assuming they have a direct vanity URL system handled via canonical
+          
+          // Tabs
+          addUrl(`/${citySlug}/restaurant/${slug}/menu`, '0.8', 'weekly');
+          addUrl(`/${citySlug}/restaurant/${slug}/reviews`, '0.7', 'weekly');
+          addUrl(`/${citySlug}/restaurant/${slug}/info`, '0.7', 'monthly');
+          
+          // Offers
+          addUrl(`/${citySlug}/restaurant/${slug}/offers`, '0.8', 'weekly');
+          
+          // Book
+          addUrl(`/${citySlug}/restaurant/${slug}/book`, '0.8', 'daily');
+
+          // Takeaway (if available)
+          if (resData.features && resData.features.takeaway) {
+             addUrl(`/${citySlug}/restaurant/${slug}/takeaway`, '0.8', 'daily');
+          }
         }
       });
 

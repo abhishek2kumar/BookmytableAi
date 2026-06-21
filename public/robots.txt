@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://bookmytable.co.in/sitemap.xml
+Sitemap: https://www.bookmytable.co.in/sitemap.xml

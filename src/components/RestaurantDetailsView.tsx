@@ -1078,6 +1078,7 @@ export default function RestaurantDetailsView() {
         <meta name="description" content={seoData.description} />
         <meta name="keywords" content={seoData.keywords} />
         <link rel="alternate" hrefLang="en" href={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <link rel="canonical" href={`https://www.bookmytable.co.in/${restaurant.id}`} />
         <meta name="url" content={`https://www.bookmytable.co.in/${restaurant.id}`} />
         <meta name="twitter:app:name:iphone" content="Bookmytable" />
         <meta name="twitter:app:name:ipad" content="Bookmytable" />
