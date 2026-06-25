@@ -292,6 +292,8 @@ export default function AdminOnboardingView() {
         ...form,
         status: 'Pending',
         approved: false,
+        isBookingEnabled: false,
+        isTakeawayEnabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

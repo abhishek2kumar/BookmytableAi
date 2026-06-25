@@ -89,6 +89,7 @@ import { Helmet } from "react-helmet-async";
 import { useStories } from "../hooks/useStories";
 import StoryViewer from "./StoryViewer";
 import StoryAvatar from "./StoryAvatar";
+import { ExpandableText } from "./ExpandableText";
 
 export default function RestaurantDetailsView() {
   const { slug, tab, city } = useParams<{
@@ -241,6 +242,44 @@ export default function RestaurantDetailsView() {
       setIsBookmarked((profile.favorites || []).includes(id));
     }
   }, [user, profile, id]);
+
+  // Page view tracking
+  const hasLoggedViewRef = useRef<string | null>(null);
+  const viewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (restaurant?.id) {
+      if (hasLoggedViewRef.current === restaurant.id) return;
+      
+      const logView = async () => {
+        try {
+          await addDoc(collection(db, "page_views"), {
+            restaurantId: restaurant.id,
+            restaurantName: restaurant.name,
+            timestamp: serverTimestamp(),
+            userId: user?.uid || null,
+            userName: user ? user.displayName || user.email : "Guest",
+            userAgent: navigator.userAgent,
+          });
+        } catch (e) {
+          console.error("Failed to log page view", e);
+        }
+      };
+
+      if (!viewTimeoutRef.current) {
+        viewTimeoutRef.current = setTimeout(() => {
+          hasLoggedViewRef.current = restaurant.id;
+          logView();
+          viewTimeoutRef.current = null;
+        }, 1000);
+      }
+      
+      return () => {
+        // We don't clear the timeout on unmount or re-render if it's the same restaurant to ensure we log the view
+        // unless they bounce instantly (but we want to catch the view)
+      };
+    }
+  }, [restaurant?.id, user]);
 
   // Scroll to tab section
   useEffect(() => {
@@ -668,6 +707,23 @@ export default function RestaurantDetailsView() {
       const [hours, minutes] = selectedTime.split(":");
       bookingDateTime.setHours(parseInt(hours), parseInt(minutes));
 
+      const dayStr = format(selectedDate, "EEEE");
+      let catName = "Dinner";
+      if (activeTimeCategory) {
+        catName = activeTimeCategory.charAt(0).toUpperCase() + activeTimeCategory.slice(1);
+      }
+
+      let threshold = restaurant.instantBookingLimit || 10;
+      if (restaurant?.autoApprovalThresholds) {
+        const dayThresholds = restaurant.autoApprovalThresholds.find(t => t.day === dayStr);
+        if (dayThresholds && dayThresholds.thresholds && dayThresholds.thresholds[catName] !== undefined) {
+          threshold = dayThresholds.thresholds[catName];
+        }
+      }
+
+      const finalStatus = guests <= threshold ? "confirmed" : "pending";
+      const guestsLabel = guests > threshold ? `${threshold}+` : String(guests);
+
       const bookingData: Omit<Booking, "id"> = {
         userId: user.uid,
         userName: profile?.displayName || user.displayName || "Guest",
@@ -677,11 +733,9 @@ export default function RestaurantDetailsView() {
         restaurantOwnerId: restaurant.ownerId,
         dateTime: bookingDateTime,
         guests,
+        guestsLabel,
         userPhone,
-        status:
-          guests <= (restaurant.instantBookingLimit || 10)
-            ? "confirmed"
-            : "pending",
+        status: finalStatus,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -701,7 +755,9 @@ export default function RestaurantDetailsView() {
             ownerEmail: restaurantOwnerEmail,
             dateTime: bookingDateTime.toISOString(),
             guests,
+            guestsLabel,
             userPhone,
+            status: finalStatus,
           }),
         }).catch((err) => console.error("Silent email fail:", err));
       } catch (err) {
@@ -817,7 +873,7 @@ export default function RestaurantDetailsView() {
       }
     }
 
-    const categories = [];
+    let categories = [];
     if (breakfastSlots.length > 0)
       categories.push({
         id: "breakfast",
@@ -828,6 +884,14 @@ export default function RestaurantDetailsView() {
       categories.push({ id: "lunch", name: "Lunch", slots: lunchSlots });
     if (dinnerSlots.length > 0)
       categories.push({ id: "dinner", name: "Dinner", slots: dinnerSlots });
+
+    if (restaurant?.blackoutSlots) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const blackoutSlot = restaurant.blackoutSlots.find(b => b.date === dateStr);
+      if (blackoutSlot && blackoutSlot.categories && blackoutSlot.categories.length > 0) {
+        categories = categories.filter(cat => !blackoutSlot.categories.includes(cat.name));
+      }
+    }
 
     return { categorized: true, categories, slots: [] as string[] };
   }, [restaurant, selectedDate]);
@@ -1906,9 +1970,7 @@ export default function RestaurantDetailsView() {
                         <h4 className="text-sm group-hover:text-brand transition-colors text-[#363636] font-normal leading-[1.2]">
                           {item.name}
                         </h4>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {item.description}
-                        </p>
+                        <ExpandableText text={item.description || ''} className="text-xs mt-1" />
                       </div>
                       {item.price > 0 && (
                         <span className="font-normal text-[#363636] leading-[1.2] shrink-0">

@@ -7,26 +7,49 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video } from 'lucide-react';
+import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video, BarChart3, MessageSquare, LayoutDashboard, SlidersHorizontal, MoreVertical, Search } from 'lucide-react';
 import StoryManager from './StoryManager';
-import { cn, convertTo12Hour, convertTo24Hour, generateSeoFriendlyFileName } from '../lib/utils';
+import { cn, convertTo12Hour, convertTo24Hour, generateSeoFriendlyFileName, getCroppedImg } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import Cropper from 'react-easy-crop';
 import { useMalls } from '../hooks/useFirebase';
 
 import { useMasterData } from './MasterDataContext';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
-const TABS = [
-  { id: 'bookings', label: 'Table Bookings', icon: Calendar },
-{ id: 'orders', label: 'Live Orders', icon: ShoppingBag },
-  { id: 'overview', label: 'Overview', icon: Eye },
-  { id: 'general', label: 'General Info', icon: Info },
-  { id: 'status', label: 'Operational Hours', icon: Clock },
-  { id: 'media', label: 'Media & Images', icon: ImageIcon },
-  { id: 'menu', label: 'Live Menu', icon: Utensils },
-  { id: 'specialties', label: 'Signature Dishes', icon: Star },
-  { id: 'stories', label: 'Stories', icon: Store },
-  { id: 'offers', label: 'Offers & Promos', icon: Tag },
-  { id: 'ads', label: 'Ads', icon: Megaphone },
+const SIDEBAR_GROUPS = [
+  {
+    title: 'Operations',
+    tabs: [
+      { id: 'overview', label: 'Operations Center', icon: LayoutDashboard },
+      { id: 'orders', label: 'Live Orders', icon: ShoppingBag },
+      { id: 'bookings', label: 'Table Bookings', icon: Calendar },
+    ]
+  },
+  {
+    title: 'Menu & Content',
+    tabs: [
+      { id: 'menu', label: 'Live Menu', icon: Utensils },
+      { id: 'specialties', label: 'Signature Dishes', icon: Star },
+      { id: 'media', label: 'Media & Images', icon: ImageIcon },
+      { id: 'stories', label: 'Stories', icon: Store },
+    ]
+  },
+  {
+    title: 'Settings',
+    tabs: [
+      { id: 'general', label: 'General Info', icon: Info },
+      { id: 'status', label: 'Operational Hours', icon: Clock },
+      { id: 'bookingSettings', label: 'Booking Settings', icon: Calendar },
+    ]
+  },
+  {
+    title: 'Growth & Ads',
+    tabs: [
+      { id: 'offers', label: 'Offers & Promos', icon: Tag },
+      { id: 'ads', label: 'Ads', icon: Megaphone },
+    ]
+  }
 ];
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -42,6 +65,7 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
   const bd = getBookingDate(b);
   const dateStr = (!isNaN(bd.getTime()) && bd.getTime() > 0) ? new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(bd).replace(/ /g, '-') : '';
   const [userPhoto, setUserPhoto] = useState<string | null>(b.userPhoto || null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     if (!userPhoto && b.userId) {
@@ -86,7 +110,7 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
             <div>
                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Size</div>
                <div className="font-normal text-[#363636] leading-[1.2] text-sm flex items-center gap-2">
-                 <Users size={14} className="text-blue-600" /> {b.guests} Guests
+                 <Users size={14} className="text-blue-600" /> {b.guestsLabel || b.guests} Guests
                </div>
             </div>
             <div>
@@ -137,16 +161,32 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
                          </button>
                        )}
                        {canCancel && (
-                         <button
-                           onClick={() => {
-                             if (window.confirm('Are you sure you want to cancel this booking?')) {
-                               updateBookingStatus?.(b.id, 'cancelled');
-                             }
-                           }}
-                           className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg px-3 py-1.5 font-bold outline-none cursor-pointer transition-colors"
-                         >
-                           Cancel
-                         </button>
+                         showCancelConfirm ? (
+                           <div className="flex gap-1 items-center">
+                             <button
+                               onClick={() => {
+                                 setShowCancelConfirm(false);
+                                 updateBookingStatus?.(b.id, 'cancelled');
+                               }}
+                               className="text-[10px] bg-red-600 text-white hover:bg-red-700 rounded-lg px-2 py-1.5 font-bold outline-none cursor-pointer transition-colors"
+                             >
+                               Yes, Cancel
+                             </button>
+                             <button
+                               onClick={() => setShowCancelConfirm(false)}
+                               className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 rounded-lg px-2 py-1.5 font-bold outline-none cursor-pointer transition-colors"
+                             >
+                               Keep
+                             </button>
+                           </div>
+                         ) : (
+                           <button
+                             onClick={() => setShowCancelConfirm(true)}
+                             className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 rounded-lg px-3 py-1.5 font-bold outline-none cursor-pointer transition-colors"
+                           >
+                             Cancel
+                           </button>
+                         )
                        )}
                      </div>
                    );
@@ -169,19 +209,50 @@ const InputText = ({ label, value, onChange, placeholder = '', disabled = false 
 
 const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => {
   const [uploading, setUploading] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    const objectUrl = URL.createObjectURL(file);
+    setImageSrc(objectUrl);
+    setOriginalFile(file);
+    setCropModalOpen(true);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    
+    if (e.target) e.target.value = '';
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const handleCropAndUpload = async () => {
+    if (!imageSrc || !croppedAreaPixels || !originalFile) return;
     setUploading(true);
+    setCropModalOpen(false);
+    
     try {
-      const seoFileName = generateSeoFriendlyFileName(file.name, 'banner', label || 'upload');
-      const storageRef = ref(storage, `restaurant_images/${seoFileName}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels, 600);
+      if (!croppedBlob) throw new Error("Could not crop image");
+      
+      const originalName = originalFile.name || 'image.jpg';
+      const seoFileName = generateSeoFriendlyFileName(originalName, 'banner', label || 'upload');
+      const finalFileName = seoFileName.replace(/\.[^/.]+$/, "") + ".jpg";
+      
+      const storageRef = ref(storage, `restaurant_images/${finalFileName}`);
+      const uploadTask = uploadBytesResumable(storageRef, croppedBlob, { contentType: 'image/jpeg' });
       
       uploadTask.on('state_changed', 
-        (snapshot) => {},
+        () => {},
         (error) => {
           console.error("Upload failed", error);
           alert("Image upload failed");
@@ -193,37 +264,111 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
           setUploading(false);
         }
       );
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
       setUploading(false);
     }
+  };
+
+  const handleCancelCrop = () => {
+    setCropModalOpen(false);
+    setImageSrc(null);
+    setOriginalFile(null);
   };
 
   return (
     <div>
       {label && <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>}
-      <div className="flex items-center gap-2">
-        <input 
-          type="text" 
-          value={value || ''} 
-          onChange={e => onChange(e.target.value)} 
-          placeholder={placeholder || "Image URL"} 
-          className="flex-1 w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm"
-        />
-        <div className="relative shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="relative w-full sm:w-1/3 shrink-0">
           <input 
             type="file" 
             accept="image/*" 
             onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
             disabled={uploading}
           />
-          <button type="button" disabled={uploading} className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 h-[46px] px-4 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 shadow-sm font-semibold text-sm gap-2 whitespace-nowrap">
-            {uploading ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-            <span className="hidden sm:inline">{uploading ? 'Uploading...' : 'Upload'}</span>
+          <button type="button" disabled={uploading} className="w-full bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 h-[40px] px-4 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 shadow-sm font-semibold text-xs gap-2">
+            {uploading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
+            <span>{uploading ? 'Uploading...' : 'Upload Image'}</span>
           </button>
         </div>
+        <div className="text-center shrink-0 -my-0.5 sm:my-0">
+            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OR<span className="sm:hidden"> Provide URL</span></span>
+        </div>
+        <div className="w-full flex-1">
+          <input 
+            type="text" 
+            value={value || ''} 
+            onChange={e => onChange(e.target.value)} 
+            placeholder={placeholder || "Provide Image URL..."} 
+            className="w-full h-[40px] px-3 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl text-xs font-medium text-slate-700 outline-none transition-all shadow-sm"
+          />
+        </div>
       </div>
+
+      <AnimatePresence>
+        {cropModalOpen && imageSrc && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative"
+            >
+              <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">Crop Image</h3>
+                  <p className="text-sm text-slate-500 mt-1">Adjust image to fit a 1:1 aspect ratio</p>
+                </div>
+                <button onClick={handleCancelCrop} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="relative w-full h-[60vh] max-h-[500px] bg-black">
+                <Cropper
+                  image={imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                  showGrid={true}
+                />
+              </div>
+
+              <div className="p-6 bg-slate-50 flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-slate-500">Zoom</span>
+                  <input
+                    type="range"
+                    value={zoom}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    aria-labelledby="Zoom"
+                    onChange={(e) => {
+                      setZoom(Number(e.target.value))
+                    }}
+                    className="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
+                
+                <div className="flex gap-3 justify-end mt-2">
+                  <button onClick={handleCancelCrop} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleCropAndUpload} className="px-5 py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                    Crop & Upload
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -258,12 +403,24 @@ export default function PartnerDashboardView() {
   const [selectedRes, setSelectedRes] = useState<Restaurant | null>(null);
   const [isResDropdownOpen, setIsResDropdownOpen] = useState(false);
   
-  const [activeTab, setActiveTab] = useState('bookings');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [activeOrderFilter, setActiveOrderFilter] = useState('All');
+  const [activeMenuCategory, setActiveMenuCategory] = useState('All');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
+  const [overviewYear, setOverviewYear] = useState(new Date().getFullYear());
   const [formData, setFormData] = useState<Partial<Restaurant>>({});
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
+  const [pageViews, setPageViews] = useState<any[]>([]);
+
+  const pendingBookingsCount = bookings.filter(b => b.status === 'pending').length;
+  const unreadConfirmedBookingsCount = bookings.filter(b => b.status === 'confirmed' && !b.ownerViewed).length;
+  const pendingOrdersCount = takeawayOrders.filter(o => !['Completed', 'Cancelled'].includes(o.status)).length;
+  const totalBookingsBadge = pendingBookingsCount + unreadConfirmedBookingsCount;
+
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
   const [newBookingForm, setNewBookingForm] = useState({
     name: '',
@@ -277,6 +434,12 @@ export default function PartnerDashboardView() {
 
   const [qrTableTarget, setQrTableTarget] = useState("");
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+  const [openMenuDropdown, setOpenMenuDropdown] = useState<number | null>(null);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editingCustomizationsForItem, setEditingCustomizationsForItem] = useState<number | null>(null);
+  const [newItemData, setNewItemData] = useState<any>({ name: '', price: 0, description: '', isAvailable: true, category: '', isVeg: true, image: '' });
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage({ message, type });
@@ -320,29 +483,108 @@ export default function PartnerDashboardView() {
 
   useEffect(() => {
     if (!selectedRes) return;
+    
+    const playNotificationSound = () => {
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.play().catch(e => console.error("Audio auto-play blocked", e));
+      } catch (e) {
+        console.error("Audio play failed", e);
+      }
+    };
+
+    let isFirstSnapshotBookings = true;
     const q = query(
       collection(db, 'bookings'),
       where('restaurantId', '==', selectedRes.id)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      const addedDocs = snapshot.docChanges().filter(change => change.type === 'added').map(c => c.doc.data());
+      const hasNewConfirmed = addedDocs.some(b => b.status === 'confirmed');
+      if (!isFirstSnapshotBookings && hasNewConfirmed) {
+        playNotificationSound();
+      }
+      isFirstSnapshotBookings = false;
       setBookings(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
+    
+    let isFirstSnapshotOrders = true;
     const qOrders = query(
       collection(db, 'orders'),
       where('restaurantId', '==', selectedRes.id)
     );
     const unsubOrders = onSnapshot(qOrders, (snapshot) => {
+      const hasNew = snapshot.docChanges().some(change => change.type === 'added');
+      if (!isFirstSnapshotOrders && hasNew) {
+        playNotificationSound();
+      }
+      isFirstSnapshotOrders = false;
       setTakeawayOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))); // Re-using state for unified orders
+    });
+    const qViews = query(
+      collection(db, 'page_views'),
+      where('restaurantId', '==', selectedRes.id)
+    );
+    const unsubViews = onSnapshot(qViews, (snapshot) => {
+      setPageViews(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return () => {
       unsubscribe();
       unsubOrders();
+      unsubViews();
     };
   }, [selectedRes]);
+
+  // Mark confirmed bookings as viewed when the bookings tab is opened
+  useEffect(() => {
+    if (activeTab === 'bookings') {
+      const unread = bookings.filter(b => b.status === 'confirmed' && !b.ownerViewed);
+      unread.forEach(b => {
+        updateDoc(doc(db, 'bookings', b.id), { ownerViewed: true }).catch(e => console.error("Failed to mark viewed", e));
+      });
+    }
+  }, [activeTab, bookings]);
+
+  // Play alarm sound if there are pending bookings
+  useEffect(() => {
+    let interval: any;
+    if (pendingBookingsCount > 0) {
+      const playAlarm = () => {
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
+          audio.play().catch(e => console.error("Alarm auto-play blocked", e));
+        } catch (e) {
+          console.error("Alarm play failed", e);
+        }
+      };
+      
+      playAlarm();
+      interval = setInterval(playAlarm, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [pendingBookingsCount]);
 
   const handleLogout = async () => {
     await signOut();
     navigate('/partners/login');
+  };
+
+  const toggleFeature = async (feature: 'isBookingEnabled' | 'isTakeawayEnabled', value: boolean) => {
+    if (!selectedRes) return;
+    try {
+      await updateDoc(doc(db, 'restaurants', selectedRes.id), {
+        [feature]: value
+      });
+      const updatedRes = { ...selectedRes, [feature]: value };
+      setSelectedRes(updatedRes);
+      setFormData(updatedRes);
+      showToast(`${feature === 'isBookingEnabled' ? 'Table Bookings' : 'Live Orders'} ${value ? 'enabled' : 'disabled'}.`, "success");
+    } catch (e) {
+      console.error(e);
+      showToast(`Failed to update feature`, "error");
+    }
   };
 
   const handleCreateBooking = async (e: React.FormEvent) => {
@@ -384,15 +626,18 @@ export default function PartnerDashboardView() {
     setHasChanges(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (dataToSave?: any) => {
     if (!selectedRes) return;
     setSaving(true);
 
+    const isEvent = dataToSave && typeof dataToSave.preventDefault === 'function';
+    const data = (dataToSave && !isEvent) ? dataToSave : formData;
+
     let hasInvalidTimings = false;
-    if (formData.dailyTimings) {
+    if (data.dailyTimings) {
       const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       DAYS.forEach(day => {
-        const timing = (formData.dailyTimings as any)[day];
+        const timing = (data.dailyTimings as any)[day];
         if (timing && !timing.closed && timing.ranges) {
            timing.ranges.forEach((r: any) => {
              if (!r.open || !r.close) {
@@ -408,12 +653,38 @@ export default function PartnerDashboardView() {
        return;
     }
 
+    const stripUndefined = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(stripUndefined);
+      }
+      if (typeof obj === 'object') {
+        if (obj instanceof Date) return obj;
+        if (Object.prototype.toString.call(obj) !== '[object Object]') return obj; // Prevent circular on non-plain objects
+        
+        const result: any = {};
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            if (obj[key] !== undefined) {
+              result[key] = stripUndefined(obj[key]);
+            }
+          }
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    const cleanData = stripUndefined(data);
+
     try {
       const docRef = doc(db, 'restaurants', selectedRes.id);
-      await updateDoc(docRef, formData);
+      await updateDoc(docRef, cleanData);
       
       // Update local state
-      const updatedRes = { ...selectedRes, ...formData } as Restaurant;
+      const updatedRes = { ...selectedRes, ...cleanData } as Restaurant;
       setSelectedRes(updatedRes);
       setRestaurants(prev => prev.map(r => r.id === updatedRes.id ? updatedRes : r));
       setHasChanges(false);
@@ -704,10 +975,21 @@ export default function PartnerDashboardView() {
              <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Table Reservations</h2>
              <p className="text-slate-500 text-xs font-semibold mt-1">Manage all your table bookings.</p>
            </div>
-           <button onClick={() => setShowNewBookingModal(true)} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-              <Plus size={18} />
-              New Booking
-           </button>
+           <div className="flex items-center gap-4">
+             <div className="flex items-center gap-2 mr-4 border-r border-slate-200 pr-4">
+               <span className="text-sm font-bold text-slate-700">Accepting Bookings</span>
+               <button 
+                 onClick={() => toggleFeature('isBookingEnabled', !selectedRes?.isBookingEnabled)}
+                 className={cn("w-12 h-6 rounded-full transition-colors relative", selectedRes?.isBookingEnabled ? "bg-green-500" : "bg-slate-300")}
+               >
+                 <div className={cn("w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm", selectedRes?.isBookingEnabled ? "left-[26px]" : "left-[2px]")} />
+               </button>
+             </div>
+             <button onClick={() => setShowNewBookingModal(true)} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                <Plus size={18} />
+                New Booking
+             </button>
+           </div>
         </div>
         <div>
           <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Today's Bookings</h3>
@@ -768,6 +1050,8 @@ export default function PartnerDashboardView() {
   };
 
   const renderTakeawayOrdersTab = () => {
+    const STATUSES = ['All', 'Received', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
+    
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex items-center justify-between">
@@ -775,6 +1059,44 @@ export default function PartnerDashboardView() {
              <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">Live Orders</h2>
              <p className="text-slate-500 text-xs font-semibold mt-1">Manage Table and Takeaway orders.</p>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-700">Accepting Orders</span>
+              <button 
+                onClick={() => toggleFeature('isTakeawayEnabled', !selectedRes?.isTakeawayEnabled)}
+                className={cn("w-12 h-6 rounded-full transition-colors relative", selectedRes?.isTakeawayEnabled ? "bg-green-500" : "bg-slate-300")}
+              >
+                <div className={cn("w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm", selectedRes?.isTakeawayEnabled ? "left-[26px]" : "left-[2px]")} />
+              </button>
+            </div>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {STATUSES.map(status => {
+            const count = status === 'All' 
+              ? takeawayOrders.length 
+              : takeawayOrders.filter(o => o.status === status || (!o.status && status === 'Received')).length;
+              
+            return (
+              <button
+                key={status}
+                onClick={() => setActiveOrderFilter(status)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2",
+                  activeOrderFilter === status 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                )}
+              >
+                {status}
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded-full text-[10px]",
+                  activeOrderFilter === status ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {takeawayOrders.length === 0 ? (
@@ -786,91 +1108,381 @@ export default function PartnerDashboardView() {
              <p className="text-slate-500 text-sm">When customers place orders, they will appear here.</p>
            </div>
         ) : (
-          <div className="grid gap-4">
-             {takeawayOrders.sort((a,b) => b.createdAt - a.createdAt).map(order => (
-               <div key={order.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                 <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={cn(
-                          "px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-widest",
-                          order.type === 'dine_in' ? "bg-blue-600/10 text-blue-600" : "bg-blue-50 text-blue-600"
-                        )}>
-                          {order.type === 'dine_in' ? (order.tableNumber && order.tableNumber !== 'Unknown' ? `Table ${order.tableNumber}` : 'Dine In') : 'Takeaway'}
-                        </span>
-                        {order.tokenNumber && (
-                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-widest bg-yellow-100 text-yellow-700">
-                            Token: {order.tokenNumber}
-                          </span>
-                        )}
-                        <span className="text-xs font-bold text-slate-400">ID: {order.orderId}</span>
-                      </div>
-                      <div className="text-lg text-[#363636] font-normal leading-[1.2]">{order.customerName}</div>
-                      <div className="text-xs font-semibold text-slate-500">{order.customerPhone}</div>
-                    </div>
-                    <div className="text-right">
-                       <div className="font-normal leading-[1.2] text-blue-600 text-lg">₹{order.totalPrice}</div>
-                       <div className="text-xs font-bold text-slate-500">
-                         {new Date(order.createdAt).toLocaleString()}
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="mb-4 bg-slate-50 p-4 rounded-xl">
-                   <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Items</div>
-                    {order.items?.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center text-sm mb-1">
-                        <span className="font-semibold text-slate-700">{item.quantity}x {item.name}</span>
-                        <span className="font-normal text-[#363636] leading-[1.2]">₹{item.price * item.quantity}</span>
+          <div className="space-y-8">
+            {['Received', 'Preparing', 'Ready', 'Completed', 'Cancelled'].filter(s => activeOrderFilter === 'All' || activeOrderFilter === s).map(status => {
+              const getOrderTime = (o: any) => o.createdAt?.toDate ? o.createdAt.toDate().getTime() : (o.createdAt ? new Date(o.createdAt).getTime() : 0);
+              const ordersInStatus = takeawayOrders
+                .filter(o => o.status === status || (!o.status && status === 'Received'))
+                .sort((a,b) => getOrderTime(b) - getOrderTime(a));
+              
+              if (ordersInStatus.length === 0 && activeOrderFilter !== 'All') {
+                 return (
+                   <div key={status} className="bg-white rounded-3xl p-12 text-center border border-slate-200">
+                     <h3 className="text-lg mb-1 text-[#363636] font-normal leading-[1.2]">No {status} Orders</h3>
+                   </div>
+                 );
+              }
+              if (ordersInStatus.length === 0) return null;
+              
+              return (
+                <div key={status} className="animate-in fade-in">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-lg font-bold text-slate-800">{status} Orders</h3>
+                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{ordersInStatus.length}</span>
+                  </div>
+                  <div className="grid gap-4">
+                    {ordersInStatus.map(order => (
+                      <div key={order.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div className="flex justify-between items-start mb-4">
+                           <div>
+                             <div className="flex items-center gap-2 mb-1">
+                               <span className={cn(
+                                 "px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-widest",
+                                 order.type === 'dine_in' ? "bg-blue-600/10 text-blue-600" : "bg-blue-50 text-blue-600"
+                               )}>
+                                 {order.type === 'dine_in' ? (order.tableNumber && order.tableNumber !== 'Unknown' ? `Table ${order.tableNumber}` : 'Dine In') : 'Takeaway'}
+                               </span>
+                               {order.tokenNumber && (
+                                 <span className="px-2 py-0.5 rounded text-[10px] uppercase font-black tracking-widest bg-yellow-100 text-yellow-700">
+                                   Token: {order.tokenNumber}
+                                 </span>
+                               )}
+                               <span className="text-xs font-bold text-slate-400">ID: {order.orderId}</span>
+                             </div>
+                             <div className="text-lg text-[#363636] font-normal leading-[1.2]">{order.customerName}</div>
+                             <div className="text-xs font-semibold text-slate-500">{order.customerPhone}</div>
+                           </div>
+                           <div className="text-right">
+                              <div className="font-normal leading-[1.2] text-blue-600 text-lg">₹{order.totalPrice}</div>
+                              <div className="text-xs font-bold text-slate-500">
+                                {(() => {
+                                  const d = order.createdAt?.toDate ? order.createdAt.toDate() : (order.createdAt ? new Date(order.createdAt) : new Date());
+                                  return isNaN(d.getTime()) ? '' : d.toLocaleString();
+                                })()}
+                              </div>
+                           </div>
+                        </div>
+      
+                        <div className="mb-4 bg-slate-50 p-4 rounded-xl">
+                          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Items</div>
+                           {order.items?.map((item: any, idx: number) => (
+                             <div key={idx} className="flex justify-between items-start text-sm mb-1">
+                               <div className="flex flex-col">
+                                 <span className="font-semibold text-slate-700">{item.quantity}x {item.name}</span>
+                                 {item.customizations?.length > 0 && (
+                                   <div className="text-xs text-slate-500 mt-0.5 ml-4">
+                                     {item.customizations.map((c:any) => c.optionName).join(', ')}
+                                   </div>
+                                 )}
+                               </div>
+                               <span className="font-normal text-[#363636] leading-[1.2]">₹{item.price * item.quantity}</span>
+                             </div>
+                           ))}
+                           <div className="border-t border-slate-200 mt-2 pt-2 space-y-1">
+                             <div className="flex justify-between items-center text-xs text-slate-500">
+                               <span>Item Total</span>
+                               <span>₹{order.itemTotal || order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0}</span>
+                             </div>
+                             <div className="flex justify-between items-center text-xs text-slate-500">
+                               <span>Taxes</span>
+                               <span>₹{order.taxes !== undefined ? order.taxes : Math.round(((selectedRes?.gstPercentage || 5) / 100) * (order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0))}</span>
+                             </div>
+                             <div className="flex justify-between items-center text-xs text-slate-500">
+                               <span>Restaurant Packaging</span>
+                               <span>₹{order.packaging !== undefined ? order.packaging : 20}</span>
+                             </div>
+                             <div className="flex justify-between items-center text-sm font-bold text-[#363636] mt-2 pt-1 border-t border-slate-200">
+                               <span>Bill Total</span>
+                               <span>₹{order.totalPrice}</span>
+                             </div>
+                           </div>
+                        </div>
+      
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                           <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status:</span>
+                              <select
+                                value={order.status}
+                                onChange={(e) => updateTakeawayOrderStatus(order.id, e.target.value)}
+                                className="px-3 py-1.5 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer"
+                              >
+                                <option value="Received">Received</option>
+                                <option value="Preparing">Preparing</option>
+                                <option value="Ready">{order.type === 'dine_in' ? 'Ready to Serve' : 'Ready to Pickup'}</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Cancelled">Cancelled</option>
+                              </select>
+                           </div>
+                           <div className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
+                              {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
+                           </div>
+                        </div>
                       </div>
                     ))}
-                    <div className="border-t border-slate-200 mt-2 pt-2 space-y-1">
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Item Total</span>
-                        <span>₹{order.itemTotal || order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Taxes</span>
-                        <span>₹{order.taxes !== undefined ? order.taxes : Math.round(((selectedRes?.gstPercentage || 5) / 100) * (order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0))}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Restaurant Packaging</span>
-                        <span>₹{order.packaging !== undefined ? order.packaging : 20}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm font-bold text-[#363636] mt-2 pt-1 border-t border-slate-200">
-                        <span>Bill Total</span>
-                        <span>₹{order.totalPrice}</span>
-                      </div>
-                    </div>
-                 </div>
-
-                 <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-                    <div className="flex items-center gap-2">
-                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status:</span>
-                       <select
-                         value={order.status}
-                         onChange={(e) => updateTakeawayOrderStatus(order.id, e.target.value)}
-                         className="px-3 py-1.5 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 focus:ring-0 cursor-pointer"
-                       >
-                         <option value="Received">Received</option>
-                         <option value="Preparing">Preparing</option>
-                         <option value="Ready">{order.type === 'dine_in' ? 'Ready to Serve' : 'Ready to Pickup'}</option>
-                         <option value="Completed">Completed</option>
-                         <option value="Cancelled">Cancelled</option>
-                       </select>
-                    </div>
-                    <div className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
-                       {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
-                    </div>
-                 </div>
-               </div>
-             ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     );
   };
 
+
+  const handleGenerateQRAsset = async (action: 'download' | 'print') => {
+    const qrCanvas = document.getElementById('qr-canvas-element') as HTMLCanvasElement;
+    if (!qrCanvas) return;
+
+    const width = 800;
+    const height = 1200;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw Background
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(0, 0, width, height);
+
+    // Table Number Text
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.font = '600 40px sans-serif';
+    ctx.fillText("Table Number", width / 2, 80);
+
+    ctx.font = '900 340px sans-serif';
+    const tableName = qrTableTarget ? qrTableTarget : '1';
+    ctx.fillText(tableName, width / 2, 300);
+
+    // White middle container behind QR (rounded rect effect)
+    const boxSize = 440;
+    const boxX = (width - boxSize) / 2;
+    const boxY = 460;
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    const r = 40;
+    ctx.moveTo(boxX + r, boxY);
+    ctx.arcTo(boxX + boxSize, boxY, boxX + boxSize, boxY + boxSize, r);
+    ctx.arcTo(boxX + boxSize, boxY + boxSize, boxX, boxY + boxSize, r);
+    ctx.arcTo(boxX, boxY + boxSize, boxX, boxY, r);
+    ctx.arcTo(boxX, boxY, boxX + boxSize, boxY, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Draw QR
+    const qrSize = 360;
+    ctx.drawImage(qrCanvas, (width - qrSize) / 2, boxY + 40, qrSize, qrSize);
+
+    // Bottom dark Section
+    ctx.fillStyle = '#1e3a8a'; 
+    ctx.fillRect(0, height - 200, width, 200);
+
+    // Footer Text
+    const addressParts = [selectedRes?.name || 'Restaurant', selectedRes?.location, selectedRes?.city].filter(Boolean);
+    const resAddressStr = addressParts.join(', ');
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.font = '600 18px sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(resAddressStr, width / 2, height - 110);
+    
+    ctx.font = '800 26px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText("POWERED BY Bookmytable", width / 2, height - 60);
+
+    const dataUrl = canvas.toDataURL("image/png");
+
+    if (action === 'download') {
+      const a = document.createElement("a");
+      a.download = `table-${tableName}-qr.png`;
+      a.href = dataUrl;
+      a.click();
+    } else {
+      const printWin = window.open('', '', 'width=600,height=800');
+      if (printWin) {
+        printWin.document.write(`
+          <html>
+            <head>
+              <title>Print QR - Table ${tableName}</title>
+              <style>
+                body { margin: 0; display: flex; justify-content: center; align-items: center; background: #fff; height: 100vh; overflow: hidden; }
+                @media print {
+                  @page { margin: 0; size: auto; }
+                  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; overflow: hidden; height: 100vh; }
+                  img { max-height: 98vh; max-width: 98vw; object-fit: contain; }
+                }
+                img { max-width: 100%; height: auto; border: none; }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUrl}" onload="setTimeout(() => { window.print(); window.close(); }, 500);" />
+            </body>
+          </html>
+        `);
+        printWin.document.close();
+      }
+    }
+  };
+
+  const renderBookingSettingsTab = () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner'];
+
+    const getThresholdsForDay = (day: string) => {
+      const thresholds = formData.autoApprovalThresholds || [];
+      return thresholds.find((t: any) => t.day === day)?.thresholds || { Breakfast: 10, Lunch: 10, Dinner: 10 };
+    };
+
+    const updateThreshold = (day: string, category: string, value: number) => {
+      const newThresholds = [...(formData.autoApprovalThresholds || [])];
+      const dayIndex = newThresholds.findIndex((t: any) => t.day === day);
+      if (dayIndex >= 0) {
+        newThresholds[dayIndex] = {
+          ...newThresholds[dayIndex],
+          thresholds: { ...newThresholds[dayIndex].thresholds, [category]: value }
+        };
+      } else {
+        const newDayThreshold = { day, thresholds: { Breakfast: 10, Lunch: 10, Dinner: 10, [category]: value } };
+        newThresholds.push(newDayThreshold);
+      }
+      setFormData({ ...formData, autoApprovalThresholds: newThresholds });
+      setHasChanges(true);
+    };
+
+    const blackoutSlots = formData.blackoutSlots || [];
+    const addBlackoutSlot = () => {
+      setFormData({ ...formData, blackoutSlots: [...blackoutSlots, { date: new Date().toISOString().split('T')[0], categories: [] }] });
+      setHasChanges(true);
+    };
+    const updateBlackoutSlot = (index: number, key: string, value: any) => {
+      const newSlots = [...blackoutSlots];
+      newSlots[index] = { ...newSlots[index], [key]: value };
+      setFormData({ ...formData, blackoutSlots: newSlots });
+      setHasChanges(true);
+    };
+    const toggleBlackoutCategory = (index: number, cat: string) => {
+      const newSlots = [...blackoutSlots];
+      const categories = newSlots[index].categories || [];
+      if (categories.includes(cat)) {
+        newSlots[index].categories = categories.filter((c: string) => c !== cat);
+      } else {
+        newSlots[index].categories = [...categories, cat];
+      }
+      setFormData({ ...formData, blackoutSlots: newSlots });
+      setHasChanges(true);
+    };
+    const removeBlackoutSlot = (index: number) => {
+      const newSlots = blackoutSlots.filter((_: any, i: number) => i !== index);
+      setFormData({ ...formData, blackoutSlots: newSlots });
+      setHasChanges(true);
+    };
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div>
+          <h2 className="text-2xl text-[#363636] font-normal leading-[1.2]">Booking Settings</h2>
+          <p className="text-slate-500 text-xs font-semibold mt-1">Manage auto-approvals and blackout dates.</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Auto Table Booking Thresholds</h3>
+            <p className="text-sm text-slate-500 mb-6">Set the guest count threshold for auto-approving table bookings per day and per meal category. Any booking with guests exceeding this limit will require manual approval. If not set, defaults to 10.</p>
+            
+            <div className="space-y-4">
+              {DAYS.map(day => {
+                const thresholds = getThresholdsForDay(day);
+                return (
+                  <div key={day} className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                    <div className="font-bold text-[#363636] w-32 shrink-0">{day}</div>
+                    <div className="flex flex-wrap gap-4 w-full">
+                      {CATEGORIES.map(cat => (
+                        <div key={cat} className="flex-1 min-w-[120px]">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{cat}</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={thresholds[cat] || 10} 
+                            onChange={(e) => updateThreshold(day, cat, parseInt(e.target.value) || 10)}
+                            className="w-full bg-white border border-slate-300 focus:border-blue-600/20 px-3 py-2 rounded-lg font-bold outline-none text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Blackout Dates & Times</h3>
+              <p className="text-sm text-slate-500">Disable table bookings for specific dates and meal times.</p>
+            </div>
+            <button onClick={addBlackoutSlot} className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+              <Plus size={16} /> Add Blackout
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {blackoutSlots.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 text-sm">No blackout dates configured.</div>
+            ) : (
+              blackoutSlots.map((slot: any, idx: number) => (
+                <div key={idx} className="flex flex-col lg:flex-row items-start lg:items-center gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <div className="w-full lg:w-auto shrink-0">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Date</label>
+                    <input 
+                      type="date"
+                      value={slot.date}
+                      onChange={(e) => updateBlackoutSlot(idx, 'date', e.target.value)}
+                      className="bg-white border border-slate-300 focus:border-blue-600/20 px-3 py-2 rounded-lg font-bold outline-none text-sm"
+                    />
+                  </div>
+                  <div className="flex-1 w-full">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Categories to Disable</label>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map(cat => {
+                        const isActive = (slot.categories || []).includes(cat);
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => toggleBlackoutCategory(idx, cat)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                              isActive ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                            )}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <button onClick={() => removeBlackoutSlot(idx)} className="text-slate-400 hover:text-red-500 transition-colors p-2 shrink-0">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const allMenuCategories = Array.from(new Set((formData.liveMenu || []).map((item: any) => item.category?.trim()).filter(Boolean)));
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-24">
@@ -984,29 +1596,54 @@ export default function PartnerDashboardView() {
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-300">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">Dashboard Menu</p>
-            <div className="space-y-1">
-              {TABS.map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-3 rounded-xl transition-all font-bold text-left text-sm",
-                      activeTab === tab.id 
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                        : "bg-transparent text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon size={16} />
-                      {tab.label}
-                    </div>
-                    {activeTab === tab.id && <ChevronRight size={16} opacity={0.6} />}
-                  </button>
-                )
-              })}
+            <div className="space-y-6">
+              {SIDEBAR_GROUPS.map((group, groupIndex) => (
+                <div key={groupIndex}>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">{group.title}</p>
+                  <div className="space-y-1">
+                    {group.tabs.map(tab => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={cn(
+                            "w-full flex items-center justify-between p-3 rounded-xl transition-all font-bold text-left text-sm relative",
+                            activeTab === tab.id 
+                              ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                              : "bg-transparent text-slate-600 hover:bg-slate-50"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon size={16} />
+                            {tab.label}
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {tab.id === 'orders' && pendingOrdersCount > 0 && (
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] font-black",
+                                activeTab === tab.id ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+                              )}>
+                                {pendingOrdersCount}
+                              </span>
+                            )}
+                            {tab.id === 'bookings' && totalBookingsBadge > 0 && (
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] font-black",
+                                activeTab === tab.id ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+                              )}>
+                                {totalBookingsBadge}
+                              </span>
+                            )}
+                            {activeTab === tab.id && <ChevronRight size={16} opacity={0.6} />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </aside>
@@ -1019,31 +1656,334 @@ export default function PartnerDashboardView() {
                {activeTab === 'bookings' && renderBookingsTab()}
                {activeTab === 'orders' && renderTakeawayOrdersTab()}
                
-               {activeTab === 'overview' && (
-                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Rating</p>
-                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">{formData.rating || 'N/A'}</p>
-                      </div>
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Reviews</p>
-                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">{(formData as any).reviewsCount || 0}</p>
-                      </div>
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Avg Price</p>
-                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">₹{formData.avgPrice || 0}</p>
-                      </div>
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-300">
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Menu Items</p>
-                        <p className="text-2xl font-normal text-[#363636] leading-[1.2]">
-                          {formData.liveMenu?.length || 0}
-                        </p>
-                      </div>
-                    </div>
+               {activeTab === 'overview' && (() => {
+                 const processData = (year: number) => {
+                   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                   const currentMonthIndex = new Date().getMonth();
+                   const currentYear = new Date().getFullYear();
+                   const todayStr = new Date().toDateString();
+
+                   const salesMap: any = {};
+                   months.forEach((m, index) => salesMap[m] = { month: m, orders: 0, bookings: 0, revenue: 0, views: 0, _index: index });
+                   
+                   let monthToDateRevenue = 0;
+                   let todayRevenue = 0;
+                   let todayOrders = 0;
+                   let pendingOrders = 0;
+                   let todayBookings = 0;
+                   let todayViews = 0;
+                   
+                   const itemCounts: any = {};
+
+                   takeawayOrders.forEach(o => {
+                     let d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
+                     if(isNaN(d.getTime())) return;
+                     
+                     const orderTotal = Number(o.totalPrice) || Number(o.totalAmount) || (o.items?.reduce((acc: number, item: any) => acc + (Number(item.price) * Number(item.quantity) || 1), 0) || 0);
+
+                     if (d.toDateString() === todayStr) {
+                        todayRevenue += orderTotal;
+                        todayOrders += 1;
+                     }
+                     if (o.status === 'pending' || o.status === 'preparing') {
+                        pendingOrders += 1;
+                     }
+
+                     if (d.getFullYear() === year) {
+                       const m = months[d.getMonth()];
+                       salesMap[m].orders += 1;
+                       salesMap[m].revenue += orderTotal;
+
+                       // Accumulate item counts for top items (showing for this year)
+                       if (o.items) {
+                          o.items.forEach((item: any) => {
+                            if(!itemCounts[item.name]) itemCounts[item.name] = { name: item.name, qty: 0, rev: 0 };
+                            itemCounts[item.name].qty += (Number(item.quantity) || 1);
+                            itemCounts[item.name].rev += (Number(item.price) * (Number(item.quantity) || 1));
+                          });
+                       }
+                     }
+                     if (d.getFullYear() === currentYear && d.getMonth() === currentMonthIndex) {
+                       monthToDateRevenue += orderTotal;
+                     }
+                   });
+
+                   bookings.forEach(b => {
+                     let d = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || b.date); 
+                     if(isNaN(d.getTime())) return;
+                     
+                     const isToday = b.date ? new Date(b.date).toDateString() === todayStr : d.toDateString() === todayStr;
+                     if (isToday) {
+                        todayBookings += 1;
+                     }
+
+                     if (d.getFullYear() === year) {
+                       const m = months[d.getMonth()];
+                       salesMap[m].bookings += (Number(b.guests) || 1); // Assuming guests count or just 1
+                     }
+                   });
+
+                   pageViews.forEach(v => {
+                     let d = v.timestamp?.toDate ? v.timestamp.toDate() : (v.timestamp ? new Date(v.timestamp) : new Date());
+                     if(isNaN(d.getTime())) return;
+                     
+                     if (d.toDateString() === todayStr) {
+                        todayViews += 1;
+                     }
+
+                     if (d.getFullYear() === year) {
+                       const m = months[d.getMonth()];
+                       salesMap[m].views += 1;
+                     }
+                   });
+
+                   const salesData = Object.values(salesMap);
+                   
+                   const sortedItems = Object.values(itemCounts).sort((a: any, b: any) => b.qty - a.qty).slice(0, 5) as any[];
+                   const topItemQty = sortedItems.length > 0 ? sortedItems[0].qty : 1;
+                   const topItems = sortedItems.map(item => ({
+                     ...item,
+                     width: `${Math.max((item.qty / topItemQty) * 100, 5)}%` // min width 5%
+                   }));
+
+                   return { salesData, topItems, monthToDateRevenue, todayRevenue, todayOrders, pendingOrders, todayBookings, todayViews };
+                 };
+
+                 const { salesData, topItems, monthToDateRevenue, todayRevenue, todayOrders, pendingOrders, todayBookings, todayViews } = processData(overviewYear);
+
+                 return (
+                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                     <div className="flex items-center justify-between mb-2">
+                       <div>
+                         <h3 className="text-xl font-bold text-slate-800">Business Overview</h3>
+                         <p className="text-sm font-medium text-slate-500 mt-1">Review your restaurant's performance</p>
+                       </div>
+                       <select value={overviewYear} onChange={(e) => setOverviewYear(parseInt(e.target.value))} className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 shadow-sm">
+                         <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                         <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                         <option value={new Date().getFullYear() - 2}>{new Date().getFullYear() - 2}</option>
+                       </select>
+                     </div>
+
+                     {/* Operations Center */}
+                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                       <div className="bg-blue-600 p-6 rounded-2xl border border-blue-700 shadow-sm shadow-blue-500/20">
+                         <p className="text-blue-200 text-xs font-black uppercase tracking-widest mb-1.5">Today's Sales</p>
+                         <p className="text-3xl font-black text-white leading-none">₹ {todayRevenue.toLocaleString()}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Today's Orders</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{todayOrders}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Pending Orders</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{pendingOrders}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Today's Bookings</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{todayBookings}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Today's Visitors</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{todayViews}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">M-TD Revenue</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">₹ {monthToDateRevenue >= 100000 ? (monthToDateRevenue / 100000).toFixed(2) + 'L' : monthToDateRevenue.toLocaleString()}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Reviews Count</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{(formData as any).reviewsCount || 0}</p>
+                       </div>
+                       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1.5">Menu Items</p>
+                         <p className="text-3xl font-black text-[#363636] leading-none">{formData.liveMenu?.length || 0}</p>
+                       </div>
+                     </div>
+
+                     {/* Charts Section */}
+                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                       {/* Revenue Overview */}
+                       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
+                         <div className="mb-6">
+                           <h4 className="text-lg font-bold text-slate-800">Monthly Revenue</h4>
+                           <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-widest">Across {overviewYear}</p>
+                         </div>
+                         <div className="h-[300px] w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <AreaChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                               <defs>
+                                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                   <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                                   <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                                 </linearGradient>
+                               </defs>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} tickFormatter={(val) => `₹${val >= 1000 ? val/1000 + 'k' : val}`} />
+                               <RechartsTooltip 
+                                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  itemStyle={{ fontWeight: 700 }}
+                                  formatter={(value: any) => [`₹${parseInt(value).toLocaleString()}`, 'Revenue']}
+                               />
+                               <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                             </AreaChart>
+                           </ResponsiveContainer>
+                         </div>
+                       </div>
+                       
+                       {/* Page Views Overview */}
+                       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
+                         <div className="mb-6">
+                           <h4 className="text-lg font-bold text-slate-800">Store Page Views</h4>
+                           <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-widest">Across {overviewYear}</p>
+                         </div>
+                         <div className="h-[250px] w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <AreaChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                               <defs>
+                                 <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                 </linearGradient>
+                               </defs>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} tickFormatter={(val) => `${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`} />
+                               <RechartsTooltip 
+                                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                  itemStyle={{ fontWeight: 700 }}
+                                  formatter={(value: any) => [parseInt(value).toLocaleString(), 'Views']}
+                               />
+                               <Area type="monotone" dataKey="views" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
+                             </AreaChart>
+                           </ResponsiveContainer>
+                         </div>
+                       </div>
+
+                       {/* Bookings Vs Orders */}
+                       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                         <div className="mb-6">
+                           <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Order vs Bookings Vol.</h4>
+                           <p className="text-xs font-semibold text-slate-500 mt-1">Comparison across {overviewYear}</p>
+                         </div>
+                         <div className="h-[250px] w-full">
+                           <ResponsiveContainer width="100%" height="100%">
+                             <BarChart data={salesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} />
+                               <RechartsTooltip 
+                                  cursor={{fill: '#f8fafc'}}
+                                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                               />
+                               <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '10px' }} iconType="circle" />
+                               <Bar dataKey="orders" name="Takeaway Orders" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                               <Bar dataKey="bookings" name="Dine-in Bookings" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                             </BarChart>
+                           </ResponsiveContainer>
+                         </div>
+                       </div>
+
+                       {/* Top Items */}
+                       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                         <div className="mb-6">
+                           <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Top Selling Items</h4>
+                           <p className="text-xs font-semibold text-slate-500 mt-1">Highest order volume in {overviewYear}</p>
+                         </div>
+                         <div className="flex-1 flex flex-col gap-4 justify-center">
+                           {topItems.length > 0 ? topItems.map((item, i) => (
+                             <div key={i}>
+                               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                                 <span>{item.name} <span className="text-slate-400 font-semibold ml-1">({item.qty} served)</span></span>
+                                 <span className="text-[#363636]">₹{(item.rev >= 1000 ? (item.rev/1000).toFixed(1) + 'k' : item.rev)}</span>
+                               </div>
+                               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                 <div className="h-full bg-blue-600 rounded-full" style={{ width: item.width }}></div>
+                               </div>
+                             </div>
+                           )) : (
+                             <div className="text-center text-slate-400 font-medium py-8 text-sm">
+                               No order data for {overviewYear} yet
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     </div>
+                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-6">
+                       <div className="mb-6">
+                         <h4 className="text-lg font-bold text-slate-800">Recent Store Visitors</h4>
+                         <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-widest">Latest 10 unique views</p>
+                       </div>
+                       {pageViews.length > 0 ? (
+                         <div className="divide-y divide-slate-100">
+                           {[...pageViews]
+                             .sort((a, b) => {
+                               const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.timestamp ? new Date(a.timestamp).getTime() : Date.now());
+                               const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.timestamp ? new Date(b.timestamp).getTime() : Date.now());
+                               return timeB - timeA;
+                             })
+                             .slice(0, 10)
+                             .map((view, i) => (
+                             <div key={i} className="py-3 flex items-center justify-between">
+                               <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold uppercase text-sm">
+                                   {view.userName ? view.userName.charAt(0) : '?'}
+                                 </div>
+                                 <div>
+                                   <p className="text-sm font-bold text-slate-800">{view.userId ? view.userName : 'Guest User'}</p>
+                                   <p className="text-xs font-medium text-slate-500">{view.userId ? 'Registered User' : 'Unregistered Visitor'}</p>
+                                 </div>
+                               </div>
+                               <div className="text-right">
+                                 <p className="text-xs font-bold text-slate-600">
+                                   {(() => {
+                                      const viewDate = view.timestamp?.toDate ? view.timestamp.toDate() : (view.timestamp ? new Date(view.timestamp) : new Date());
+                                      return isNaN(viewDate.getTime()) ? 'Just now' : viewDate.toLocaleDateString();
+                                   })()}
+                                 </p>
+                                 <p className="text-[10px] font-semibold text-slate-400">
+                                   {(() => {
+                                      const viewDate = view.timestamp?.toDate ? view.timestamp.toDate() : (view.timestamp ? new Date(view.timestamp) : new Date());
+                                      return isNaN(viewDate.getTime()) ? '' : viewDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                   })()}
+                                 </p>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       ) : (
+                         <div className="text-center text-slate-400 font-medium py-8 text-sm">
+                           No recorded visitors yet
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 );
+               })()}
+
+               {activeTab === 'analytics' && (
+                 <div className="bg-white p-12 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+                   <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                     <BarChart3 size={32} className="text-blue-600" />
+                   </div>
+                   <h3 className="text-xl font-bold text-slate-800 mb-2">Deep Analytics Coming Soon</h3>
+                   <p className="text-slate-500 max-w-md">We are building an advanced analytics dashboard with hourly trends, conversion rates, and deeper insights.</p>
                  </div>
                )}
-
+               
+               {activeTab === 'reviews' && (
+                 <div className="bg-white p-12 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+                   <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                     <MessageSquare size={32} className="text-blue-600" />
+                   </div>
+                   <h3 className="text-xl font-bold text-slate-800 mb-2">Review Management Coming Soon</h3>
+                   <p className="text-slate-500 max-w-md">Soon you will be able to read, reply to, and analyze customer reviews directly from this dashboard.</p>
+                 </div>
+               )}
+               
+               {activeTab === 'bookingSettings' && renderBookingSettingsTab()}
+               
                {activeTab === 'general' && (
                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    {/* Basic Details */}
@@ -1145,8 +2085,8 @@ export default function PartnerDashboardView() {
                          const cuisineArray = Array.isArray(formData.cuisine) ? formData.cuisine : typeof formData.cuisine === 'string' ? (formData.cuisine as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
                          return cuisineArray.filter((x:any) => !sortedCuisines.find(c => c.name === x)).length > 0 && (
                          <div className="flex flex-wrap gap-2 mt-2">
-                           {cuisineArray.filter((x:any) => !sortedCuisines.find(c => c.name === x)).map((custom: any) => (
-                             <span key={custom} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-300">
+                           {cuisineArray.filter((x:any) => !sortedCuisines.find(c => c.name === x)).map((custom: any, cIdx: number) => (
+                             <span key={`${custom}-${cIdx}`} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-300">
                                {custom}
                                <button 
                                  type="button" 
@@ -1385,36 +2325,29 @@ export default function PartnerDashboardView() {
                         <p className="text-xs text-slate-500 mt-1">Manage items available for digital ordering</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <button 
-                          onClick={async () => {
-                            const newVal = !formData.isQrMenuEnabled;
-                            updateForm('isQrMenuEnabled', newVal);
-                            
-                            // Immediately update selectedRes so UI feels instant, or we just rely on formData for the UI styling below
-                            setSelectedRes((prev: any) => ({ ...prev, isQrMenuEnabled: newVal }));
-
-                            if (selectedRes?.id) {
-                              try {
-                                await updateDoc(doc(db, 'restaurants', selectedRes.id), {
-                                  isQrMenuEnabled: newVal,
-                                  updatedAt: serverTimestamp()
-                                });
-                              } catch (e) {
-                                console.error(e);
+                        <div className="flex items-center gap-2 border border-slate-200 bg-white px-3 py-1.5 rounded-xl">
+                          <Toggle 
+                            label="QR Menu Ordering"
+                            checked={formData.isQrMenuEnabled}
+                            onChange={async (newVal: boolean) => {
+                              updateForm('isQrMenuEnabled', newVal);
+                              setSelectedRes((prev: any) => ({ ...prev, isQrMenuEnabled: newVal }));
+                              if (selectedRes?.id) {
+                                try {
+                                  await updateDoc(doc(db, 'restaurants', selectedRes.id), {
+                                    isQrMenuEnabled: newVal,
+                                    updatedAt: serverTimestamp()
+                                  });
+                                } catch (e) {
+                                  console.error(e);
+                                }
                               }
-                            }
-                          }}
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all relative overflow-hidden",
-                            formData.isQrMenuEnabled ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-50 text-slate-500 border border-slate-200"
-                          )}
-                        >
-                          <div className={cn("w-2 h-2 rounded-full", formData.isQrMenuEnabled ? "bg-emerald-500" : "bg-slate-400")} />
-                          {formData.isQrMenuEnabled ? 'QR Menu Active' : 'QR Menu Disabled'}
-                        </button>
+                            }}
+                          />
+                        </div>
                         <button onClick={() => {
-                          const newMenu = [...(formData.liveMenu || []), { id: Date.now().toString(), name: '', price: 0, description: '', isAvailable: true }];
-                          updateForm('liveMenu', newMenu);
+                          setNewItemData({ name: '', price: '', description: '', isAvailable: true, category: '', isVeg: true, image: '' });
+                          setIsAddItemModalOpen(true);
                         }} className="flex items-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-xl font-bold text-xs transition-colors">
                           <Plus size={14} /> Add Item
                         </button>
@@ -1428,8 +2361,9 @@ export default function PartnerDashboardView() {
                         </div>
                         <div className="shrink-0 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm relative z-10">
                           <QRCodeCanvas id="qr-canvas-element" 
-                            value={`${window.location.origin}/qr-menu/${selectedRes?.id}${qrTableTarget ? '?table='+encodeURIComponent(qrTableTarget) : ''}`} 
-                            size={120}
+                            value={`${window.location.origin}/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
+                            size={400}
+                            style={{ width: 120, height: 120 }}
                             level="H"
                             includeMargin={false}
                             fgColor="#0f172a"
@@ -1445,65 +2379,28 @@ export default function PartnerDashboardView() {
                               type="text" 
                               value={qrTableTarget} 
                               onChange={(e) => setQrTableTarget(e.target.value)} 
-                              placeholder="Enter Table Number (e.g. 5, A2) or leave blank" 
+                              placeholder="Enter Table Number (e.g. 5, A2) defaults to 1" 
                               className="w-full max-w-[240px] px-4 py-2 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all outline-none"
                             />
                           </div>
                           <div className="flex flex-wrap items-center gap-3">
                             <a 
-                              href={`/qr-menu/${selectedRes?.id}${qrTableTarget ? '?table='+encodeURIComponent(qrTableTarget) : ''}`} 
+                              href={`/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
                               target="_blank" 
                               rel="noopener noreferrer" 
                               className="px-5 py-2 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm hover:shadow active:scale-95 transition-all w-fit"
                             >
-                              Open {qrTableTarget ? 'Table '+qrTableTarget+' ' : 'Generic '}Menu Link
+                              Open {qrTableTarget ? 'Table '+qrTableTarget+' ' : 'Table 1 '}Menu Link
                             </a>
                             <button
-                              onClick={() => {
-                                const canvas = document.getElementById('qr-canvas-element') as HTMLCanvasElement;
-                                if (canvas) {
-                                  const a = document.createElement("a");
-                                  a.download = `table-${qrTableTarget || 'generic'}-qr.png`;
-                                  a.href = canvas.toDataURL("image/png");
-                                  a.click();
-                                }
-                              }}
+                              onClick={() => { handleGenerateQRAsset('download'); }}
                               className="px-5 py-2 bg-slate-100 text-slate-700 rounded-full text-xs font-bold hover:bg-slate-200 active:scale-95 transition-all w-fit border border-slate-200"
                             >
                               Download QR (PNG)
                             </button>
                             <button
-                              onClick={() => {
-                                const canvas = document.getElementById('qr-canvas-element') as HTMLCanvasElement;
-                                if (canvas) {
-                                  const dataUrl = canvas.toDataURL("image/png");
-                                  const printWin = window.open('', '', 'width=600,height=600');
-                                  if (printWin) {
-                                    let tableName = qrTableTarget ? `Table ${qrTableTarget}` : 'Table ____';
-                                    const addressParts = [selectedRes?.name || 'Restaurant', selectedRes?.location, selectedRes?.city].filter(Boolean);
-                                    const resAddressStr = addressParts.join(', ');
-                                    printWin.document.write(`
-                                      <html>
-                                        <head>
-                                          <title>Print QR - ${tableName}</title>
-                                          <style>
-                                            body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                                            h1 { font-size: 24px; margin-bottom: 20px; text-align: center; }
-                                            img { width: 300px; height: 300px; border: 2px solid #000; padding: 20px; border-radius: 16px; margin-bottom: 20px; }
-                                          </style>
-                                        </head>
-                                        <body>
-                                          <h1>${resAddressStr}</h1>
-                                          <h2 style="margin-top: 0;">${tableName}</h2>
-                                          <img src="${dataUrl}" onload="window.print(); window.close();" />
-                                        </body>
-                                      </html>
-                                    `);
-                                    printWin.document.close();
-                                  }
-                                }
-                              }}
-                              className="px-5 py-2 bg-slate-100 text-slate-700 rounded-full text-xs font-bold hover:bg-slate-200 active:scale-95 transition-all w-fit border border-slate-200"
+                              onClick={() => { handleGenerateQRAsset('print'); }}
+                              className="px-5 py-2 bg-white border border-slate-300 text-[#363636] rounded-full flex items-center gap-2 text-xs font-bold hover:bg-slate-50 transition-all shadow-sm shrink-0"
                             >
                               Print QR
                             </button>
@@ -1518,74 +2415,127 @@ export default function PartnerDashboardView() {
                           No live menu items configured.
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {formData.liveMenu.map((item, idx) => (
-                            <div key={item.id || idx} className="bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-xl relative group">
-                              <button onClick={() => {
-                                const newMenu = [...formData.liveMenu!];
-                                newMenu.splice(idx, 1);
-                                updateForm('liveMenu', newMenu);
-                              }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
-                                <X size={14} />
-                              </button>
-                              <div className="space-y-2 mt-1 pr-6">
-                                <input type="text" placeholder="Item Name" value={item.name} onChange={e => {
-                                  const newMenu = [...formData.liveMenu!];
-                                  newMenu[idx].name = e.target.value;
-                                  updateForm('liveMenu', newMenu);
-                                }} className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-bold outline-none" />
-                                <div className="flex gap-3">
-                                  <input type="text" placeholder="Category (e.g. Starter)" value={item.category || ''} onChange={e => {
-                                    const newMenu = [...formData.liveMenu!];
-                                    newMenu[idx].category = e.target.value;
-                                    updateForm('liveMenu', newMenu);
-                                  }} className="flex-1 px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-semibold outline-none" />
-                                  <select value={item.isVeg === false ? 'false' : 'true'} onChange={e => {
-                                    const newMenu = [...formData.liveMenu!];
-                                    newMenu[idx].isVeg = e.target.value === 'true';
-                                    updateForm('liveMenu', newMenu);
-                                  }} className="px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-semibold outline-none">
-                                    <option value="true">Veg</option>
-                                    <option value="false">Non-Veg</option>
-                                  </select>
-                                </div>
-                                <div className="flex gap-3">
-                                  <input type="number" placeholder="Price (₹)" value={item.price} onChange={e => {
-                                    const newMenu = [...formData.liveMenu!];
-                                    newMenu[idx].price = parseInt(e.target.value) || 0;
-                                    updateForm('liveMenu', newMenu);
-                                  }} className="w-24 px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-semibold outline-none" />
-                                  <label className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-white px-3 border border-slate-300 rounded-lg">
-                                    <input type="checkbox" checked={item.isAvailable} onChange={e => {
-                                      const newMenu = [...formData.liveMenu!];
-                                      newMenu[idx].isAvailable = e.target.checked;
-                                      updateForm('liveMenu', newMenu);
-                                    }} /> In Stock
-                                  </label>
-                                </div>
-                                <div className="flex gap-3">
-                                  {item.image && (
-                                    <div className="w-16 h-16 shrink-0 rounded-lg border border-slate-300 overflow-hidden bg-slate-100">
-                                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                    </div>
-                                  )}
-                                  <div className="flex-1 space-y-2">
-                                    <input type="text" placeholder="Image URL (Optional)" value={item.image || ''} onChange={e => {
-                                      const newMenu = [...formData.liveMenu!];
-                                      newMenu[idx].image = e.target.value;
-                                      updateForm('liveMenu', newMenu);
-                                    }} className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-medium outline-none" />
-                                    <textarea placeholder="Description" value={item.description || ''} onChange={e => {
-                                      const newMenu = [...formData.liveMenu!];
-                                      newMenu[idx].description = e.target.value;
-                                      updateForm('liveMenu', newMenu);
-                                    }} className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-medium outline-none resize-none" rows={2} />
-                                  </div>
-                                </div>
-                              </div>
+                        <>
+                          <div className="flex flex-col gap-4">
+                            <div className="relative w-full">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                <Search size={18} />
+                              </span>
+                              <input 
+                                type="text" 
+                                placeholder="Search menu by name or ID..." 
+                                value={menuSearchQuery} 
+                                onChange={e => setMenuSearchQuery(e.target.value)} 
+                                className="w-full bg-white border border-slate-200 focus:border-blue-600 pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 outline-none shadow-sm transition-colors"
+                              />
                             </div>
-                          ))}
-                        </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                              {['All', ...Array.from(new Set(formData.liveMenu.map(item => item.category?.trim() || 'Uncategorized')))].map(cat => (
+                                <button
+                                  key={cat}
+                                  onClick={() => setActiveMenuCategory(cat)}
+                                  className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap border",
+                                    activeMenuCategory === cat 
+                                      ? "bg-blue-50 text-blue-600 border-blue-200 shadow-sm" 
+                                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                  )}
+                                >
+                                  {cat}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            {formData.liveMenu.map((item, idx) => ({ item, idx }))
+                              .filter(({ item }) => activeMenuCategory === 'All' || (item.category?.trim() || 'Uncategorized') === activeMenuCategory)
+                              .filter(({ item }) => {
+                                if (!menuSearchQuery) return true;
+                                const q = menuSearchQuery.toLowerCase();
+                                return item.name?.toLowerCase().includes(q) || item.id?.toString().toLowerCase().includes(q);
+                              })
+                              .map(({ item, idx }) => (
+                                <div key={`${item.id}-${idx}`} className="bg-white border border-slate-200 p-3 rounded-xl relative flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors group">
+                                   <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                                      {item.image ? <img src={item.image} className="w-full h-full object-cover" alt="" /> : <Utensils size={20} className="text-slate-300" />}
+                                   </div>
+                                   <div className="flex-1 min-w-0">
+                                       <div className="flex items-center gap-2">
+                                          <div className="w-3.5 h-3.5 border border-slate-200 rounded-sm flex items-center justify-center shrink-0 bg-white">
+                                            {item.isVeg !== false ? <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div> : <div className="w-0 h-0 border-l-[3.5px] border-r-[3.5px] border-b-[6px] border-solid border-transparent border-b-red-600"></div>}
+                                          </div>
+                                          <span className="font-bold text-[#363636] truncate">{item.name}</span>
+                                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0">ID: {item.id}</span>
+                                       </div>
+                                       <div className="text-xs font-bold text-slate-500 mt-1 truncate">
+                                          ₹{item.price} {item.category ? `• ${item.category}` : ''}
+                                       </div>
+                                   </div>
+                                   <div className="flex items-center gap-4 shrink-0">
+                                       <div className="flex items-center gap-2">
+                                         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hidden sm:block">{item.isAvailable !== false ? 'In Stock' : 'Out of Stock'}</span>
+                                         <label className="relative inline-flex items-center cursor-pointer">
+                                           <input type="checkbox" className="sr-only peer" checked={item.isAvailable !== false} onChange={async (e) => {
+                                             const newMenu = [...formData.liveMenu!]; newMenu[idx].isAvailable = e.target.checked; updateForm('liveMenu', newMenu); await handleSave({ ...formData, liveMenu: newMenu });
+                                           }} />
+                                           <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                                         </label>
+                                       </div>
+                                       
+                                       <div className="relative">
+                                          <button 
+                                            onClick={() => setOpenMenuDropdown(openMenuDropdown === idx ? null : idx)}
+                                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                                          >
+                                            <MoreVertical size={18} />
+                                          </button>
+                                          {openMenuDropdown === idx && (
+                                            <>
+                                              <div className="fixed inset-0 z-40" onClick={() => setOpenMenuDropdown(null)}></div>
+                                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden py-1">
+                                                <button 
+                                                  onClick={() => {
+                                                    setEditingItemIndex(idx);
+                                                    setNewItemData({...item});
+                                                    setIsAddItemModalOpen(true);
+                                                    setOpenMenuDropdown(null);
+                                                  }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                >
+                                                  <SlidersHorizontal size={14} className="text-slate-400" />
+                                                  Manage Details
+                                                </button>
+                                                <button 
+                                                  onClick={() => {
+                                                    setEditingCustomizationsForItem(idx);
+                                                    setOpenMenuDropdown(null);
+                                                  }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                >
+                                                  <SlidersHorizontal size={14} className="text-slate-400" />
+                                                  Manage Customizations
+                                                </button>
+                                                <div className="h-px bg-slate-100 my-1"></div>
+                                                <button 
+                                                  onClick={() => {
+                                                    setItemToDelete(idx);
+                                                    setOpenMenuDropdown(null);
+                                                  }}
+                                                  className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                >
+                                                  <Trash2 size={14} />
+                                                  Remove Item
+                                                </button>
+                                              </div>
+                                            </>
+                                          )}
+                                       </div>
+                                   </div>
+                                </div>
+                              ))}
+                          </div>
+                        </>
                       )}
                     </div>
                  </div>
@@ -1751,7 +2701,7 @@ export default function PartnerDashboardView() {
                       ) : (
                         <div className="grid grid-cols-1 gap-6">
                           {formData.advertisements.map((ad, idx) => (
-                            <div key={ad.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6">
+                            <div key={`${ad.id || 'ad'}-${idx}`} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6">
                               <div className="flex items-start justify-between">
                                 <div className="space-y-6 flex-grow mr-6 text-left">
                                   <div className="flex items-center justify-between">
@@ -1939,6 +2889,399 @@ export default function PartnerDashboardView() {
                    Confirm Booking
                  </button>
               </form>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Item Confirm Modal */}
+      {itemToDelete !== null && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative p-6">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Remove Item</h3>
+            <p className="text-slate-600 mb-6">Are you sure you want to remove this item from your menu? This action cannot be undone.</p>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setItemToDelete(null)} 
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  const newMenu = [...formData.liveMenu!];
+                  newMenu.splice(itemToDelete, 1);
+                  updateForm('liveMenu', newMenu);
+                  setItemToDelete(null);
+                  await handleSave({ ...formData, liveMenu: newMenu });
+                }} 
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                disabled={saving}
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                Remove
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add/Edit Item Modal */}
+      {isAddItemModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-0 md:p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white md:rounded-[32px] shadow-2xl w-full h-full md:w-[95vw] md:h-[95vh] md:max-w-none overflow-hidden relative flex flex-col">
+            <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-300 flex justify-between items-center relative overflow-hidden shrink-0">
+               <div className="relative z-10">
+                 <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">{editingItemIndex !== null ? 'Manage Menu Item' : 'Add Menu Item'}</h2>
+                 <p className="text-slate-500 font-semibold text-xs mt-1">{editingItemIndex !== null ? 'Update details for this item' : 'Create a new dish for your menu'}</p>
+               </div>
+               <button onClick={() => { setIsAddItemModalOpen(false); setEditingItemIndex(null); }} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-sm relative z-10 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            
+            <div className="overflow-y-auto p-6 md:p-8">
+               <div className="space-y-6">
+                 <div className="flex flex-col md:flex-row gap-6">
+                   <div className="flex-1 space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div>
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Item Name *</label>
+                         <input required type="text" className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600/50 px-4 py-3 rounded-xl font-bold text-[#363636] outline-none transition-all shadow-sm" value={newItemData.name} onChange={e => setNewItemData({...newItemData, name: e.target.value})} placeholder="Gourmet Burger" />
+                       </div>
+                       <div>
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Category</label>
+                         <input type="text" list="add-item-category-list" className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600/50 px-4 py-3 rounded-xl font-bold text-[#363636] outline-none transition-all shadow-sm" value={newItemData.category} onChange={e => setNewItemData({...newItemData, category: e.target.value})} placeholder="e.g. Starters" />
+                         <datalist id="add-item-category-list">
+                           {allMenuCategories.map((c: any) => <option key={c} value={c} />)}
+                         </datalist>
+                       </div>
+                     </div>
+                     
+                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                       <div>
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price (₹) *</label>
+                         <div className="relative">
+                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                           <input required type="number" className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600/50 pl-8 pr-4 py-3 rounded-xl font-bold text-[#363636] outline-none transition-all shadow-sm" value={newItemData.price} onChange={e => setNewItemData({...newItemData, price: e.target.value})} placeholder="0" />
+                         </div>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 sm:opacity-0 sm:block hidden">Type</label>
+                          <div className="flex h-[46px] sm:mt-0 mt-2 items-center gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
+                             <button 
+                               className={`flex-1 h-full text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors ${newItemData.isVeg !== false ? 'bg-green-100 text-green-700 shadow-sm border border-green-200' : 'text-slate-500 hover:bg-white border border-transparent'}`}
+                               onClick={() => setNewItemData({...newItemData, isVeg: true})}
+                             >
+                               <div className="w-3.5 h-3.5 border-2 border-green-600 rounded-sm flex items-center justify-center shrink-0 bg-white"><div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div></div>
+                               Veg
+                             </button>
+                             <button 
+                               className={`flex-1 h-full text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-colors ${newItemData.isVeg === false ? 'bg-red-100 text-red-700 shadow-sm border border-red-200' : 'text-slate-500 hover:bg-white border border-transparent'}`}
+                               onClick={() => setNewItemData({...newItemData, isVeg: false})}
+                             >
+                               <div className="w-3.5 h-3.5 border-2 border-red-600 rounded-sm flex items-center justify-center shrink-0 bg-white"><div className="w-0 h-0 border-l-[3.5px] border-r-[3.5px] border-b-[6px] border-solid border-transparent border-b-red-600"></div></div>
+                               Non-Veg
+                             </button>
+                          </div>
+                       </div>
+                       <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 sm:opacity-0 sm:block hidden">Stock</label>
+                          <div className="flex h-[46px] sm:mt-0 mt-2 items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">In Stock</span>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" className="sr-only peer" checked={newItemData.isAvailable} onChange={e => setNewItemData({...newItemData, isAvailable: e.target.checked})} />
+                              <div className="w-10 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                          </div>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   {newItemData.image && (
+                     <div className="w-full md:w-32 lg:w-40 h-40 md:h-auto shrink-0 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden relative">
+                        <img src={newItemData.image} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
+                     </div>
+                   )}
+                 </div>
+
+                 <div>
+                   <div className="flex justify-between items-center mb-1">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Description</label>
+                     <span className="text-[10px] font-black text-slate-400 tracking-widest">{newItemData.description?.length || 0}/200</span>
+                   </div>
+                   <textarea className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600/50 px-4 py-3 rounded-xl font-medium text-slate-600 outline-none transition-all shadow-sm resize-none" rows={2} maxLength={200} value={newItemData.description} onChange={e => setNewItemData({...newItemData, description: e.target.value})} placeholder="Describe the item..." />
+                 </div>
+
+                 <div>
+                   <ImageUploadInput label="Dish Image (Optional)" value={newItemData.image} onChange={(v:any) => setNewItemData({...newItemData, image: v})} />
+                 </div>
+               </div>
+               
+               <button onClick={async () => {
+                 if (!newItemData.name || !newItemData.price) {
+                   showToast("Please provide item name and price.", "error");
+                   return;
+                 }
+                 let newMenu = [...(formData.liveMenu || [])];
+                 if (editingItemIndex !== null) {
+                    newMenu[editingItemIndex] = { ...newMenu[editingItemIndex], name: newItemData.name, price: parseInt(newItemData.price) || 0, description: newItemData.description, isAvailable: newItemData.isAvailable, category: newItemData.category, isVeg: newItemData.isVeg, image: newItemData.image };
+                 } else {
+                    let newId = Math.floor(1000 + Math.random() * 9000).toString();
+                    while (newMenu.some(item => item.id === newId)) {
+                      newId = Math.floor(1000 + Math.random() * 9000).toString();
+                    }
+                    newMenu.push({ id: newId, name: newItemData.name, price: parseInt(newItemData.price) || 0, description: newItemData.description, isAvailable: newItemData.isAvailable, category: newItemData.category, isVeg: newItemData.isVeg, image: newItemData.image });
+                 }
+                 const newData = { ...formData, liveMenu: newMenu };
+                 updateForm('liveMenu', newMenu);
+                 setIsAddItemModalOpen(false);
+                 setEditingItemIndex(null);
+                 await handleSave(newData);
+               }} disabled={saving} className="w-full py-4 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 mt-8 shrink-0">
+                 {saving ? <Loader2 size={20} className="animate-spin" /> : (editingItemIndex !== null ? <Save size={20} /> : <Plus size={20} />)}
+                 {editingItemIndex !== null ? 'Update Item Details' : 'Add Item to Menu'}
+               </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Customizations Modal */}
+      {editingCustomizationsForItem !== null && formData.liveMenu && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-300 flex justify-between items-center relative overflow-hidden shrink-0">
+               <div className="relative z-10">
+                 <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Manage Customizations</h2>
+                 <p className="text-sm font-semibold text-slate-500 mt-1">Configure addons and options for {formData.liveMenu[editingCustomizationsForItem]?.name}</p>
+               </div>
+               <button onClick={() => setEditingCustomizationsForItem(null)} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors relative z-10">
+                 <X size={20} />
+               </button>
+            </div>
+            
+            <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
+               {(() => {
+                 const item = formData.liveMenu[editingCustomizationsForItem];
+                 const customCats = item.customizations || [];
+
+                 return (
+                   <div className="space-y-8">
+                     {customCats.map((cat, catIdx) => (
+                       <div key={cat.id || catIdx} className="border border-slate-200 rounded-2xl p-6 relative bg-white shadow-sm">
+                         <button 
+                           onClick={() => {
+                             const newMenu = [...formData.liveMenu!];
+                             const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                             updatedItem.customizations = [...(updatedItem.customizations || [])];
+                             updatedItem.customizations.splice(catIdx, 1);
+                             newMenu[editingCustomizationsForItem] = updatedItem;
+                             updateForm('liveMenu', newMenu);
+                           }}
+                           className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                         >
+                           <Trash2 size={16} />
+                         </button>
+
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pr-10">
+                           <div>
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Category Name</label>
+                             <input type="text" list="menu-categories-list" value={cat.name} onChange={(e) => {
+                               const val = e.target.value;
+                               const newMenu = [...formData.liveMenu!];
+                               const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                               updatedItem.customizations = [...(updatedItem.customizations || [])];
+                               
+                               let newOptions = [...(updatedItem.customizations[catIdx].options || [])];
+                               const itemsInCategory = formData.liveMenu!.filter(m => (m.category?.trim() || 'Uncategorized') === val.trim());
+                               
+                               if (itemsInCategory.length > 0 && (newOptions.length === 0 || (newOptions.length === 1 && !newOptions[0].name))) {
+                                 newOptions = itemsInCategory.map(item => ({
+                                   name: item.name,
+                                   price: item.price || 0,
+                                   isVeg: item.isVeg !== false,
+                                   isAvailable: item.isAvailable !== false
+                                 }));
+                               }
+
+                               updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], name: val, options: newOptions };
+                               newMenu[editingCustomizationsForItem] = updatedItem;
+                               updateForm('liveMenu', newMenu);
+                             }} placeholder="e.g. Choose Size, Addons" className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 px-4 py-2 rounded-xl font-medium text-slate-600 outline-none" />
+                             <datalist id="menu-categories-list">
+                               {allMenuCategories.map(c => <option key={c} value={c} />)}
+                             </datalist>
+                           </div>
+                           <div className="flex gap-4">
+                             <div className="flex-1">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Required?</label>
+                               <select value={cat.required ? "yes" : "no"} onChange={(e) => {
+                                 const newMenu = [...formData.liveMenu!];
+                                 const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                 updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                 updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], required: e.target.value === 'yes' };
+                                 newMenu[editingCustomizationsForItem] = updatedItem;
+                                 updateForm('liveMenu', newMenu);
+                               }} className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 px-4 py-2 rounded-xl font-medium text-slate-600 outline-none">
+                                 <option value="yes">Yes (Must pick)</option>
+                                 <option value="no">No (Optional)</option>
+                               </select>
+                             </div>
+                             <div className="w-20">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Max Select</label>
+                               <input type="number" min="1" value={cat.maxSelections || ''} onChange={(e) => {
+                                 const newMenu = [...formData.liveMenu!];
+                                 const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                 updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                 updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], maxSelections: parseInt(e.target.value) || undefined };
+                                 newMenu[editingCustomizationsForItem] = updatedItem;
+                                 updateForm('liveMenu', newMenu);
+                               }} placeholder="1" className="w-full bg-slate-50 border border-slate-300 focus:border-blue-600 px-4 py-2 rounded-xl font-medium text-slate-600 outline-none text-center" />
+                             </div>
+                           </div>
+                         </div>
+
+                         <div className="space-y-3">
+                           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Options</h4>
+                           {cat.options.map((opt, optIdx) => (
+                             <div key={optIdx} className="flex items-center gap-3 bg-slate-50 p-2 pl-4 rounded-xl border border-slate-200">
+                               <select value={opt.name || ""} onChange={(e) => {
+                                 const selectedItemName = e.target.value;
+                                 const selectedItem = formData.liveMenu?.find((m: any) => m.name === selectedItemName);
+                                 
+                                 const newMenu = [...formData.liveMenu!];
+                                 const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                 updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                 const newOptions = [...updatedItem.customizations[catIdx].options];
+                                 
+                                 newOptions[optIdx] = { 
+                                   ...newOptions[optIdx], 
+                                   name: selectedItemName,
+                                   price: selectedItem ? selectedItem.price : newOptions[optIdx].price,
+                                   isVeg: selectedItem ? selectedItem.isVeg : newOptions[optIdx].isVeg
+                                 };
+                                 
+                                 updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                                 newMenu[editingCustomizationsForItem] = updatedItem;
+                                 updateForm('liveMenu', newMenu);
+                               }} className="flex-1 bg-transparent border-none text-sm font-bold text-slate-700 outline-none focus:ring-0 cursor-pointer appearance-none truncate pr-4">
+                                 <option value="" disabled>Select from menu...</option>
+                                 {formData.liveMenu?.map((m: any, mIdx: number) => (
+                                   <option key={`${m.id || m.name}-${mIdx}`} value={m.name}>{m.name} {m.category ? `(${m.category})` : ''}</option>
+                                 ))}
+                               </select>
+                               
+                               <div className="relative w-24">
+                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                                 <input type="number" value={opt.price} onChange={(e) => {
+                                   const newMenu = [...formData.liveMenu!];
+                                   const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                   updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                   const newOptions = [...updatedItem.customizations[catIdx].options];
+                                   newOptions[optIdx] = { ...newOptions[optIdx], price: parseInt(e.target.value) || 0 };
+                                   updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                                   newMenu[editingCustomizationsForItem] = updatedItem;
+                                   updateForm('liveMenu', newMenu);
+                                 }} placeholder="0" className="w-full bg-white border border-slate-300 focus:border-blue-600 pl-6 pr-2 py-1.5 rounded-lg text-sm font-bold text-slate-700 outline-none" />
+                               </div>
+
+                               <button 
+                                 onClick={() => {
+                                   const newMenu = [...formData.liveMenu!];
+                                   const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                   updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                   const newOptions = [...updatedItem.customizations[catIdx].options];
+                                   newOptions[optIdx] = { ...newOptions[optIdx], isVeg: opt.isVeg === false ? true : false };
+                                   updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                                   newMenu[editingCustomizationsForItem] = updatedItem;
+                                   updateForm('liveMenu', newMenu);
+                                 }}
+                                 className="w-8 h-8 flex items-center justify-center shrink-0 border border-slate-200 bg-white rounded-lg hover:bg-slate-100"
+                                 title={opt.isVeg === false ? "Currently Non-Veg, click to change to Veg" : "Currently Veg, click to change to Non-Veg"}
+                               >
+                                 {opt.isVeg === false ? (
+                                   <div className="w-3.5 h-3.5 border-2 border-red-600 rounded-sm flex items-center justify-center shrink-0 bg-white"><div className="w-0 h-0 border-l-[3.5px] border-r-[3.5px] border-b-[6px] border-solid border-transparent border-b-red-600"></div></div>
+                                 ) : (
+                                   <div className="w-3.5 h-3.5 border-2 border-green-600 rounded-sm flex items-center justify-center shrink-0 bg-white"><div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div></div>
+                                 )}
+                               </button>
+
+                               <button 
+                                 onClick={() => {
+                                   const newMenu = [...formData.liveMenu!];
+                                   const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                   updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                   const newOptions = [...updatedItem.customizations[catIdx].options];
+                                   newOptions[optIdx] = { ...newOptions[optIdx], isAvailable: opt.isAvailable === false ? true : false };
+                                   updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                                   newMenu[editingCustomizationsForItem] = updatedItem;
+                                   updateForm('liveMenu', newMenu);
+                                 }}
+                                 className={`w-8 h-8 flex items-center justify-center shrink-0 border rounded-lg transition-colors ${opt.isAvailable === false ? 'border-red-200 bg-red-50 text-red-500' : 'border-green-200 bg-green-50 text-green-600'}`}
+                                 title={opt.isAvailable === false ? "Currently Out of Stock, click to mark In Stock" : "Currently In Stock, click to mark Out of Stock"}
+                               >
+                                 {opt.isAvailable === false ? <X size={16} /> : <CheckCircle size={16} />}
+                               </button>
+
+                               <button onClick={() => {
+                                 const newMenu = [...formData.liveMenu!];
+                                 const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                                 updatedItem.customizations = [...(updatedItem.customizations || [])];
+                                 const newOptions = [...updatedItem.customizations[catIdx].options];
+                                 newOptions.splice(optIdx, 1);
+                                 updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                                 newMenu[editingCustomizationsForItem] = updatedItem;
+                                 updateForm('liveMenu', newMenu);
+                               }} className="w-8 h-8 flex items-center justify-center shrink-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                                 <X size={16} />
+                               </button>
+                             </div>
+                           ))}
+
+                           <button onClick={() => {
+                             const newMenu = [...formData.liveMenu!];
+                             const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                             updatedItem.customizations = [...(updatedItem.customizations || [])];
+                             const newOptions = [...updatedItem.customizations[catIdx].options, { name: '', price: 0, isVeg: true }];
+                             updatedItem.customizations[catIdx] = { ...updatedItem.customizations[catIdx], options: newOptions };
+                             newMenu[editingCustomizationsForItem] = updatedItem;
+                             updateForm('liveMenu', newMenu);
+                           }} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-2">
+                             <Plus size={14} /> Add Option
+                           </button>
+                         </div>
+                       </div>
+                     ))}
+
+                     <button onClick={() => {
+                       const newMenu = [...formData.liveMenu!];
+                       const updatedItem = { ...newMenu[editingCustomizationsForItem] };
+                       updatedItem.customizations = [...(updatedItem.customizations || []), { id: Date.now().toString(), name: '', options: [{ name: '', price: 0, isVeg: true }], required: false, maxSelections: 1 }];
+                       newMenu[editingCustomizationsForItem] = updatedItem;
+                       updateForm('liveMenu', newMenu);
+                     }} className="w-full py-4 border-2 border-dashed border-slate-300 rounded-2xl text-slate-500 font-bold hover:border-blue-600 hover:text-blue-600 transition-colors flex items-center justify-center gap-2">
+                       <Plus size={18} />
+                       Add Customization Category
+                     </button>
+                   </div>
+                 );
+               })()}
+            </div>
+            
+            <div className="p-6 md:p-8 border-t border-slate-200 bg-slate-50 shrink-0">
+               <button 
+                 onClick={async () => {
+                   setEditingCustomizationsForItem(null);
+                   await handleSave();
+                 }}
+                 disabled={saving}
+                 className="w-full bg-[#363636] hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+               >
+                 {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                 Save Customizations
+               </button>
             </div>
           </motion.div>
         </div>

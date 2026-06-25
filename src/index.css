@@ -50,12 +50,12 @@
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
   @apply font-sans bg-vibrant-bg text-vibrant-dark;
-  overflow-x: hidden;
+  overflow-x: clip;
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
   overscroll-behavior-x: none;

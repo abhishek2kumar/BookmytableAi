@@ -161,7 +161,7 @@ return allDates;
       }
     });
 
-    const categories = [];
+    let categories = [];
     if (breakfastSlots.length > 0)
       categories.push({
         id: "breakfast",
@@ -172,6 +172,14 @@ return allDates;
       categories.push({ id: "lunch", name: "Lunch", slots: lunchSlots });
     if (dinnerSlots.length > 0)
       categories.push({ id: "dinner", name: "Dinner", slots: dinnerSlots });
+
+    if (restaurant?.blackoutSlots) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const blackoutSlot = restaurant.blackoutSlots.find(b => b.date === dateStr);
+      if (blackoutSlot && blackoutSlot.categories && blackoutSlot.categories.length > 0) {
+        categories = categories.filter(cat => !blackoutSlot.categories.includes(cat.name));
+      }
+    }
 
     return { categories };
   }, [restaurant, selectedDate]);
@@ -188,6 +196,31 @@ return allDates;
       setActiveTimeCategory(null);
     }
   }, [slotData, activeTimeCategory]);
+
+  const currentThreshold = useMemo(() => {
+    let t = restaurant?.instantBookingLimit || 10;
+    if (restaurant?.autoApprovalThresholds) {
+      const dayStr = format(selectedDate, "EEEE");
+      const timeCatObj = slotData.categories.find(c => c.id === activeTimeCategory);
+      const catName = timeCatObj ? timeCatObj.name : "Dinner";
+      
+      const dayThresholds = restaurant.autoApprovalThresholds.find(t => t.day === dayStr);
+      if (dayThresholds && dayThresholds.thresholds && dayThresholds.thresholds[catName] !== undefined) {
+        t = dayThresholds.thresholds[catName];
+      }
+    }
+    return t;
+  }, [restaurant, selectedDate, activeTimeCategory, slotData]);
+
+  const guestOptions = useMemo(() => {
+    return Array.from({ length: currentThreshold + 1 }, (_, i) => i + 1);
+  }, [currentThreshold]);
+
+  useEffect(() => {
+    if (guests > currentThreshold + 1) {
+      setGuests(currentThreshold + 1);
+    }
+  }, [currentThreshold, guests]);
 
   const activeOffers = useMemo(() => {
     if (!restaurant?.offers) return [];
@@ -236,7 +269,20 @@ return allDates;
         await updateDoc(doc(db, "users", user.uid), { phone: userPhone });
       }
 
-      const finalStatus = guests <= 10 ? "confirmed" : "pending";
+      const dayStr = format(selectedDate, "EEEE");
+      const timeCatObj = slotData.categories.find(c => c.id === activeTimeCategory);
+      const catName = timeCatObj ? timeCatObj.name : "Dinner";
+
+      let threshold = 10;
+      if (restaurant?.autoApprovalThresholds) {
+        const dayThresholds = restaurant.autoApprovalThresholds.find(t => t.day === dayStr);
+        if (dayThresholds && dayThresholds.thresholds && dayThresholds.thresholds[catName] !== undefined) {
+          threshold = dayThresholds.thresholds[catName];
+        }
+      }
+
+      const finalStatus = guests <= threshold ? "confirmed" : "pending";
+      const guestsLabel = guests > threshold ? `${threshold}+` : String(guests);
 
       await addDoc(collection(db, "bookings"), {
         restaurantId: restaurant?.id,
@@ -249,6 +295,7 @@ return allDates;
         date: format(selectedDate, "yyyy-MM-dd"),
         time: selectedTime,
         guests,
+        guestsLabel,
         status: finalStatus,
         source: "Self",
         offer: activeOffers[selectedOffer] || null,
@@ -268,6 +315,7 @@ return allDates;
             ownerEmail: restaurant?.ownerEmail || "",
             dateTime: `${format(selectedDate, "yyyy-MM-dd")} ${selectedTime}`,
             guests,
+            guestsLabel,
             userPhone,
             status: finalStatus,
           }),
@@ -317,7 +365,7 @@ return allDates;
           </h3>
           <p className="text-sm font-bold text-slate-500 mb-8">
             {isPending 
-              ? "Your request for a group size over 10 guests has been sent to the restaurant for approval." 
+              ? "Your request for a large group size has been sent to the restaurant for approval." 
               : "A confirmation has been sent to your email and phone."}
           </p>
 
@@ -346,7 +394,7 @@ return allDates;
             <div className="flex justify-between items-center">
               <span className="text-slate-500 text-sm font-bold">Guests</span>
               <span className="text-[#363636] text-sm font-normal leading-[1.2]">
-                {guests}
+                {guests === currentThreshold + 1 ? `${currentThreshold}+` : guests}
               </span>
             </div>
             <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-300">
@@ -362,7 +410,7 @@ return allDates;
           <div className="flex flex-col gap-3">
             <button
               onClick={() => {
-                const message = `*Booking Confirmed!*%0A%0ARestaurant: ${restaurant.name}%0ADate: ${format(selectedDate, "MMM d, yyyy")}%0ATime: ${selectedTime}%0AGuests: ${guests}%0A%0ASee you there!`;
+                const message = `*Booking ${isPending ? 'Pending Approval' : 'Confirmed'}!*%0A%0ARestaurant: ${restaurant.name}%0ADate: ${format(selectedDate, "MMM d, yyyy")}%0ATime: ${selectedTime}%0AGuests: ${guests === currentThreshold + 1 ? `${currentThreshold}+` : guests}%0A%0ASee you there!`;
                 window.open(`https://wa.me/?text=${message}`, "_blank");
               }}
               className="w-full bg-[#25D366] text-white rounded-xl py-4 font-black flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 active:scale-[0.98] transition-all"
@@ -414,7 +462,7 @@ return allDates;
               Number of guest(s)
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+              {guestOptions.map((num) => (
                 <button
                   key={num}
                   onClick={() => setGuests(num)}
@@ -425,7 +473,7 @@ return allDates;
                       : "border-slate-300 text-slate-700 hover:border-slate-300",
                   )}
                 >
-                  {num}
+                  {num === currentThreshold + 1 ? `${currentThreshold}+` : num}
                 </button>
               ))}
             </div>
@@ -457,7 +505,7 @@ return allDates;
               ))}
             </div>
 
-            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="text-sm mb-4 text-[#363636] font-normal leading-[1.2]">
+            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) || slotData.categories.length === 0 ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="text-sm mb-4 text-[#363636] font-normal leading-[1.2]">
               Select the time of day to see the offers
             </h3>
             <div className="space-y-4">

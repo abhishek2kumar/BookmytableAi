@@ -21,7 +21,7 @@ export default function DashboardView() {
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const navigate = useNavigate();
-  useEffect(() => { if(!user) return; const q = query(collection(db, 'orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))); return () => un(); }, [user]);
+  useEffect(() => { if(!user) return; const q = query(collection(db, 'orders'), where('userId','==',user.uid)); const un = onSnapshot(q, s => setTakeawayOrders(s.docs.map(d => ({id: d.id, ...d.data()})).sort((a: any, b: any) => { const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0); const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0); return timeB - timeA; }))); return () => un(); }, [user]);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get('tab') as 'bookings' | 'favorites' | 'profile' | 'takeawayOrders') || 'bookings';
@@ -226,7 +226,7 @@ export default function DashboardView() {
                          </div>
                          <div className="flex items-center gap-2 text-slate-600 text-[13px] font-light">
                            <Users className="text-brand shrink-0" size={14} />
-                           <span><span className="font-normal text-[#363636]">Guests:</span> {booking.guests} Guests</span>
+                           <span><span className="font-normal text-[#363636]">Guests:</span> {booking.guestsLabel || booking.guests} Guests</span>
                          </div>
                       </div>
 
@@ -329,7 +329,10 @@ export default function DashboardView() {
                            </div>
                            <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">₹{order.totalPrice} • {order.items?.length || 0} items</h3>
                            <div className="text-xs text-slate-500 font-semibold mt-1">
-                             {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '')}, {new Date(order.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                             {(() => {
+                               const orderDate = order.createdAt?.toDate ? order.createdAt.toDate() : (order.createdAt ? new Date(order.createdAt) : new Date());
+                               return isNaN(orderDate.getTime()) ? '' : `${orderDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '')}, ${orderDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+                             })()}
                            </div>
                          </div>
                          <div className="text-right">
@@ -351,8 +354,15 @@ export default function DashboardView() {
                        </div>
                      <div className="space-y-2 bg-slate-50 p-4 rounded-xl mb-4">
                         {order.items?.map((item: any, i: number) => (
-                          <div key={i} className="flex justify-between text-sm">
-                             <span className="text-slate-600 font-medium">{item.quantity}x {item.name}</span>
+                          <div key={i} className="flex justify-between text-sm items-start">
+                             <div className="flex flex-col">
+                               <span className="text-slate-600 font-medium">{item.quantity}x {item.name}</span>
+                               {item.customizations?.length > 0 && (
+                                 <div className="text-xs text-slate-500 mt-0.5 ml-4">
+                                   {item.customizations.map((c:any) => c.optionName).join(', ')}
+                                 </div>
+                               )}
+                             </div>
                              <span className="font-normal text-[#363636] leading-[1.2]">₹{item.price * item.quantity}</span>
                           </div>
                         ))}

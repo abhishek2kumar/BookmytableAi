@@ -67,12 +67,15 @@ import {
   Upload,
   LayoutGrid,
   Building2,
+  ShoppingBag,
+  BarChart3,
 } from "lucide-react";
 import { searchRealRestaurants } from "../services/aiService";
 import { useAuth } from "./AuthProvider";
 import { useMasterData } from "./MasterDataContext";
 import { INDIAN_STATES } from "../constants";
 import { motion, AnimatePresence } from "motion/react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { useNavigate } from "react-router-dom";
 import AdminMallsTab from "./AdminMallsTab";
 import AdminCollectionsTab from "./AdminCollectionsTab";
@@ -123,6 +126,8 @@ export default function AdminDashboardView() {
   const sortedCollections = React.useMemo(() => [...(diningCollections || [])].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
+  const [pageViews, setPageViews] = useState<any[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
@@ -266,8 +271,9 @@ export default function AdminDashboardView() {
   const [citySearchQuery, setCitySearchQuery] = useState("");
   const [cuisineSearchQuery, setCuisineSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<
-    "fleet" | "pulse" | "inventory" | "approvals" | "portal" | "malls" | "collections"
+    "fleet" | "overview" | "pulse" | "inventory" | "approvals" | "portal" | "malls" | "collections"
   >("fleet");
+  const [overviewYear, setOverviewYear] = useState(new Date().getFullYear());
   const [statusFilter, setStatusFilter] = useState<
     "all" | "approved" | "pending"
   >("all");
@@ -338,6 +344,24 @@ export default function AdminDashboardView() {
       );
     });
 
+    const unsubTakeaways = onSnapshot(collection(db, "takeawayOrders"), (snapshot) => {
+      setTakeawayOrders(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })),
+      );
+    });
+
+    const unsubPageViews = onSnapshot(collection(db, "pageViews"), (snapshot) => {
+      setPageViews(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })),
+      );
+    });
+
     const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
       setUsers(
         snapshot.docs.map(
@@ -365,6 +389,8 @@ export default function AdminDashboardView() {
     return () => {
       unsubRes();
       unsubBookings();
+      unsubTakeaways();
+      unsubPageViews();
       unsubUsers();
       unsubCities();
       unsubCuisines();
@@ -383,6 +409,15 @@ export default function AdminDashboardView() {
   const toggleBookingStatus = async (id: string, currentStatus: boolean) => {
     await updateDoc(doc(db, "restaurants", id), {
       isBookingEnabled: !currentStatus,
+      lastModifiedBy: currentUser?.email || "admin",
+      lastModifiedByType: "admin",
+      updatedAt: serverTimestamp(),
+    });
+  };
+
+  const toggleTakeawayStatus = async (id: string, currentStatus: boolean) => {
+    await updateDoc(doc(db, "restaurants", id), {
+      isTakeawayEnabled: !currentStatus,
       lastModifiedBy: currentUser?.email || "admin",
       lastModifiedByType: "admin",
       updatedAt: serverTimestamp(),
@@ -604,7 +639,8 @@ export default function AdminDashboardView() {
           rating: 4.0, // Default for imported
           approved: false,
           status: 'Pending',
-          isBookingEnabled: true,
+          isBookingEnabled: false,
+          isTakeawayEnabled: false,
           createdAt: serverTimestamp(),
         }),
       );
@@ -1231,48 +1267,94 @@ export default function AdminDashboardView() {
             className="space-y-10"
           >
             {/* engine toggle moved here */}
-            <div className="flex items-center justify-between p-6 bg-slate-900 rounded-[32px] text-white shadow-xl shadow-slate-900/10">
-              <div className="flex items-center gap-4">
-                <div
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-6 bg-slate-900 rounded-[32px] text-white shadow-xl shadow-slate-900/10">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                      editingRestaurant.isBookingEnabled
+                        ? "bg-emerald-500 shadow-lg shadow-emerald-500/20"
+                        : "bg-red-500 shadow-lg shadow-red-500/20",
+                    )}
+                  >
+                    <Calendar size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-white/90">
+                      Reservation Engine
+                    </p>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-0.5">
+                      {editingRestaurant.isBookingEnabled
+                        ? "Operational & Syncing"
+                        : "System Offline"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingRestaurant({
+                      ...editingRestaurant,
+                      isBookingEnabled: !editingRestaurant.isBookingEnabled,
+                    })
+                  }
                   className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                    "px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ring-offset-2 ring-offset-slate-900 focus:ring-2",
                     editingRestaurant.isBookingEnabled
-                      ? "bg-emerald-500 shadow-lg shadow-emerald-500/20"
-                      : "bg-red-500 shadow-lg shadow-red-500/20",
+                      ? "bg-white/10 hover:bg-white/20 text-white ring-white/20"
+                      : "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg ring-emerald-500/50",
                   )}
                 >
-                  <Calendar size={24} />
-                </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-white/90">
-                    Reservation Engine
-                  </p>
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-0.5">
-                    {editingRestaurant.isBookingEnabled
-                      ? "Operational & Syncing"
-                      : "System Offline"}
-                  </p>
-                </div>
+                  {editingRestaurant.isBookingEnabled
+                    ? "Kill"
+                    : "Activate"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  setEditingRestaurant({
-                    ...editingRestaurant,
-                    isBookingEnabled: !editingRestaurant.isBookingEnabled,
-                  })
-                }
-                className={cn(
-                  "px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ring-offset-2 ring-offset-slate-900 focus:ring-2",
-                  editingRestaurant.isBookingEnabled
-                    ? "bg-white/10 hover:bg-white/20 text-white ring-white/20"
-                    : "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg ring-emerald-500/50",
-                )}
-              >
-                {editingRestaurant.isBookingEnabled
-                  ? "Kill Engine"
-                  : "Activate Engine"}
-              </button>
+
+              <div className="flex items-center justify-between p-6 bg-slate-900 rounded-[32px] text-white shadow-xl shadow-slate-900/10">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
+                      editingRestaurant.isTakeawayEnabled
+                        ? "bg-emerald-500 shadow-lg shadow-emerald-500/20"
+                        : "bg-red-500 shadow-lg shadow-red-500/20",
+                    )}
+                  >
+                    <ShoppingBag size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-white/90">
+                      Takeaway Engine
+                    </p>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-0.5">
+                      {editingRestaurant.isTakeawayEnabled
+                        ? "Operational & Syncing"
+                        : "System Offline"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingRestaurant({
+                      ...editingRestaurant,
+                      isTakeawayEnabled: !editingRestaurant.isTakeawayEnabled,
+                    })
+                  }
+                  className={cn(
+                    "px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ring-offset-2 ring-offset-slate-900 focus:ring-2",
+                    editingRestaurant.isTakeawayEnabled
+                      ? "bg-white/10 hover:bg-white/20 text-white ring-white/20"
+                      : "bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg ring-emerald-500/50",
+                  )}
+                >
+                  {editingRestaurant.isTakeawayEnabled
+                    ? "Kill"
+                    : "Activate"}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -3859,6 +3941,7 @@ export default function AdminDashboardView() {
                   (r) => !r.approved && (r as any).status === "Pending",
                 ).length,
               },
+              { id: "overview", label: "Business Overview", icon: BarChart3 },
               { id: "pulse", label: "Live Pulse", icon: TrendingUp },
               { id: "inventory", label: "System Master", icon: Database },
               { id: "collections", label: "Collections", icon: LayoutGrid },
@@ -4209,6 +4292,29 @@ export default function AdminDashboardView() {
                           <span className="hidden lg:inline">Bookings</span>
                         </button>
 
+                        {/* Takeaway Toggle */}
+                        <button
+                          onClick={() =>
+                            toggleTakeawayStatus(
+                              res.id,
+                              res.isTakeawayEnabled ?? false,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center gap-2 px-6 py-4 rounded-2xl text-xs font-black shadow-sm transition-all border",
+                            res.isTakeawayEnabled
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100"
+                              : "bg-slate-50 text-slate-400 border-slate-300 hover:bg-slate-100",
+                          )}
+                        >
+                          {res.isTakeawayEnabled ? (
+                            <Power size={16} />
+                          ) : (
+                            <PowerOff size={16} />
+                          )}
+                          <span className="hidden lg:inline">Takeaway</span>
+                        </button>
+
                         {/* Approval Toggle */}
                         <button
                           onClick={() => toggleApproval(res.id, res.approved)}
@@ -4242,6 +4348,271 @@ export default function AdminDashboardView() {
                     </div>
                   )}
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === "overview" && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-8"
+              >
+                {(() => {
+                   const processData = (year: number) => {
+                     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                     const currentYear = new Date().getFullYear();
+                     const currentMonthIndex = new Date().getMonth();
+                     const todayStr = new Date().toDateString();
+
+                     const salesMap: any = {};
+                     months.forEach((m, index) => salesMap[m] = { month: m, orders: 0, bookings: 0, revenue: 0, views: 0, _index: index });
+                     
+                     let monthToDateRevenue = 0;
+                     let todayRevenue = 0;
+                     let todayOrders = 0;
+                     let pendingOrders = 0;
+                     let todayBookings = 0;
+                     let todayViews = 0;
+                     
+                     const itemCounts: any = {};
+
+                     takeawayOrders.forEach(o => {
+                       let d = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt);
+                       if(isNaN(d.getTime())) return;
+                       
+                       const orderTotal = Number(o.totalPrice) || Number(o.totalAmount) || (o.items?.reduce((acc: number, item: any) => acc + (Number(item.price) * Number(item.quantity) || 1), 0) || 0);
+
+                       if (d.toDateString() === todayStr) {
+                          todayRevenue += orderTotal;
+                          todayOrders += 1;
+                       }
+                       if (o.status === 'pending' || o.status === 'preparing') {
+                          pendingOrders += 1;
+                       }
+
+                       if (d.getFullYear() === year) {
+                         const m = months[d.getMonth()];
+                         salesMap[m].orders += 1;
+                         salesMap[m].revenue += orderTotal;
+
+                         if (o.items) {
+                            o.items.forEach((item: any) => {
+                              if(!itemCounts[item.name]) itemCounts[item.name] = { name: item.name, qty: 0, rev: 0 };
+                              itemCounts[item.name].qty += (Number(item.quantity) || 1);
+                              itemCounts[item.name].rev += (Number(item.price) * (Number(item.quantity) || 1));
+                            });
+                         }
+                       }
+                       if (d.getFullYear() === currentYear && d.getMonth() === currentMonthIndex) {
+                         monthToDateRevenue += orderTotal;
+                       }
+                     });
+
+                     bookings.forEach(b => {
+                       let d = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || b.date); 
+                       if(isNaN(d.getTime())) return;
+                       
+                       const isToday = b.date ? new Date(b.date).toDateString() === todayStr : d.toDateString() === todayStr;
+                       if (isToday) {
+                          todayBookings += 1;
+                       }
+
+                       if (d.getFullYear() === year) {
+                         const m = months[d.getMonth()];
+                         salesMap[m].bookings += (Number(b.guests) || 1);
+                       }
+                     });
+
+                     pageViews.forEach(v => {
+                       let d = v.timestamp?.toDate ? v.timestamp.toDate() : (v.timestamp ? new Date(v.timestamp) : new Date());
+                       if(isNaN(d.getTime())) return;
+                       
+                       if (d.toDateString() === todayStr) {
+                          todayViews += 1;
+                       }
+
+                       if (d.getFullYear() === year) {
+                         const m = months[d.getMonth()];
+                         salesMap[m].views += 1;
+                       }
+                     });
+
+                     const salesData = Object.values(salesMap);
+                     
+                     const sortedItems = Object.values(itemCounts).sort((a: any, b: any) => b.qty - a.qty).slice(0, 5) as any[];
+                     const topItemQty = sortedItems.length > 0 ? sortedItems[0].qty : 1;
+                     const topItems = sortedItems.map(item => ({
+                       ...item,
+                       width: `${Math.max((item.qty / topItemQty) * 100, 5)}%` // min width 5%
+                     }));
+
+                     return { salesData, topItems, monthToDateRevenue, todayRevenue, todayOrders, pendingOrders, todayBookings, todayViews };
+                   };
+
+                   const { salesData, topItems, monthToDateRevenue, todayRevenue, todayOrders, pendingOrders, todayBookings, todayViews } = processData(overviewYear);
+
+                   return (
+                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-2">
+                         <div>
+                           <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">Platform Business Overview</h2>
+                           <p className="text-sm font-medium text-slate-500 mt-1">Review the overall platform performance</p>
+                         </div>
+                         <select value={overviewYear} onChange={(e) => setOverviewYear(parseInt(e.target.value))} className="bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:border-blue-600 shadow-sm">
+                           <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                           <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                           <option value={new Date().getFullYear() - 2}>{new Date().getFullYear() - 2}</option>
+                         </select>
+                       </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                           <div className="flex items-center gap-2 mb-3">
+                             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                               <TrendingUp size={16} />
+                             </div>
+                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">MTD Revenue</span>
+                           </div>
+                           <div className="text-2xl font-black text-slate-800">₹{monthToDateRevenue.toLocaleString()}</div>
+                         </div>
+                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                           <div className="flex items-center gap-2 mb-3">
+                             <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                               <ShoppingBag size={16} />
+                             </div>
+                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Today's Revenue</span>
+                           </div>
+                           <div className="text-2xl font-black text-slate-800">₹{todayRevenue.toLocaleString()}</div>
+                         </div>
+                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                           <div className="flex items-center gap-2 mb-3">
+                             <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center">
+                               <Calendar size={16} />
+                             </div>
+                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Today's Bookings</span>
+                           </div>
+                           <div className="text-2xl font-black text-slate-800">{todayBookings} <span className="text-sm font-semibold text-slate-400 normal-case tracking-normal">Pax</span></div>
+                         </div>
+                         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                           <div className="flex items-center gap-2 mb-3">
+                             <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                               <MapPin size={16} />
+                             </div>
+                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Store Views</span>
+                           </div>
+                           <div className="text-2xl font-black text-slate-800">{todayViews} <span className="text-sm font-semibold text-slate-400 normal-case tracking-normal">Today</span></div>
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
+                           <div className="mb-6">
+                             <h4 className="text-lg font-bold text-slate-800">Monthly Revenue</h4>
+                             <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-widest">Across {overviewYear}</p>
+                           </div>
+                           <div className="h-[300px] w-full">
+                             <ResponsiveContainer width="100%" height="100%">
+                               <AreaChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                 <defs>
+                                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                                     <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                                   </linearGradient>
+                                 </defs>
+                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} tickFormatter={(val) => `₹${val >= 1000 ? val/1000 + 'k' : val}`} />
+                                 <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ fontWeight: 700 }}
+                                    formatter={(value: any) => [`₹${parseInt(value).toLocaleString()}`, 'Revenue']}
+                                 />
+                                 <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                               </AreaChart>
+                             </ResponsiveContainer>
+                           </div>
+                         </div>
+                         
+                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm col-span-1 lg:col-span-2">
+                           <div className="mb-6">
+                             <h4 className="text-lg font-bold text-slate-800">Store Page Views</h4>
+                             <p className="text-xs font-semibold text-slate-500 mt-1 uppercase tracking-widest">Across {overviewYear}</p>
+                           </div>
+                           <div className="h-[250px] w-full">
+                             <ResponsiveContainer width="100%" height="100%">
+                               <AreaChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                 <defs>
+                                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                   </linearGradient>
+                                 </defs>
+                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} tickFormatter={(val) => `${val >= 1000 ? (val/1000).toFixed(1) + 'k' : val}`} />
+                                 <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ fontWeight: 700 }}
+                                    formatter={(value: any) => [parseInt(value).toLocaleString(), 'Views']}
+                                 />
+                                 <Area type="monotone" dataKey="views" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
+                               </AreaChart>
+                             </ResponsiveContainer>
+                           </div>
+                         </div>
+
+                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                           <div className="mb-6">
+                             <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Order vs Bookings Vol.</h4>
+                             <p className="text-xs font-semibold text-slate-500 mt-1">Comparison across {overviewYear}</p>
+                           </div>
+                           <div className="h-[250px] w-full">
+                             <ResponsiveContainer width="100%" height="100%">
+                               <BarChart data={salesData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} dy={10} />
+                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b', fontWeight: 600 }} />
+                                 <RechartsTooltip 
+                                    cursor={{fill: '#f8fafc'}}
+                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                 />
+                                 <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '10px' }} iconType="circle" />
+                                 <Bar dataKey="orders" name="Takeaway Orders" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                 <Bar dataKey="bookings" name="Table Bookings" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                               </BarChart>
+                             </ResponsiveContainer>
+                           </div>
+                         </div>
+
+                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                           <div className="mb-6">
+                             <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Top Selling Items</h4>
+                             <p className="text-xs font-semibold text-slate-500 mt-1">Highest order volume in {overviewYear}</p>
+                           </div>
+                           <div className="flex-1 flex flex-col gap-4 justify-center">
+                             {topItems.length > 0 ? topItems.map((item, i) => (
+                               <div key={i}>
+                                 <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                                   <span className="truncate pr-4">{item.name}</span>
+                                   <span className="text-slate-500">{item.qty}</span>
+                                 </div>
+                                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                   <div className="h-full bg-blue-600 rounded-full" style={{ width: item.width }}></div>
+                                 </div>
+                               </div>
+                             )) : (
+                               <div className="text-center text-slate-400 font-medium py-8 text-sm">
+                                 No order data for {overviewYear} yet
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   );
+                })()}
               </motion.div>
             )}
 

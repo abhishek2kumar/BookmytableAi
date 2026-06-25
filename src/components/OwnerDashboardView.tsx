@@ -60,7 +60,8 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     image: '',
     secondaryImages: [],
     description: '',
-    isBookingEnabled: true,
+    isBookingEnabled: false,
+    isTakeawayEnabled: false,
     isQrMenuEnabled: false,
     bookingSlots: [],
     instantBookingLimit: 4,
@@ -138,7 +139,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
 
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
-      'isOpen', 'facilities', 'collections', 'secondaryImages', 'isBookingEnabled', 'isQrMenuEnabled', 'bookingSlots', 
+      'isOpen', 'facilities', 'collections', 'secondaryImages', 'isBookingEnabled', 'isTakeawayEnabled', 'isQrMenuEnabled', 'bookingSlots', 
       'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
     ];
 
@@ -1267,6 +1268,36 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                      <div className={cn(
                        "absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all shadow-sm",
                        editForm.isBookingEnabled ? "left-7" : "left-1"
+                     )} />
+                  </button>
+                </div>
+                {/* Takeaway Toggle */}
+                <div className="pt-6 border-t border-slate-300 flex items-center justify-between mt-6">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Live Orders</span>
+                  <button
+                    onClick={async () => {
+                        const newVal = !editForm.isTakeawayEnabled;
+                        setEditForm({...editForm, isTakeawayEnabled: newVal});
+                        
+                        if (restaurant?.id) {
+                          try {
+                            await updateDoc(doc(db, 'restaurants', restaurant.id), {
+                              isTakeawayEnabled: newVal,
+                              updatedAt: serverTimestamp()
+                            });
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }
+                    }}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-all relative shrink-0",
+                      editForm.isTakeawayEnabled ? "bg-emerald-500" : "bg-slate-200"
+                    )}
+                  >
+                     <div className={cn(
+                       "absolute top-1 bottom-1 w-4 bg-white rounded-full transition-all shadow-sm",
+                       editForm.isTakeawayEnabled ? "left-7" : "left-1"
                      )} />
                   </button>
                 </div>

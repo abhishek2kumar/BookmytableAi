@@ -1,9 +1,10 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { Resend } from 'resend';
 import { GoogleGenAI } from '@google/genai';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from './src/lib/firebase';
 
 dotenv.config();
@@ -117,17 +118,19 @@ async function startServer() {
       ownerEmail,
       dateTime,
       guests,
+      guestsLabel,
       userPhone,
       status
     } = req.body;
 
     const isPending = status === 'pending';
+    const displayGuests = guestsLabel || guests;
 
     console.log('--- NEW BOOKING CONFIRMATION ---');
     console.log(`User: ${userName} (${userEmail})`);
     console.log(`Restaurant: ${restaurantName} (${restaurantLocation})`);
     console.log(`DateTime: ${dateTime}`);
-    console.log(`Guests: ${guests}`);
+    console.log(`Guests: ${displayGuests}`);
     console.log(`Status: ${status}`);
     console.log('--------------------------------');
 
@@ -143,10 +146,10 @@ async function startServer() {
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
               <h1 style="color: ${isPending ? '#f59e0b' : '#6366f1'};">${isPending ? 'Your Reservation is Pending Approval!' : 'Your Reservation is Confirmed!'}</h1>
               <p>Hi ${userName},</p>
-              <p>Your table request at <strong>${restaurantName}</strong> has been ${isPending ? 'sent to the restaurant for approval since the group size is over 10 guests.' : 'booked successfully.'}</p>
+              <p>Your table request at <strong>${restaurantName}</strong> has been ${isPending ? 'sent to the restaurant for approval since the group size requires manual review.' : 'booked successfully.'}</p>
               <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
                 <p><strong>📅 Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
-                <p><strong>👥 Guests:</strong> ${guests}</p>
+                <p><strong>👥 Guests:</strong> ${displayGuests}</p>
                 <p><strong>📍 Location:</strong> ${restaurantLocation}</p>
               </div>
               <p>We look forward to seeing you!</p>
@@ -170,7 +173,7 @@ async function startServer() {
                   <p><strong>📧 Email:</strong> ${userEmail}</p>
                   <p><strong>📞 Phone:</strong> ${userPhone || 'Not provided'}</p>
                   <p><strong>📅 Date & Time:</strong> ${new Date(dateTime).toLocaleString()}</p>
-                  <p><strong>👥 Guests:</strong> ${guests}</p>
+                  <p><strong>👥 Guests:</strong> ${displayGuests}</p>
                 </div>
               </div>
             `
@@ -187,7 +190,7 @@ async function startServer() {
     const textMeBotKey = process.env.TEXTMEBOT_API_KEY;
     if (textMeBotKey && userPhone) {
       try {
-        const message = `*Booking Confirmed!*\n\nHi ${userName},\nYour table at *${restaurantName}* is confirmed.\n\nDate: ${new Date(dateTime).toLocaleDateString()}\nTime: ${new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nGuests: ${guests}\n\nSee you there!`;
+        const message = `*Booking ${isPending ? 'Pending Approval' : 'Confirmed'}!*\n\nHi ${userName},\nYour table at *${restaurantName}* is ${isPending ? 'pending approval from the restaurant' : 'confirmed'}.\n\nDate: ${new Date(dateTime).toLocaleDateString()}\nTime: ${new Date(dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\nGuests: ${displayGuests}\n\nSee you there!`;
         const url = `https://api.textmebot.com/send.php?recipient=${userPhone.replace(/\+/g, '')}&apikey=${textMeBotKey}&text=${encodeURIComponent(message)}`;
         await fetch(url);
         console.log('WhatsApp confirmation sent via TextMeBot to:', userPhone);
@@ -490,7 +493,7 @@ async function startServer() {
       }
     }));
     
-    app.get('*', (req, res) => {
+    app.get('*', async (req, res) => {
       if (req.path.startsWith('/assets/')) {
         if (req.path.endsWith('.js')) {
           // Serve a script that forces a cache-busting reload
@@ -504,7 +507,300 @@ async function startServer() {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      res.sendFile(path.join(distPath, 'index.html'));
+      
+      try {
+        const pathParts = req.path.split('/').filter(Boolean);
+        let slug = null;
+        let tab = null;
+
+        let viewType = 'other';
+        let citySlug = '';
+        let collectionSlug = '';
+
+        if (pathParts.length === 0) {
+          viewType = 'home';
+        } else if (pathParts.includes('restaurant')) {
+          viewType = 'restaurant';
+          const rIndex = pathParts.indexOf('restaurant');
+          slug = pathParts[rIndex + 1];
+          if (pathParts.length > rIndex + 2) {
+            tab = pathParts[rIndex + 2];
+          }
+        } else if (pathParts.includes('book')) {
+          viewType = 'restaurant';
+          slug = pathParts[pathParts.indexOf('book') + 1];
+          tab = 'book';
+        } else if (pathParts.includes('takeaway')) {
+          viewType = 'restaurant';
+          slug = pathParts[pathParts.indexOf('takeaway') + 1];
+          tab = 'takeaway';
+        } else if (pathParts.includes('collections')) {
+          viewType = 'collection';
+          const cIndex = pathParts.indexOf('collections');
+          collectionSlug = pathParts[cIndex + 1];
+          if (cIndex > 0) {
+            citySlug = pathParts[0];
+          }
+        } else if (pathParts.length === 1 && !['about', 'contact', 'dashboard', 'admin', 'partners', 'sitemap.xml', 'onboarding-request'].includes(pathParts[0])) {
+          viewType = 'city';
+          // Also default to restaurant just in case it's a vanity url
+          slug = pathParts[0];
+          citySlug = pathParts[0];
+        }
+
+        let htmlString = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
+
+        let injected = false;
+
+        if ((viewType === 'restaurant' || viewType === 'city') && slug) {
+          // Attempt to fetch restaurant first (vanity URLs)
+          let restaurantData = null;
+          try {
+            const docSnap = await getDoc(doc(db, 'restaurants', slug));
+            if (docSnap.exists()) {
+              restaurantData = { id: docSnap.id, ...docSnap.data() };
+            } else {
+              const q = query(collection(db, 'restaurants'), where('slug', '==', slug), limit(1));
+              const querySnapshot = await getDocs(q);
+              if (!querySnapshot.empty) {
+                restaurantData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+              }
+            }
+          } catch(e) {}
+
+          if (restaurantData) {
+            injected = true;
+            const r = restaurantData;
+            const cuisineStr = Array.isArray(r.cuisine) ? r.cuisine.join(', ') : (r.cuisine || '');
+            const locationStr = r.location || r.city || '';
+            const cityStr = r.city || '';
+            const addressStr = r.address || locationStr;
+            const bannerImage = (r.bannerImages && r.bannerImages.length > 0) ? r.bannerImages[0] : 'https://www.bookmytable.co.in/images/placeholder.jpg';
+            const costForTwo = r.avgPrice || 500;
+            const rating = r.rating || 4.5;
+            const famousFor = r.description || `${cuisineStr} food`;
+            const contactNumber = r.contactNumber || '+91 9989764575';
+            
+            let tabDesc = '';
+            let tabTitlePrefix = '';
+            
+            switch(tab) {
+              case 'menu':
+                tabTitlePrefix = 'Menu of ';
+                tabDesc = 'View the complete menu. ';
+                break;
+              case 'reviews':
+                tabTitlePrefix = 'Reviews for ';
+                tabDesc = 'Check out reviews and ratings. ';
+                break;
+              case 'info':
+                tabTitlePrefix = 'Information about ';
+                tabDesc = 'Get contact info, maps and more. ';
+                break;
+              case 'offers':
+                tabTitlePrefix = 'Offers at ';
+                tabDesc = 'Discover great deals and offers. ';
+                break;
+              case 'book':
+                tabTitlePrefix = 'Book Table at ';
+                tabDesc = 'Book a table for free. ';
+                break;
+              case 'takeaway':
+                tabTitlePrefix = 'Takeaway Order from ';
+                tabDesc = 'Order online for takeaway. ';
+                break;
+            }
+
+            const seoTitle = `${tabTitlePrefix}${r.name}, ${locationStr}, ${cityStr} - Bookmytable`;
+            const seoDesc = `${tabDesc}${r.name} ${addressStr}; ${r.name} ${cityStr}; Cuisine ${cuisineStr}. Cost for two: ₹${costForTwo}. Avg rating ${rating}. Famous for ${famousFor}. Book table for free, View Menu, check Review, Contact restaurant, phone number, Location, Maps and many more of ${r.name} on Bookmytable.`;
+            const seoKeywords = `book table online, restaurants in ${addressStr}, restaurants in ${cityStr}, online restaurant booking, bookmytable, booking, hotel, restaurant, dineout, table booking`;
+
+            const ogTitle = `Book table for free at ${r.name}, ${addressStr} with discounts`;
+            const ogDesc = `Instant table booking with discounts at ${r.name}, ${addressStr}`;
+            const url = `https://www.bookmytable.co.in/${r.id}`;
+
+            const jsonLd = {
+              "@context": "http://schema.org",
+              "@type": "Restaurant",
+              "@id": url,
+              "name": `${r.name}, ${locationStr}`,
+              "url": url,
+              "description": famousFor,
+              "hasMenu": url,
+              "image": bannerImage,
+              "servesCuisine": cuisineStr,
+              "priceRange": `₹ ${costForTwo} (approx)`,
+              "telephone": contactNumber,
+              "address": {
+                "@type": "PostalAddress",
+                "streetAddress": addressStr,
+                "addressLocality": cityStr,
+                "postalCode": r.pincode || "411001",
+                "addressCountry": "IN"
+              },
+              "review": {
+                  "@type": "Review",
+                  "url": url,
+                  "author": { "@type": "Person", "name": "Google user" },
+                  "publisher": {
+                      "@type": "Organization",
+                      "name": "Bookmytable",
+                      "sameAs": "https://www.bookmytable.co.in"
+                  },
+                  "reviewRating": {
+                      "@type": "Rating", "worstRating": 1, "bestRating": 5, "ratingValue": rating
+                  }
+              },
+              "currenciesAccepted": "INR",
+              "paymentAccepted": ["Cash", "Credit Cards", "Wallet"],
+              "makesOffer": "Upto 50% off on final bill",
+              "isAccessibleForFree": true,
+              "publicAccess": true
+            };
+
+            const metaTagsToInject = `
+              <title>${seoTitle}</title>
+              <meta name="description" content="${seoDesc}" />
+              <meta name="keywords" content="${seoKeywords}" />
+              <meta name="url" content="${url}" />
+              <meta property="og:title" content="${ogTitle}" />
+              <meta property="og:description" content="${ogDesc}" />
+              <meta property="og:image" content="${bannerImage}" />
+              <meta property="og:url" content="${url}" />
+              <meta property="product:brand" content="Bookmytable" />
+              <meta property="product:price:amount" content="${costForTwo}" />
+              <meta property="product:price:currency" content="INR" />
+              <script type="application/ld+json">
+                ${JSON.stringify(jsonLd)}
+              </script>
+              <link rel="canonical" href="${url}" />
+            `;
+
+            htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+name="keywords"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+name="url"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
+            
+            htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
+          }
+        }
+        
+        if (!injected && viewType === 'collection' && collectionSlug) {
+           let collectionData = null;
+           try {
+              const q = query(collection(db, 'dining_collections'), where('slug', '==', collectionSlug), limit(1));
+              const querySnapshot = await getDocs(q);
+              if (!querySnapshot.empty) {
+                collectionData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+              }
+           } catch(e) {}
+
+           if (collectionData) {
+              const col = collectionData;
+              const colName = col.name || 'Collection';
+              const colDesc = col.description || `Explore the best ${colName} restaurants.`;
+              const seoTitle = citySlug ? `${colName} Restaurants in ${citySlug} - Bookmytable` : `${colName} Restaurants - Bookmytable`;
+              const url = `https://www.bookmytable.co.in${req.path}`;
+              const metaTagsToInject = `
+                <title>${seoTitle}</title>
+                <meta name="description" content="${colDesc}" />
+                <meta property="og:title" content="${seoTitle}" />
+                <meta property="og:description" content="${colDesc}" />
+                <meta property="og:url" content="${url}" />
+                <link rel="canonical" href="${url}" />
+              `;
+              htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
+              injected = true;
+           }
+        } 
+        
+        if (!injected && viewType === 'city' && citySlug) {
+           let cityData = null;
+           try {
+              const q = query(collection(db, 'cities'), where('name', '>=', ''), limit(100));
+              const querySnapshot = await getDocs(q);
+              const allCities = querySnapshot.docs.map(d => d.data().name);
+              const found = allCities.find(c => c && c.toLowerCase().replace(/[^a-z0-9]+/g, '-') === citySlug.toLowerCase());
+              if (found) { cityData = found }
+           } catch(e) {}
+           
+           if (cityData) {
+             const finalCityName = cityData || citySlug;
+             const seoTitle = `Best Restaurants in ${finalCityName} - Bookmytable`;
+             const seoDesc = `Find and book the best restaurants in ${finalCityName}. Explore top rated places to eat, check menu, reviews and offers on Bookmytable.`;
+             const url = `https://www.bookmytable.co.in/${citySlug}`;
+             const metaTagsToInject = `
+                <title>${seoTitle}</title>
+                <meta name="description" content="${seoDesc}" />
+                <meta property="og:title" content="${seoTitle}" />
+                <meta property="og:description" content="${seoDesc}" />
+                <meta property="og:url" content="${url}" />
+                <link rel="canonical" href="${url}" />
+             `;
+             htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
+             injected = true;
+           }
+        } 
+        
+        if (!injected && viewType === 'home') {
+           const url = 'https://www.bookmytable.co.in/';
+           const jsonLd = {
+              "@context": "http://schema.org",
+              "@type": "WebSite",
+              "url": url,
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://www.bookmytable.co.in/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+           };
+           const metaTagsToInject = `
+              <title>Bookmytable : Never wait for your meal</title>
+              <meta name="description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+              <meta property="og:title" content="Bookmytable - Discover & Book the Best Restaurants" />
+              <meta property="og:description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+              <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
+              <link rel="canonical" href="${url}" />
+           `;
+           htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
+           htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
+           injected = true;
+        }
+
+        if (!injected) {
+          // Apply noindex to non user-facing pages where slugs were not found or explicitly blocked
+          const isNoIndex = req.path.startsWith('/admin') || 
+                            req.path.startsWith('/partners') || 
+                            req.path.startsWith('/owner') || 
+                            req.path.startsWith('/dashboard');
+          if (isNoIndex) {
+             htmlString = htmlString.replace(/<\/head>/im, `<meta name="robots" content="noindex, nofollow">\n</head>`);
+          }
+        }
+
+        res.send(htmlString);
+      } catch (err) {
+        console.error(err);
+        res.sendFile(path.join(distPath, 'index.html'));
+      }
     });
   }
 

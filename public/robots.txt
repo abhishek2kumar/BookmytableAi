@@ -1,3 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /owner
+Disallow: /owner/*
+Disallow: /partners
+Disallow: /partners/*
 Sitemap: https://www.bookmytable.co.in/sitemap.xml

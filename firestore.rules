@@ -244,5 +244,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+    match /page_views/{viewId} {
+      allow read: if true;
+      allow create: if true;
+    }
+
   }
 }

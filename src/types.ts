@@ -66,6 +66,22 @@ export interface MenuCategory {
   images: string[];
 }
 
+export interface CustomizationOption {
+  name: string;
+  price: number;
+  isVeg?: boolean;
+  isAvailable?: boolean;
+}
+
+export interface CustomizationCategory {
+  id: string;
+  name: string;
+  required?: boolean;
+  minSelections?: number;
+  maxSelections?: number;
+  options: CustomizationOption[];
+}
+
 export interface LiveMenuItem {
   id: string;
   name: string;
@@ -80,6 +96,7 @@ export interface LiveMenuItem {
   availableDays?: string[];
   availableStartTime?: string;
   availableEndTime?: string;
+  customizations?: CustomizationCategory[];
 }
 
 export interface Offer {
@@ -122,6 +139,18 @@ export interface Mall {
   updatedAt?: any;
 }
 
+export interface AutoApprovalThreshold {
+  day: string; // 'Monday', 'Tuesday', etc.
+  thresholds: {
+    [category: string]: number; // e.g. 'Breakfast': 10, 'Lunch': 10
+  };
+}
+
+export interface BlackoutSlot {
+  date: string; // YYYY-MM-DD
+  categories: string[]; // e.g. ['Breakfast', 'Lunch']
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -157,9 +186,12 @@ export interface Restaurant {
     [key: string]: DailyTiming;
   };
   isBookingEnabled?: boolean;
+  isTakeawayEnabled?: boolean;
   isQrMenuEnabled?: boolean;
   instantBookingLimit?: number;
-  blackoutDates?: string[];
+  autoApprovalThresholds?: AutoApprovalThreshold[];
+  blackoutDates?: string[]; // Legacy
+  blackoutSlots?: BlackoutSlot[];
   slotCategories?: SlotCategory[];
   bookingSlots?: string[];
   facilities?: string[];
@@ -206,6 +238,7 @@ export interface Booking {
   time?: string;
   dateTime?: any;
   guests: number;
+  guestsLabel?: string;
   userPhone: string;
   status: BookingStatus;
   createdAt: any;
