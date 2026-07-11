@@ -420,8 +420,11 @@ async function startServer() {
         if (resData.isActive !== false && resData.name && resData.city) {
           const citySlug = resData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           
-          // You could use resData.slug if available, else id
-          const slug = resData.slug || id;
+          const seoName = (resData.name || "restaurant").toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const seoLoc = resData.location ? resData.location.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "";
+          const combinedSlug = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+          
+          const slug = resData.slug || combinedSlug;
 
           // Main Restaurant entry
           addUrl(`/${citySlug}/restaurant/${slug}`, '0.8', 'daily');
