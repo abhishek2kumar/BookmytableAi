@@ -586,11 +586,11 @@ async function startServer() {
             
             switch(tab) {
               case 'menu':
-                tabTitlePrefix = 'Menu of ';
+                tabTitlePrefix = 'Menu & Prices for ';
                 tabDesc = 'View the complete menu. ';
                 break;
               case 'reviews':
-                tabTitlePrefix = 'Reviews for ';
+                tabTitlePrefix = 'Customer Reviews for ';
                 tabDesc = 'Check out reviews and ratings. ';
                 break;
               case 'info':
@@ -611,30 +611,42 @@ async function startServer() {
                 break;
             }
 
-            const seoTitle = `${tabTitlePrefix}${r.name}, ${locationStr}, ${cityStr} - Bookmytable`;
-            const seoDesc = `${tabDesc}${r.name} ${addressStr}; ${r.name} ${cityStr}; Cuisine ${cuisineStr}. Cost for two: ₹${costForTwo}. Avg rating ${rating}. Famous for ${famousFor}. Book table for free, View Menu, check Review, Contact restaurant, phone number, Location, Maps and many more of ${r.name} on Bookmytable.`;
+            const slugify = (text: string) => {
+              if (!text) return '';
+              return text.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+            };
+
+            const seoCitySlug = slugify(cityStr || 'ind');
+            const seoNameSlug = slugify(r.name || 'restaurant');
+            const seoLocSlug = slugify(locationStr || '');
+            const combinedSlug = seoLocSlug ? `${seoNameSlug}-${seoLocSlug}` : seoNameSlug;
+            
+            const url = `https://www.bookmytable.co.in/${seoCitySlug}/restaurant/${combinedSlug}`;
+
+            const seoTitle = tabTitlePrefix ? `${tabTitlePrefix}${r.name}, ${cityStr}` : `${r.name}, ${locationStr}, ${cityStr} | Book a Table Online - Bookmytable`;
+            const seoDesc = tabDesc ? `${tabDesc}Book a table for free at ${r.name}, ${locationStr}, ${cityStr}. Check out the menu, reviews, photos, location, and get instant reservation deals on Bookmytable.` : `Book a table for free at ${r.name}, ${locationStr}, ${cityStr}. Check out the menu, reviews, photos, location, and get instant reservation deals on Bookmytable.`;
             const seoKeywords = `book table online, restaurants in ${addressStr}, restaurants in ${cityStr}, online restaurant booking, bookmytable, booking, hotel, restaurant, dineout, table booking`;
 
             const ogTitle = `Book table for free at ${r.name}, ${addressStr} with discounts`;
             const ogDesc = `Instant table booking with discounts at ${r.name}, ${addressStr}`;
-            const url = `https://www.bookmytable.co.in/${r.id}`;
 
-            const jsonLd = {
-              "@context": "http://schema.org",
-              "@type": "Restaurant",
+            const jsonLd: any = {
+              "@context": "https://schema.org",
+              "@type": "FoodEstablishment",
               "@id": url,
-              "name": `${r.name}, ${locationStr}`,
+              "name": r.name,
               "url": url,
               "description": famousFor,
               "hasMenu": url,
               "image": bannerImage,
-              "servesCuisine": cuisineStr,
-              "priceRange": `₹ ${costForTwo} (approx)`,
+              "servesCuisine": Array.isArray(r.cuisine) ? r.cuisine : (r.cuisine ? [r.cuisine] : []),
+              "priceRange": `₹${costForTwo}`,
               "telephone": contactNumber,
               "address": {
                 "@type": "PostalAddress",
                 "streetAddress": addressStr,
-                "addressLocality": cityStr,
+                "addressLocality": locationStr,
+                "addressRegion": cityStr,
                 "postalCode": r.pincode || "411001",
                 "addressCountry": "IN"
               },
@@ -657,6 +669,14 @@ async function startServer() {
               "isAccessibleForFree": true,
               "publicAccess": true
             };
+
+            if (r.lat && r.lng) {
+                jsonLd.geo = {
+                    "@type": "GeoCoordinates",
+                    "latitude": r.lat,
+                    "longitude": r.lng
+                };
+            }
 
             const metaTagsToInject = `
               <title>${seoTitle}</title>

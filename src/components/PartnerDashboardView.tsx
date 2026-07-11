@@ -7,7 +7,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video, BarChart3, MessageSquare, LayoutDashboard, SlidersHorizontal, MoreVertical, Search } from 'lucide-react';
+import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video, BarChart3, MessageSquare, LayoutDashboard, SlidersHorizontal, MoreVertical, Search, Printer, QrCode } from 'lucide-react';
 import StoryManager from './StoryManager';
 import { cn, convertTo12Hour, convertTo24Hour, generateSeoFriendlyFileName, getCroppedImg } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -30,6 +30,7 @@ const SIDEBAR_GROUPS = [
     title: 'Menu & Content',
     tabs: [
       { id: 'menu', label: 'Live Menu', icon: Utensils },
+      { id: 'qr-codes', label: 'QR Codes', icon: QrCode },
       { id: 'specialties', label: 'Signature Dishes', icon: Star },
       { id: 'media', label: 'Media & Images', icon: ImageIcon },
       { id: 'stories', label: 'Stories', icon: Store },
@@ -1049,6 +1050,124 @@ export default function PartnerDashboardView() {
     }
   };
 
+  const printBill = (order: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const orderDate = (() => {
+      const d = order.createdAt?.toDate ? order.createdAt.toDate() : (order.createdAt ? new Date(order.createdAt) : new Date());
+      if (isNaN(d.getTime())) return '';
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `${day} ${month} ${year}, ${time}`;
+    })();
+
+    const html = `
+      <html>
+        <head>
+          <title>Order Receipt - ${order.orderId}</title>
+          <style>
+            body { font-family: 'Courier New', Courier, monospace; padding: 20px; max-width: 300px; margin: 0 auto; color: #000; }
+            .header { text-align: center; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .header h2 { margin: 0 0 5px 0; font-size: 18px; font-weight: bold; }
+            .header p { margin: 2px 0; font-size: 12px; }
+            .order-info { margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; font-size: 12px; }
+            .order-info p { margin: 2px 0; }
+            .items table { width: 100%; font-size: 12px; margin-bottom: 10px; border-collapse: collapse; }
+            .items th { text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; }
+            .items td { padding: 5px 0; vertical-align: top; }
+            .items .price { text-align: right; white-space: nowrap; }
+            .totals { margin-top: 10px; border-top: 1px dashed #000; padding-top: 10px; font-size: 12px; }
+            .totals .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .totals .row.bold { font-weight: bold; font-size: 14px; margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; border-top: 1px dashed #000; padding-top: 10px; }
+            .customizations { font-size: 10px; color: #333; padding-left: 10px; margin-top: 2px; }
+            @media print {
+              @page { margin: 0; }
+              body { padding: 5px; max-width: 100%; width: 100%; margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>${selectedRes?.name || 'Restaurant'}</h2>
+            ${selectedRes?.address ? `<p>${selectedRes.address.replace(/,\s*India/gi, '')}</p>` : (selectedRes?.area ? `<p>${selectedRes.area.replace(/,\s*India/gi, '')}</p>` : '')}
+            <p>Receipt / Bill</p>
+          </div>
+          
+          <div class="order-info">
+            <p><strong>Order ID:</strong> ${order.orderId}</p>
+            <p><strong>Date:</strong> ${orderDate}</p>
+            <p><strong>Customer:</strong> ${order.customerName}</p>
+            <p><strong>Phone:</strong> ${order.customerPhone}</p>
+            <p><strong>Type:</strong> ${order.type === 'dine_in' ? 'Dine In' : 'Takeaway'}</p>
+            <p><strong>Payment:</strong> ${order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}</p>
+          </div>
+
+          <div class="items">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="price">Amt</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${order.items?.map((item: any) => `
+                  <tr>
+                    <td>
+                      ${item.quantity} x ${item.name}
+                      ${item.customizations?.length > 0 ? `
+                        <div class="customizations">
+                          ${item.customizations.map((c: any) => c.optionName).join(', ')}
+                        </div>
+                      ` : ''}
+                    </td>
+                    <td class="price">Rs. ${item.price * item.quantity}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals">
+            <div class="row">
+              <span>Item Total</span>
+              <span>Rs. ${order.itemTotal || order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0}</span>
+            </div>
+            <div class="row">
+              <span>Taxes</span>
+              <span>Rs. ${order.taxes !== undefined ? order.taxes : Math.round(((selectedRes?.gstPercentage || 5) / 100) * (order.items?.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0) || 0))}</span>
+            </div>
+            <div class="row">
+              <span>Packaging</span>
+              <span>Rs. ${order.packaging !== undefined ? order.packaging : 20}</span>
+            </div>
+            <div class="row bold">
+              <span>Total Bill</span>
+              <span>Rs. ${order.totalPrice}</span>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>Thank you for your order!</p>
+            <p>Powered by BookMyTable</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   const renderTakeawayOrdersTab = () => {
     const STATUSES = ['All', 'Received', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
     
@@ -1213,8 +1332,17 @@ export default function PartnerDashboardView() {
                                 <option value="Cancelled">Cancelled</option>
                               </select>
                            </div>
-                           <div className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
-                              {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
+                           <div className="flex items-center gap-3">
+                             <button
+                               onClick={() => printBill(order)}
+                               className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center"
+                               title="Print Bill"
+                             >
+                               <Printer size={18} />
+                             </button>
+                             <div className="text-xs font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 border border-orange-100">
+                                {order.paymentMethod === 'online' ? (order.paymentStatus === 'Success' ? 'Paid Online' : 'Payment Pending') : 'Pay at Restaurant'}
+                             </div>
                            </div>
                         </div>
                       </div>
@@ -1230,8 +1358,9 @@ export default function PartnerDashboardView() {
   };
 
 
-  const handleGenerateQRAsset = async (action: 'download' | 'print') => {
-    const qrCanvas = document.getElementById('qr-canvas-element') as HTMLCanvasElement;
+  const handleGenerateQRAsset = async (action: 'download' | 'print', type: 'table' | 'profile' = 'table') => {
+    const canvasId = type === 'profile' ? 'qr-profile-canvas' : 'qr-canvas-element';
+    const qrCanvas = document.getElementById(canvasId) as HTMLCanvasElement;
     if (!qrCanvas) return;
 
     const width = 800;
@@ -1246,17 +1375,40 @@ export default function PartnerDashboardView() {
     ctx.fillStyle = '#f97316';
     ctx.fillRect(0, 0, width, height);
 
-    // Table Number Text
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    ctx.font = '600 40px sans-serif';
-    ctx.fillText("Table Number", width / 2, 80);
+    let fileName = '';
 
-    ctx.font = '900 340px sans-serif';
-    const tableName = qrTableTarget ? qrTableTarget : '1';
-    ctx.fillText(tableName, width / 2, 300);
+    if (type === 'table') {
+      // Table Number Text
+      ctx.font = '600 40px sans-serif';
+      ctx.fillText("Table Number", width / 2, 80);
+
+      ctx.font = '900 340px sans-serif';
+      const tableName = qrTableTarget ? qrTableTarget : '1';
+      ctx.fillText(tableName, width / 2, 300);
+      fileName = `table-${tableName}-qr.png`;
+    } else {
+      ctx.font = '600 40px sans-serif';
+      ctx.fillText("Welcome to", width / 2, 100);
+
+      const resName = selectedRes?.name || 'Our Restaurant';
+      let fontSize = 100;
+      ctx.font = `800 ${fontSize}px sans-serif`;
+      let textWidth = ctx.measureText(resName).width;
+      while (textWidth > width - 80 && fontSize > 30) {
+        fontSize -= 2;
+        ctx.font = `800 ${fontSize}px sans-serif`;
+        textWidth = ctx.measureText(resName).width;
+      }
+      ctx.fillText(resName, width / 2, 240, width - 80);
+      
+      ctx.font = '600 30px sans-serif';
+      ctx.fillText("Scan to view menu & order", width / 2, 360);
+      fileName = `restaurant-qr.png`;
+    }
 
     // White middle container behind QR (rounded rect effect)
     const boxSize = 440;
@@ -1296,13 +1448,13 @@ export default function PartnerDashboardView() {
     
     ctx.font = '800 26px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText("POWERED BY Bookmytable", width / 2, height - 60);
+    ctx.fillText("Powered by Bookmytable", width / 2, height - 60);
 
     const dataUrl = canvas.toDataURL("image/png");
 
     if (action === 'download') {
       const a = document.createElement("a");
-      a.download = `table-${tableName}-qr.png`;
+      a.download = fileName;
       a.href = dataUrl;
       a.click();
     } else {
@@ -1311,7 +1463,7 @@ export default function PartnerDashboardView() {
         printWin.document.write(`
           <html>
             <head>
-              <title>Print QR - Table ${tableName}</title>
+              <title>Print QR - ${type === 'table' ? 'Table ' + (qrTableTarget || '1') : 'Restaurant'}</title>
               <style>
                 body { margin: 0; display: flex; justify-content: center; align-items: center; background: #fff; height: 100vh; overflow: hidden; }
                 @media print {
@@ -1485,7 +1637,7 @@ export default function PartnerDashboardView() {
   const allMenuCategories = Array.from(new Set((formData.liveMenu || []).map((item: any) => item.category?.trim()).filter(Boolean)));
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-24">
+    <div className="min-h-screen bg-slate-50 font-sans pb-24 lg:pb-0 lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
       <AnimatePresence>
         {toastMessage && (
           <motion.div
@@ -1509,7 +1661,7 @@ export default function PartnerDashboardView() {
         )}
       </AnimatePresence>
 
-      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-[60] h-16 transition-all duration-300">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 sticky top-0 z-[60] h-16 shrink-0 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
            <div className="flex items-center justify-between h-full">
                <div className="flex items-center gap-3">
@@ -1535,10 +1687,10 @@ export default function PartnerDashboardView() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         
         {/* Sidebar */}
-        <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6">
+        <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-6 lg:overflow-y-auto lg:[&::-webkit-scrollbar]:hidden lg:[-ms-overflow-style:none] lg:[scrollbar-width:none] lg:pb-8">
           <div className="bg-white p-4 rounded-xl border border-slate-300">
              <div className="space-y-1 relative">
               {selectedRes && (
@@ -1606,7 +1758,11 @@ export default function PartnerDashboardView() {
                       return (
                         <button
                           key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
+                          onClick={() => {
+                            setActiveTab(tab.id);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            document.getElementById('right-content-area')?.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
                           className={cn(
                             "w-full flex items-center justify-between p-3 rounded-xl transition-all font-bold text-left text-sm relative",
                             activeTab === tab.id 
@@ -1649,7 +1805,7 @@ export default function PartnerDashboardView() {
         </aside>
 
         {/* Content Area */}
-        <div className="flex-1 bg-white border border-slate-300 rounded-xl p-6 md:p-8 shadow-sm">
+        <div id="right-content-area" className="flex-1 bg-white border border-slate-300 rounded-xl p-6 md:p-8 shadow-sm lg:overflow-y-auto lg:[&::-webkit-scrollbar]:hidden lg:[-ms-overflow-style:none] lg:[scrollbar-width:none]">
           {selectedRes && (
             <div className="space-y-8">
                {/* TAB CONTENT */}
@@ -2317,12 +2473,12 @@ export default function PartnerDashboardView() {
                  </div>
                )}
 
-               {activeTab === 'menu' && (
+               {activeTab === 'qr-codes' && (
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Live Menu Items</h3>
-                        <p className="text-xs text-slate-500 mt-1">Manage items available for digital ordering</p>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">QR Code Management</h3>
+                        <p className="text-xs text-slate-500 mt-1">Download or print QR codes for your restaurant and tables.</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 border border-slate-200 bg-white px-3 py-1.5 rounded-xl">
@@ -2345,6 +2501,137 @@ export default function PartnerDashboardView() {
                             }}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      {/* Restaurant Profile QR */}
+                      <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col items-center text-center gap-4 shadow-sm relative">
+                        <h4 className="text-lg font-bold text-[#363636] w-full text-left">Restaurant Profile QR</h4>
+                        <p className="text-sm text-slate-500 max-w-sm text-left w-full">
+                          Scan this to visit your main restaurant page, view menu, and book tables.
+                        </p>
+                        <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm mt-2">
+                          <QRCodeCanvas id="qr-profile-canvas" 
+                            value={`${window.location.origin}/restaurant/${selectedRes?.id}`} 
+                            size={400}
+                            style={{ width: 120, height: 120 }}
+                            level="H"
+                            includeMargin={false}
+                            fgColor="#0f172a"
+                            imageSettings={{
+                              src: '/logo.png',
+                              x: undefined,
+                              y: undefined,
+                              height: 96,
+                              width: 96,
+                              excavate: true,
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center justify-center gap-2 w-full mt-2">
+                          <a 
+                            href={`/restaurant/${selectedRes?.id}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="px-4 py-2 bg-slate-800 text-white rounded-full text-xs font-bold shadow-sm hover:bg-slate-700 active:scale-95 transition-all flex-1"
+                          >
+                            Visit Page
+                          </a>
+                          <button
+                            onClick={() => { handleGenerateQRAsset('download', 'profile'); }}
+                            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-full text-xs font-bold hover:bg-slate-200 active:scale-95 transition-all border border-slate-200 flex-1"
+                          >
+                            Download
+                          </button>
+                          <button
+                            onClick={() => { handleGenerateQRAsset('print', 'profile'); }}
+                            className="px-4 py-2 bg-white border border-slate-300 text-[#363636] rounded-full flex items-center justify-center gap-2 text-xs font-bold hover:bg-slate-50 transition-all shadow-sm flex-1"
+                          >
+                            Print
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Table QR Menu */}
+                      <div className={`bg-white border-2 rounded-2xl p-6 flex flex-col items-center text-center gap-4 shadow-sm overflow-hidden relative ${formData.isQrMenuEnabled ? 'border-blue-600/20' : 'border-slate-200 opacity-60'}`}>
+                        <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
+                          <ShoppingBag size={120} />
+                        </div>
+                        <h4 className="text-lg font-bold text-[#363636] w-full text-left relative z-10">Digital QR Menu (Table Ordering)</h4>
+                        <p className="text-sm text-slate-500 max-w-sm text-left w-full relative z-10">
+                          {formData.isQrMenuEnabled ? 'Generate this QR code per table by entering the table number below.' : 'Enable QR Menu Ordering above to generate table QR codes.'}
+                        </p>
+                        
+                        {formData.isQrMenuEnabled && (
+                          <>
+                            <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm relative z-10 mt-2">
+                              <QRCodeCanvas id="qr-canvas-element" 
+                                value={`${window.location.origin}/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
+                                size={400}
+                                style={{ width: 120, height: 120 }}
+                                level="H"
+                                includeMargin={false}
+                                fgColor="#0f172a"
+                                imageSettings={{
+                                  src: '/logo.png',
+                                  x: undefined,
+                                  y: undefined,
+                                  height: 96,
+                                  width: 96,
+                                  excavate: true,
+                                }}
+                              />
+                            </div>
+                            
+                            <div className="w-full relative z-10">
+                              <input 
+                                type="text" 
+                                value={qrTableTarget} 
+                                onChange={(e) => setQrTableTarget(e.target.value)} 
+                                placeholder="Enter Table Number (e.g. 5, A2) defaults to 1" 
+                                className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm mb-4 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all outline-none"
+                              />
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center justify-center gap-2 w-full relative z-10">
+                              <a 
+                                href={`/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="px-4 py-2 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm hover:shadow active:scale-95 transition-all flex-1"
+                              >
+                                Open Link
+                              </a>
+                              <button
+                                onClick={() => { handleGenerateQRAsset('download', 'table'); }}
+                                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-full text-xs font-bold hover:bg-slate-200 active:scale-95 transition-all border border-slate-200 flex-1"
+                              >
+                                Download
+                              </button>
+                              <button
+                                onClick={() => { handleGenerateQRAsset('print', 'table'); }}
+                                className="px-4 py-2 bg-white border border-slate-300 text-[#363636] rounded-full flex items-center justify-center gap-2 text-xs font-bold hover:bg-slate-50 transition-all shadow-sm flex-1"
+                              >
+                                Print
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                 </div>
+               )}
+
+               {activeTab === 'menu' && (
+                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Live Menu Items</h3>
+                        <p className="text-xs text-slate-500 mt-1">Manage items available for digital ordering</p>
+                      </div>
+                      <div className="flex items-center gap-3">
                         <button onClick={() => {
                           setNewItemData({ name: '', price: '', description: '', isAvailable: true, category: '', isVeg: true, image: '' });
                           setIsAddItemModalOpen(true);
@@ -2353,61 +2640,6 @@ export default function PartnerDashboardView() {
                         </button>
                       </div>
                     </div>
-
-                    {formData.isQrMenuEnabled && (
-                      <div className="bg-white border-2 border-blue-600/20 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 shadow-sm overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 pointer-events-none">
-                          <ShoppingBag size={120} />
-                        </div>
-                        <div className="shrink-0 p-3 bg-white border border-slate-200 rounded-2xl shadow-sm relative z-10">
-                          <QRCodeCanvas id="qr-canvas-element" 
-                            value={`${window.location.origin}/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
-                            size={400}
-                            style={{ width: 120, height: 120 }}
-                            level="H"
-                            includeMargin={false}
-                            fgColor="#0f172a"
-                          />
-                        </div>
-                        <div className="flex-1 text-center md:text-left relative z-10">
-                          <h4 className="text-lg font-bold text-[#363636] mb-2">Digital QR Menu</h4>
-                          <p className="text-sm text-slate-500 mb-3 max-w-sm">
-                            Generate this QR code per table by entering the table number below.
-                          </p>
-                          <div className="mb-4">
-                            <input 
-                              type="text" 
-                              value={qrTableTarget} 
-                              onChange={(e) => setQrTableTarget(e.target.value)} 
-                              placeholder="Enter Table Number (e.g. 5, A2) defaults to 1" 
-                              className="w-full max-w-[240px] px-4 py-2 border border-slate-200 rounded-xl text-sm mb-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all outline-none"
-                            />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <a 
-                              href={`/qr-menu/${selectedRes?.id}?table=${encodeURIComponent(qrTableTarget || '1')}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="px-5 py-2 bg-blue-600 text-white rounded-full text-xs font-bold shadow-sm hover:shadow active:scale-95 transition-all w-fit"
-                            >
-                              Open {qrTableTarget ? 'Table '+qrTableTarget+' ' : 'Table 1 '}Menu Link
-                            </a>
-                            <button
-                              onClick={() => { handleGenerateQRAsset('download'); }}
-                              className="px-5 py-2 bg-slate-100 text-slate-700 rounded-full text-xs font-bold hover:bg-slate-200 active:scale-95 transition-all w-fit border border-slate-200"
-                            >
-                              Download QR (PNG)
-                            </button>
-                            <button
-                              onClick={() => { handleGenerateQRAsset('print'); }}
-                              className="px-5 py-2 bg-white border border-slate-300 text-[#363636] rounded-full flex items-center gap-2 text-xs font-bold hover:bg-slate-50 transition-all shadow-sm shrink-0"
-                            >
-                              Print QR
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     <div className="space-y-4">
                       {(!formData.liveMenu || formData.liveMenu.length === 0) ? (

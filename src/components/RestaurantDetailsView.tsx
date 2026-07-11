@@ -1045,14 +1045,23 @@ export default function RestaurantDetailsView() {
       </div>
     );
 
-    const getSeoData = () => {
+  const canonicalUrl = useMemo(() => {
+    if (!restaurant) return `https://www.bookmytable.co.in/restaurant/${slug}`;
+    const seoCity = slugify(restaurant.city || "ind");
+    const seoName = slugify(restaurant.name || "restaurant");
+    const seoLoc = slugify(restaurant.location || "");
+    const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+    return `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`;
+  }, [restaurant, slug]);
+
+  const getSeoData = () => {
     const cuisineStr = Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine;
     const locationStr = restaurant.location || city || restaurant.city || 'your city';
     const cityStr = city || restaurant.city || 'your city';
     const addressStr = restaurant.address || locationStr;
-    const baseDesc = `${restaurant.name} ${addressStr}; ${restaurant.name} ${cityStr}; Cuisine ${cuisineStr}. Cost for two: ₹${restaurant.avgPrice || 500}. Avg rating ${restaurant.rating || 4.5}. Famous for ${restaurant.description || 'great food'}. Book table for free, View Menu, check Review, Contact restaurant, phone number, Location, Maps and many more of ${restaurant.name} on Bookmytable.`;
+    const baseDesc = `Book a table for free at ${restaurant.name}, ${locationStr}, ${cityStr}. Check out the menu, reviews, photos, location, and get instant reservation deals on Bookmytable.`;
     const keywords = `book table online, restaurants in ${addressStr}, restaurants in ${cityStr}, online restaurant booking, bookmytable, booking, hotel, restaurant, dineout, table booking`;
-    const defaultTitle = `${restaurant.name}, ${locationStr}, ${cityStr} - Bookmytable`;
+    const defaultTitle = `${restaurant.name}, ${locationStr}, ${cityStr} | Book a Table Online - Bookmytable`;
     const ogTitle = `Book table for free at ${restaurant.name}, ${addressStr} with discounts`;
     const ogDesc = `Instant table booking with discounts at ${restaurant.name}, ${addressStr}`;
 
@@ -1064,13 +1073,13 @@ export default function RestaurantDetailsView() {
         title = `Table Booking at ${restaurant.name} | Bookmytable`;
         break;
       case 'menu':
-        title = `Menu of ${restaurant.name} | Bookmytable`;
+        title = `${restaurant.name} ${locationStr} Menu & Prices`;
         break;
       case 'photos':
         title = `Photos, Images & Ambiance of ${restaurant.name} | Bookmytable`;
         break;
       case 'reviews':
-        title = `Reviews & Ratings of ${restaurant.name} | Bookmytable`;
+        title = `Customer Reviews for ${restaurant.name}, ${cityStr}`;
         break;
       case 'takeaway':
         title = `Order Takeaway from ${restaurant.name} | Bookmytable`;
@@ -1080,14 +1089,14 @@ export default function RestaurantDetailsView() {
         break;
     }
 
-    const jsonLd = {
-      "@context": "http://schema.org",
-      "@type": "Restaurant",
-      "@id": `https://www.bookmytable.co.in/${restaurant.id}`,
-      "name": `${restaurant.name}, ${locationStr}`,
-      "url": `https://www.bookmytable.co.in/${restaurant.id}`,
+    const jsonLd: any = {
+      "@context": "https://schema.org",
+      "@type": "FoodEstablishment",
+      "@id": canonicalUrl,
+      "name": restaurant.name,
+      "url": canonicalUrl,
       "description": restaurant.description || baseDesc,
-      "hasMenu": `https://www.bookmytable.co.in/${restaurant.id}`,
+      "hasMenu": canonicalUrl,
       "image": bannerImages[0] || RESTAURANT_IMAGE_FALLBACK,
       "servesCuisine": cuisineStr,
       "priceRange": `₹ ${restaurant.avgPrice || 500} (approx)`,
@@ -1095,13 +1104,14 @@ export default function RestaurantDetailsView() {
       "address": {
         "@type": "PostalAddress",
         "streetAddress": addressStr,
-        "addressLocality": cityStr,
+        "addressLocality": locationStr,
+        "addressRegion": cityStr,
         "postalCode": restaurant.pincode || "411001",
         "addressCountry": "IN"
       },
       "review": {
           "@type": "Review",
-          "url": `https://www.bookmytable.co.in/${restaurant.id}`,
+          "url": canonicalUrl,
           "author": { "@type": "Person", "name": "Google user" },
           "publisher": {
               "@type": "Organization",
@@ -1118,6 +1128,14 @@ export default function RestaurantDetailsView() {
       "isAccessibleForFree": true,
       "publicAccess": true
     };
+
+    if (restaurant.lat && restaurant.lng) {
+        jsonLd.geo = {
+            "@type": "GeoCoordinates",
+            "latitude": restaurant.lat,
+            "longitude": restaurant.lng
+        };
+    }
 
     return {
       title,
@@ -1141,15 +1159,15 @@ export default function RestaurantDetailsView() {
         <title>{seoData.title}</title>
         <meta name="description" content={seoData.description} />
         <meta name="keywords" content={seoData.keywords} />
-        <link rel="alternate" hrefLang="en" href={`https://www.bookmytable.co.in/${restaurant.id}`} />
-        <link rel="canonical" href={`https://www.bookmytable.co.in/${restaurant.id}`} />
-        <meta name="url" content={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <link rel="alternate" hrefLang="en" href={canonicalUrl} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta name="url" content={canonicalUrl} />
         <meta name="twitter:app:name:iphone" content="Bookmytable" />
         <meta name="twitter:app:name:ipad" content="Bookmytable" />
         <meta name="twitter:app:country" content="in" />
         <meta property="og:title" content={seoData.ogTitle} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://www.bookmytable.co.in/${restaurant.id}`} />
+        <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content="Bookmytable" />
         <meta property="og:description" content={seoData.ogDesc} />
         <meta property="og:image" content={bannerImages[0] || RESTAURANT_IMAGE_FALLBACK} />
@@ -1993,7 +2011,7 @@ export default function RestaurantDetailsView() {
               return (
               <div className="mt-8">
                 <h3 className="text-[20px] md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
-                  Menu Pages
+                  {restaurant.name} {restaurant.location || restaurant.city || city} Menu & Prices
                 </h3>
                 {(validMenuCategories.length > 0 || hasLegacyMenuImages) && (
                     <div className="flex bg-slate-50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide mb-6 max-w-max">
@@ -2252,7 +2270,7 @@ export default function RestaurantDetailsView() {
             id="reviews"
             className="scroll-mt-24 pt-8 border-t border-slate-300"
           >
-            <h2 className="text-[20px] md:text-2xl mb-6 text-[#363636] font-normal leading-[1.2]">Reviews</h2>
+            <h2 className="text-[20px] md:text-2xl mb-6 text-[#363636] font-normal leading-[1.2]">Customer Reviews for {restaurant.name}, {restaurant.city || city}</h2>
 
             <div className="bg-slate-50/50 rounded-3xl p-6 md:p-8 space-y-8">
               {/* AI Summary and Leave Review Row */}
