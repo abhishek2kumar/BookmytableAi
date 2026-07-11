@@ -107,8 +107,26 @@ export default function CollectionView() {
     let title = `${locName} Restaurants, ${cityToUse} - Bookmytable`;
     let description = `Explore ${locName} restaurants in ${cityToUse} and book table instantly with discounts on Bookmytable...`;
     let keywords = `book table online, resturants in ${cityToUse}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
+    
+    const itemListElement = filteredRestaurants.slice(0, 15).map((r, index) => {
+      const seoCity = r.city ? r.city.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "ind";
+      const seoName = r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const seoLoc = r.location ? r.location.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "";
+      const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+      return {
+        "@type": "ListItem",
+        "position": index + 1,
+        "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+      };
+    });
 
-    return { title, url, description, keywords, locName };
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": itemListElement
+    };
+
+    return { title, url, description, keywords, locName, jsonLd };
   };
 
   const seoData = getSeoData();
@@ -122,6 +140,9 @@ export default function CollectionView() {
         <meta name="keywords" content={seoData.keywords} />
         <meta property="og:title" content={`${seoData.locName} Restaurants, ${cityToUse} - Bookmytable India`} />
         <meta property="og:description" content={seoData.description} />
+        <script type="application/ld+json">
+          {JSON.stringify(seoData.jsonLd)}
+        </script>
       </Helmet>
       {/* Immersive Header Section */}
       <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">

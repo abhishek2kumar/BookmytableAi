@@ -184,6 +184,40 @@ export default function HomeLandingView() {
         <meta name="description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
         <meta property="og:title" content="Bookmytable - Discover & Book the Best Restaurants" />
         <meta property="og:description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "http://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "url": "https://www.bookmytable.co.in/",
+                "name": "Bookmytable",
+                "description": "Book table at your favourite restaurant and get served instantly. Find, reserve and experience cuisine at the Restaurants around you.",
+                "sameAs": [
+                    "https://www.facebook.com/bookmytableIN/",
+                    "https://www.instagram.com/bookmytable_IN/",
+                    "https://twitter.com/bookmytableIN/"
+                ],
+                "contactPoint": [
+                    {
+                        "@type": "ContactPoint",
+                        "telephone": "+91 9989764575",
+                        "contactType": "customer service"
+                    }
+                ]
+              },
+              {
+                "@type": "WebSite",
+                "url": "https://www.bookmytable.co.in/",
+                "potentialAction": {
+                  "@type": "SearchAction",
+                  "target": "https://www.bookmytable.co.in/?q={search_term_string}",
+                  "query-input": "required name=search_term_string"
+                }
+              }
+            ]
+          })}
+        </script>
       </Helmet>
       {/* Hero Section */}
       <section className="relative h-[500px] md:h-[600px] flex items-center justify-center bg-slate-900 overflow-hidden">

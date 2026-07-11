@@ -754,12 +754,33 @@ let lastCacheUpdate = 0;
               const colDesc = col.description || `Explore the best ${colName} restaurants.`;
               const seoTitle = citySlug ? `${colName} Restaurants in ${citySlug} - Bookmytable` : `${colName} Restaurants - Bookmytable`;
               const url = `https://www.bookmytable.co.in${req.path}`;
+              
+              let itemListElement: any[] = [];
+              try {
+                  const restaurantsQ = query(collection(db, 'restaurants'), where('collections', 'array-contains', col.id), limit(15));
+                  const restaurantsSnap = await getDocs(restaurantsQ);
+                  itemListElement = restaurantsSnap.docs.map((d, index) => {
+                     const r = d.data();
+                     const seoCity = r.city ? r.city.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "ind";
+                     const seoName = (r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                     const seoLoc = r.location ? r.location.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "";
+                     const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+                     return {
+                       "@type": "ListItem",
+                       "position": index + 1,
+                       "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                     };
+                  });
+              } catch(e) {}
+              const jsonLd = { "@context": "https://schema.org", "@type": "ItemList", "itemListElement": itemListElement };
+
               const metaTagsToInject = `
                 <title>${seoTitle}</title>
                 <meta name="description" content="${colDesc}" />
                 <meta property="og:title" content="${seoTitle}" />
                 <meta property="og:description" content="${colDesc}" />
                 <meta property="og:url" content="${url}" />
+                <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
                 <link rel="canonical" href="${url}" />
               `;
               htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
@@ -787,12 +808,33 @@ let lastCacheUpdate = 0;
              const seoTitle = `Best Restaurants in ${finalCityName} - Bookmytable`;
              const seoDesc = `Find and book the best restaurants in ${finalCityName}. Explore top rated places to eat, check menu, reviews and offers on Bookmytable.`;
              const url = `https://www.bookmytable.co.in/${citySlug}`;
+
+             let itemListElement: any[] = [];
+             try {
+                const restaurantsQ = query(collection(db, 'restaurants'), where('city', '==', finalCityName), limit(15));
+                const restaurantsSnap = await getDocs(restaurantsQ);
+                itemListElement = restaurantsSnap.docs.map((d, index) => {
+                   const r = d.data();
+                   const seoCity = r.city ? r.city.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "ind";
+                   const seoName = (r.name || "").toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                   const seoLoc = r.location ? r.location.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "";
+                   const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+                   return {
+                     "@type": "ListItem",
+                     "position": index + 1,
+                     "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                   };
+                });
+             } catch(e) {}
+             const jsonLd = { "@context": "https://schema.org", "@type": "ItemList", "itemListElement": itemListElement };
+
              const metaTagsToInject = `
                 <title>${seoTitle}</title>
                 <meta name="description" content="${seoDesc}" />
                 <meta property="og:title" content="${seoTitle}" />
                 <meta property="og:description" content="${seoDesc}" />
                 <meta property="og:url" content="${url}" />
+                <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
                 <link rel="canonical" href="${url}" />
              `;
              htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
@@ -808,14 +850,36 @@ let lastCacheUpdate = 0;
         if (!injected && viewType === 'home') {
            const url = 'https://www.bookmytable.co.in/';
            const jsonLd = {
-              "@context": "http://schema.org",
-              "@type": "WebSite",
-              "url": url,
-              "potentialAction": {
-                "@type": "SearchAction",
-                "target": "https://www.bookmytable.co.in/?q={search_term_string}",
-                "query-input": "required name=search_term_string"
+            "@context": "http://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                "url": url,
+                "name": "Bookmytable",
+                "description": "Book table at your favourite restaurant and get served instantly. Find, reserve and experience cuisine at the Restaurants around you.",
+                "sameAs": [
+                    "https://www.facebook.com/bookmytableIN/",
+                    "https://www.instagram.com/bookmytable_IN/",
+                    "https://twitter.com/bookmytableIN/"
+                ],
+                "contactPoint": [
+                    {
+                        "@type": "ContactPoint",
+                        "telephone": "+91 9989764575",
+                        "contactType": "customer service"
+                    }
+                ]
+              },
+              {
+                "@type": "WebSite",
+                "url": url,
+                "potentialAction": {
+                  "@type": "SearchAction",
+                  "target": "https://www.bookmytable.co.in/?q={search_term_string}",
+                  "query-input": "required name=search_term_string"
+                }
               }
+            ]
            };
            const metaTagsToInject = `
               <title>Bookmytable : Never wait for your meal</title>

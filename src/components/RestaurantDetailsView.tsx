@@ -1022,6 +1022,15 @@ export default function RestaurantDetailsView() {
     return selectedDateTime < new Date();
   };
 
+  const canonicalUrl = useMemo(() => {
+    if (!restaurant) return `https://www.bookmytable.co.in/restaurant/${slug}`;
+    const seoCity = slugify(restaurant.city || "ind");
+    const seoName = slugify(restaurant.name || "restaurant");
+    const seoLoc = slugify(restaurant.location || "");
+    const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
+    return `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`;
+  }, [restaurant, slug]);
+
   if (restaurantsLoading)
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -1044,15 +1053,6 @@ export default function RestaurantDetailsView() {
         </button>
       </div>
     );
-
-  const canonicalUrl = useMemo(() => {
-    if (!restaurant) return `https://www.bookmytable.co.in/restaurant/${slug}`;
-    const seoCity = slugify(restaurant.city || "ind");
-    const seoName = slugify(restaurant.name || "restaurant");
-    const seoLoc = slugify(restaurant.location || "");
-    const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
-    return `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`;
-  }, [restaurant, slug]);
 
   const getSeoData = () => {
     const cuisineStr = Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : restaurant.cuisine;
