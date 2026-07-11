@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle, Users, FileText, HeadphonesIcon, Check, Settings2, User as UserIcon } from 'lucide-react';
+import { CheckCircle, Users, FileText, HeadphonesIcon, Check, Settings2, User as UserIcon, LayoutDashboard, ShoppingBag, Calendar, Utensils, QrCode, Star, ImageIcon, Store, Tag, Megaphone } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import AppIcon from './AppIcon';
@@ -217,24 +217,103 @@ Address: ${data.address}
               <div className="w-20 h-20 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <Users size={32} />
               </div>
-              <h3 className="text-xl font-normal mb-3 text-slate-800">Attract new customers</h3>
-              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">Reach millions of people ordering on BookmyTable.</p>
+              <h3 className="text-xl font-normal mb-3 text-slate-800">Attract & Grow</h3>
+              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">Reach millions of diners by running targeted ads, creating custom promotional offers, and highlighting your signature dishes.</p>
             </div>
             
             <div className="group">
               <div className="w-20 h-20 rounded-full bg-brand/10 text-brand flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <Settings2 size={32} />
+                <LayoutDashboard size={32} />
               </div>
-              <h3 className="text-xl font-normal mb-3 text-slate-800">Restaurant Management Tool</h3>
-              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">Get complete control over your restaurant for table booking, live menu management, QR based ordering, Takeaway ordering, play ad's, upload stories and many more.</p>
+              <h3 className="text-xl font-normal mb-3 text-slate-800">Unified Operations</h3>
+              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">Get complete control with a powerful dashboard to manage real-time table bookings, live orders, dynamic menus, and custom QR codes.</p>
             </div>
             
             <div className="group">
               <div className="w-20 h-20 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <HeadphonesIcon size={32} />
+                <Store size={32} />
               </div>
-              <h3 className="text-xl font-normal mb-3 text-slate-800">Onboarding support</h3>
-              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">For any support, email us at <br/><a href="mailto:contact@bookmytable.co.in" className="text-indigo-600 hover:underline">contact@bookmytable.co.in</a></p>
+              <h3 className="text-xl font-normal mb-3 text-slate-800">Engage Your Audience</h3>
+              <p className="text-slate-500 text-sm font-normal leading-relaxed px-4">Build brand loyalty by uploading interactive stories, managing vibrant media galleries, and delivering a seamless digital dining experience.</p>
+            </div>
+          </div>
+
+          <div className="mt-24 mb-8">
+            <div className="text-center mb-12 relative mt-4">
+              <h2 className="text-3xl lg:text-4xl font-display font-normal text-[#363636] relative z-10 bg-white inline-block px-6">
+                Explore the Partner Dashboard Features
+              </h2>
+              <div className="absolute top-1/2 left-0 right-0 h-px bg-slate-200 -z-10"></div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: LayoutDashboard,
+                  title: 'Operations Center',
+                  desc: 'A complete overview of your daily performance, bookings, and active orders.'
+                },
+                {
+                  icon: ShoppingBag,
+                  title: 'Live Orders',
+                  desc: 'Track and manage food delivery and takeaway orders in real-time.'
+                },
+                {
+                  icon: Calendar,
+                  title: 'Table Bookings',
+                  desc: 'View, accept, and manage upcoming and past table reservations effortlessly.'
+                },
+                {
+                  icon: Utensils,
+                  title: 'Live Menu Management',
+                  desc: 'Add, edit, and toggle availability for menu items instantly. No app updates required.'
+                },
+                {
+                  icon: QrCode,
+                  title: 'QR Codes',
+                  desc: 'Generate distinct QR codes for table dining, takeaways, and easy menu access.'
+                },
+                {
+                  icon: Star,
+                  title: 'Signature Dishes',
+                  desc: 'Highlight and promote your specialty dishes to catch the attention of more diners.'
+                },
+                {
+                  icon: ImageIcon,
+                  title: 'Media & Images',
+                  desc: 'Manage your restaurant gallery, ambiance photos, and promotional banners.'
+                },
+                {
+                  icon: Store,
+                  title: 'Stories',
+                  desc: 'Upload engaging stories to share moments and daily specials with your audience.'
+                },
+                {
+                  icon: Settings2,
+                  title: 'Advanced Settings',
+                  desc: 'Complete control over operational hours, booking settings, and general restaurant info.'
+                },
+                {
+                  icon: Tag,
+                  title: 'Offers & Promos',
+                  desc: 'Create and run custom discount campaigns and offers to attract new customers.'
+                },
+                {
+                  icon: Megaphone,
+                  title: 'Ads Management',
+                  desc: 'Run targeted ad campaigns within the platform to boost your visibility.'
+                }
+              ].map((feature, i) => (
+                <div key={i} className="flex gap-4 p-6 bg-slate-50 border border-slate-100 rounded-2xl hover:shadow-lg hover:border-slate-200 transition-all group">
+                  <div className="shrink-0 w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-brand group-hover:scale-110 transition-transform">
+                    <feature.icon size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-slate-800 mb-1">{feature.title}</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed">{feature.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

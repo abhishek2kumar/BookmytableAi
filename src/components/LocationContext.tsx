@@ -21,8 +21,15 @@ const LocationContext = createContext<LocationContextType | undefined>(undefined
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const [city, setCityState] = useState(() => localStorage.getItem('selectedCity') || 'Bangalore');
   const [coords, setCoordsState] = useState<Coords>(() => {
-    const saved = localStorage.getItem('selectedCoords');
-    return saved ? JSON.parse(saved) : BANGALORE_COORDS;
+    try {
+      const saved = localStorage.getItem('selectedCoords');
+      if (saved && saved !== 'undefined') {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Error parsing coords from localStorage', e);
+    }
+    return BANGALORE_COORDS;
   });
   const [isDetecting, setIsDetecting] = useState(false);
 

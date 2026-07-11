@@ -27,9 +27,12 @@ function getResend() {
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+  const PORT = 3000;
 
   app.use(express.json());
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
 
   // Redirection middleware
   app.use((req, res, next) => {
@@ -480,11 +483,11 @@ let lastCacheUpdate = 0;
   // Vite middleware for development
   if (useVite) {
     const { createServer: createViteServer } = await import('vite');
-    vite = await createViteServer({
+    process.argv = process.argv.filter(arg => !arg.includes("--port") && !arg.includes("3000") && !arg.includes("--host") && !arg.includes("0.0.0.0"));  vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'custom',
     });
-    app.use(vite.middlewares);
+    app.use(vite.middlewares); 
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     
@@ -560,6 +563,8 @@ let lastCacheUpdate = 0;
         if (useVite) {
            htmlString = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
            htmlString = await vite.transformIndexHtml(req.originalUrl, htmlString);
+           // Strip out Vite's injected modulepreloads to avoid 429 rate limits in dev
+           htmlString = htmlString.replace(/<link rel="modulepreload"[^>]*>/gi, '');
         } else {
            htmlString = fs.readFileSync(path.join(process.cwd(), 'dist', 'index.html'), 'utf-8');
         }
@@ -607,7 +612,15 @@ let lastCacheUpdate = 0;
             const locationStr = r.location || r.city || '';
             const cityStr = r.city || '';
             const addressStr = r.address || locationStr;
-            const bannerImage = (r.bannerImages && r.bannerImages.length > 0) ? r.bannerImages[0] : 'https://www.bookmytable.co.in/images/placeholder.jpg';
+            let fallbackImage = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=1200";
+            if (cuisineStr) {
+                const c = cuisineStr.toLowerCase();
+                if (c.includes('italian') || c.includes('pizza')) fallbackImage = "https://images.unsplash.com/photo-1498579150354-977475b7e2b3?auto=format&fit=crop&q=80&w=1200";
+                else if (c.includes('chinese') || c.includes('asian')) fallbackImage = "https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&q=80&w=1200";
+                else if (c.includes('indian')) fallbackImage = "https://images.unsplash.com/photo-1585937421612-70a008356fbe?auto=format&fit=crop&q=80&w=1200";
+                else if (c.includes('cafe') || c.includes('coffee')) fallbackImage = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=1200";
+            }
+            const bannerImage = r.image || (r.bannerImages && r.bannerImages.length > 0 ? r.bannerImages[0] : fallbackImage);
             const costForTwo = r.avgPrice || 500;
             const rating = r.rating || 4.5;
             const famousFor = r.description || `${cuisineStr} food`;
@@ -697,7 +710,12 @@ let lastCacheUpdate = 0;
               },
               "currenciesAccepted": "INR",
               "paymentAccepted": ["Cash", "Credit Cards", "Wallet"],
-              "makesOffer": "Upto 50% off on final bill",
+              "offers": {
+                "@type": "Offer",
+                "description": "Upto 50% off on final bill",
+                "priceCurrency": "INR",
+                "availability": "https://schema.org/InStock"
+              },
               "isAccessibleForFree": true,
               "publicAccess": true
             };
@@ -754,13 +772,14 @@ let lastCacheUpdate = 0;
            if (collectionData) {
               const col = collectionData;
               const colName = col.name || 'Collection';
-              const colDesc = col.description || `Explore the best ${colName} restaurants.`;
-              const seoTitle = citySlug ? `${colName} Restaurants in ${citySlug} - Bookmytable` : `${colName} Restaurants - Bookmytable`;
+              const cityLabel = citySlug ? citySlug.split('-').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ') : 'India';
+              const colDesc = `Discover and book tables at the top-rated ${colName} in ${cityLabel}. Check menus, reviews, real-time availability, and get up to 50% off via Bookmytable.`;
+              const seoTitle = citySlug ? `${colName} Restaurants in ${cityLabel} - Bookmytable` : `${colName} Restaurants - Bookmytable`;
               const url = `https://www.bookmytable.co.in${req.path}`;
               
               let itemListElement: any[] = [];
               try {
-                  const restaurantsQ = query(collection(db, 'restaurants'), where('collections', 'array-contains', col.id), limit(15));
+                  const restaurantsQ = query(collection(db, 'restaurants'), where('collections', 'array-contains', collectionSlug), limit(15));
                   const restaurantsSnap = await getDocs(restaurantsQ);
                   itemListElement = restaurantsSnap.docs.map((d, index) => {
                      const r = d.data();
@@ -771,7 +790,11 @@ let lastCacheUpdate = 0;
                      return {
                        "@type": "ListItem",
                        "position": index + 1,
-                       "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                       "item": {
+                         "@type": "FoodEstablishment",
+                         "name": r.name,
+                         "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                       }
                      };
                   });
               } catch(e) {}
@@ -788,9 +811,12 @@ let lastCacheUpdate = 0;
               `;
               htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
               htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+name="keywords"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+name="url"\s+content="[^"]*"\s*\/?>/ims, '');
               htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
               htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
               htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
               htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
               injected = true;
            }
@@ -825,7 +851,11 @@ let lastCacheUpdate = 0;
                    return {
                      "@type": "ListItem",
                      "position": index + 1,
-                     "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                     "item": {
+                       "@type": "FoodEstablishment",
+                       "name": r.name,
+                       "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+                     }
                    };
                 });
              } catch(e) {}
@@ -842,9 +872,12 @@ let lastCacheUpdate = 0;
              `;
              htmlString = htmlString.replace(/<title>.*?<\/title>/ims, '');
              htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+name="keywords"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+name="url"\s+content="[^"]*"\s*\/?>/ims, '');
              htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
              htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
              htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
              htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
              injected = true;
            }
@@ -923,21 +956,9 @@ let lastCacheUpdate = 0;
       }
     });
 
-  const server = app.listen(PORT, '0.0.0.0', () => {
+   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log(`Contact notifications set for: contact@bookmytable.co.in`);
-  });
-
-  server.on('error', (error: any) => {
-    if (error.code === 'EADDRINUSE') {
-      console.warn(`Warning: Port ${PORT} is in use (likely AI Studio environment). Falling back to port 3000...`);
-      app.listen(3000, '0.0.0.0', () => {
-        console.log(`Server running on http://localhost:3000`);
-        console.log(`Contact notifications set for: contact@bookmytable.co.in`);
-      });
-    } else {
-      console.error('Server error:', error);
-    }
   });
 }
 

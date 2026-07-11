@@ -376,15 +376,22 @@ export default function AdminDashboardView() {
       );
     });
 
-    const unsubCuisines = onSnapshot(collection(db, "cuisines"), (snapshot) => {
-      setCuisines(
-        snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Cuisine[],
-      );
-      setLoading(false);
-    });
+    const unsubCuisines = onSnapshot(
+      collection(db, "cuisines"),
+      (snapshot) => {
+        setCuisines(
+          snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Cuisine[],
+        );
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching cuisines:", error);
+        setLoading(false);
+      }
+    );
 
     return () => {
       unsubRes();
@@ -3818,134 +3825,16 @@ export default function AdminDashboardView() {
           </div>
         </div>
 
-        {/* Total Value / Revenue Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          {stats.map((stat) => (
-            <motion.button
-              key={stat.label}
-              whileHover={stat.onClick ? { scale: 1.02 } : {}}
-              whileTap={stat.onClick ? { scale: 0.98 } : {}}
-              onClick={stat.onClick}
-              className={cn(
-                "bg-slate-900 p-8 rounded-3xl border border-white/5 shadow-2xl text-left relative overflow-hidden group transition-all",
-                stat.onClick && "cursor-pointer hover:border-brand/30",
-              )}
-            >
-              <div
-                className={cn(
-                  "w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 group-hover:-rotate-3 shadow-sm",
-                  stat.bg,
-                  stat.color,
-                )}
-              >
-                <stat.icon size={26} />
-              </div>
-              <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-2 opacity-50">
-                {stat.label}
-              </p>
-              <p className="text-4xl font-normal leading-[1.2] text-white">
-                {stat.value}
-              </p>
-
-              {stat.onClick && (
-                <div className="absolute top-6 right-6 text-brand opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Settings2 size={16} />
-                </div>
-              )}
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Quick Access System Management */}
-        <div className="mb-16">
-          <h2 className="text-2xl mb-6 flex items-center gap-2 text-[#363636] font-normal leading-[1.2]">
-            <Settings2 className="text-brand" /> System Architecture
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <button
-              onClick={() => setActiveModal("cities")}
-              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-300 shadow-vibrant hover:-translate-y-1 transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <Globe size={24} />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-normal leading-[1.2] text-[#363636]">
-                    Manage Cities
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Expansion Control
-                  </p>
-                </div>
-              </div>
-              <ChevronRight
-                size={20}
-                className="text-slate-300 group-hover:text-brand transition-colors"
-              />
-            </button>
-
-            <button
-              onClick={() => setActiveModal("cuisines")}
-              className="flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-300 shadow-vibrant hover:-translate-y-1 transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                  <Soup size={24} />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-normal leading-[1.2] text-[#363636]">
-                    Manage Cuisines
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Menu Taxonomy
-                  </p>
-                </div>
-              </div>
-              <ChevronRight
-                size={20}
-                className="text-slate-300 group-hover:text-brand transition-colors"
-              />
-            </button>
-
-            <div className="flex items-center justify-between p-6 bg-slate-50/50 rounded-3xl border border-dashed border-slate-300">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-200 text-slate-400 rounded-2xl flex items-center justify-center">
-                  <ShieldCheck size={24} />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-black text-slate-500">
-                    Security Layers
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Active & Hardened
-                  </p>
-                </div>
-              </div>
-              <CheckCircle className="text-emerald-500" size={20} />
-            </div>
-          </div>
-        </div>
-
         {/* Main Content Area with Tabs */}
         <div className="space-y-8">
-          <div className="flex items-center gap-4 bg-white p-2 rounded-3xl border border-slate-300 shadow-sm w-fit mb-12">
+          <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-3xl border border-slate-300 shadow-sm w-fit mb-12">
             {[
-              { id: "fleet", label: "Fleet Control", icon: Store },
-              { id: "malls", label: "Malls & Food Courts", icon: MapPin },
-              {
-                id: "approvals",
-                label: "Review Queue",
-                icon: ShieldCheck,
-                badge: restaurants.filter(
-                  (r) => !r.approved && (r as any).status === "Pending",
-                ).length,
-              },
-              { id: "overview", label: "Business Overview", icon: BarChart3 },
-              { id: "pulse", label: "Live Pulse", icon: TrendingUp },
-              { id: "inventory", label: "System Master", icon: Database },
+              { id: "overview", label: "Dashboard", icon: BarChart3 },
+              { id: "fleet", label: "Restaurants", icon: Store, badge: restaurants.filter((r) => !r.approved && (r as any).status === "Pending").length },
+              { id: "malls", label: "Malls", icon: Building2 },
               { id: "collections", label: "Collections", icon: LayoutGrid },
-              { id: "portal", label: "Portal Config", icon: Settings2 },
+              { id: "inventory", label: "Master Data", icon: Database },
+              { id: "portal", label: "Settings", icon: Settings2 },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -3969,150 +3858,6 @@ export default function AdminDashboardView() {
           </div>
 
           <AnimatePresence mode="wait">
-            {activeTab === "approvals" && (
-              <motion.div
-                key="approvals"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
-                <div>
-                  <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
-                    Review Queue
-                  </h2>
-                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
-                    Verify new restaurant applications
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                  {restaurants
-                    .filter(
-                      (r) => !r.approved && (r as any).status === "Pending",
-                    )
-                    .map((res) => (
-                      <div
-                        key={res.id}
-                        className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-xl flex flex-col md:flex-row gap-8 items-start"
-                      >
-                        <div className="w-full md:w-64 aspect-[4/3] rounded-3xl overflow-hidden shrink-0 shadow-lg">
-                          <img
-                            src={res.image || RESTAURANT_IMAGE_FALLBACK}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                            onError={handleImageError}
-                          />
-                        </div>
-
-                        <div className="flex-grow space-y-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[10px] font-normal leading-[1.2] text-brand bg-brand/10 px-2 py-0.5 rounded-md uppercase tracking-widest">
-                                Application #ID-
-                                {res.id?.slice(-4).toUpperCase()}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400 ml-auto">
-                                Applied on{" "}
-                                {res.createdAt
-                                  ? new Date(
-                                      res.createdAt.seconds * 1000,
-                                    ).toLocaleDateString()
-                                  : "N/A"}
-                              </span>
-                            </div>
-                            <h3 className="text-2xl text-[#363636] font-normal leading-[1.2]">
-                              {res.name}
-                            </h3>
-                            <p className="text-slate-400 font-bold text-sm flex items-center gap-1 mt-1">
-                              <MapPin size={14} className="text-brand" />{" "}
-                              {res.area}, {res.city}
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 bg-slate-50 rounded-xl">
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                Cuisines
-                              </p>
-                              <p className="text-xs font-bold text-slate-700 truncate">
-                                {Array.isArray(res.cuisine)
-                                  ? res.cuisine.join(", ")
-                                  : res.cuisine || "N/A"}
-                              </p>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded-xl">
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                Contact
-                              </p>
-                              <p className="text-xs font-bold text-slate-700">
-                                {res.contactNumber || "N/A"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-3 pt-4">
-                            <button
-                              onClick={() => {
-                                if (confirm(`Approve ${res.name}?`)) {
-                                  updateDoc(doc(db, "restaurants", res.id!), {
-                                    approved: true,
-                                    status: "Approved",
-                                    updatedAt: serverTimestamp(),
-                                  });
-                                }
-                              }}
-                              className="flex-grow bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-                            >
-                              <ShieldCheck size={20} />
-                              Approve Application
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Reject ${res.name}?`)) {
-                                  updateDoc(doc(db, "restaurants", res.id!), {
-                                    approved: false,
-                                    status: "Rejected",
-                                    updatedAt: serverTimestamp(),
-                                  });
-                                }
-                              }}
-                              className="px-6 py-4 bg-red-50 text-red-500 rounded-2xl font-black hover:bg-red-500 hover:text-white transition-all"
-                            >
-                              Reject
-                            </button>
-                            <button
-                              onClick={() => setEditingRestaurant(res)}
-                              className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all"
-                            >
-                              <Edit2 size={20} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                  {restaurants.filter(
-                    (r) => !r.approved && (r as any).status === "Pending",
-                  ).length === 0 && (
-                    <div className="py-24 text-center bg-white/5 border border-white/5 rounded-[48px]">
-                      <ShieldCheck
-                        size={64}
-                        className="mx-auto text-white/5 mb-6"
-                      />
-                      <p className="text-slate-400 font-bold text-lg">
-                        No pending applications.
-                      </p>
-                      <p className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mt-2">
-                        The system is fully caught up.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
             {activeTab === "fleet" && (
               <motion.div
                 key="fleet"
@@ -4613,17 +4358,8 @@ export default function AdminDashboardView() {
                      </div>
                    );
                 })()}
-              </motion.div>
-            )}
 
-            {activeTab === "pulse" && (
-              <motion.div
-                key="pulse"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
+                <div className="pt-8 mt-8 border-t border-slate-200" />
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div>
                     <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">

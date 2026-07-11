@@ -1124,7 +1124,12 @@ export default function RestaurantDetailsView() {
       },
       "currenciesAccepted": "INR",
       "paymentAccepted": ["Cash", "Credit Cards", "Wallet"],
-      "makesoffer": "Upto 50% off on final bill",
+      "offers": {
+          "@type": "Offer",
+          "description": "Upto 50% off on final bill",
+          "priceCurrency": "INR",
+          "availability": "https://schema.org/InStock"
+      },
       "isAccessibleForFree": true,
       "publicAccess": true
     };

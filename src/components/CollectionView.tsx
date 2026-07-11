@@ -116,7 +116,11 @@ export default function CollectionView() {
       return {
         "@type": "ListItem",
         "position": index + 1,
-        "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+        "item": {
+          "@type": "FoodEstablishment",
+          "name": r.name,
+          "url": `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`
+        }
       };
     });
 
