@@ -470,12 +470,16 @@ async function startServer() {
     }
   }
 
+  let vite: any;
+let restaurantSlugCache: Record<string, any> = {};
+let lastCacheUpdate = 0;
+
   // Vite middleware for development
   if (useVite) {
     const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
+    vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: 'custom',
     });
     app.use(vite.middlewares);
   } else {
@@ -492,8 +496,9 @@ async function startServer() {
         }
       }
     }));
+  }
     
-    app.get('*', async (req, res) => {
+  app.get('*', async (req, res) => {
       if (req.path.startsWith('/assets/')) {
         if (req.path.endsWith('.js')) {
           // Serve a script that forces a cache-busting reload
@@ -548,7 +553,13 @@ async function startServer() {
           citySlug = pathParts[0];
         }
 
-        let htmlString = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
+        let htmlString = '';
+        if (useVite) {
+           htmlString = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
+           htmlString = await vite.transformIndexHtml(req.originalUrl, htmlString);
+        } else {
+           htmlString = fs.readFileSync(path.join(process.cwd(), 'dist', 'index.html'), 'utf-8');
+        }
 
         let injected = false;
 
@@ -560,13 +571,31 @@ async function startServer() {
             if (docSnap.exists()) {
               restaurantData = { id: docSnap.id, ...docSnap.data() };
             } else {
-              const q = query(collection(db, 'restaurants'), where('slug', '==', slug), limit(1));
-              const querySnapshot = await getDocs(q);
-              if (!querySnapshot.empty) {
-                restaurantData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+              const now = Date.now();
+              if (now - lastCacheUpdate > 1000 * 60 * 15 || !restaurantSlugCache[slug]) { // 15 min cache
+                const q = query(collection(db, 'restaurants'));
+                const querySnapshot = await getDocs(q);
+                const slugify = (text: string) => {
+                  if (!text) return '';
+                  return text.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                };
+                for (const docSnap of querySnapshot.docs) {
+                   const data = docSnap.data();
+                   const rNameSlug = slugify(data.name || 'restaurant');
+                   const rLocSlug = slugify(data.location || '');
+                   const combined = rLocSlug ? `${rNameSlug}-${rLocSlug}` : rNameSlug;
+                   restaurantSlugCache[combined] = { id: docSnap.id, ...data };
+                }
+                lastCacheUpdate = now;
+              }
+              
+              if (restaurantSlugCache[slug]) {
+                 restaurantData = restaurantSlugCache[slug];
               }
             }
-          } catch(e) {}
+          } catch(e) {
+            console.error(e);
+          }
 
           if (restaurantData) {
             injected = true;
@@ -819,10 +848,13 @@ async function startServer() {
         res.send(htmlString);
       } catch (err) {
         console.error(err);
-        res.sendFile(path.join(distPath, 'index.html'));
+        if (useVite) {
+           res.sendFile(path.join(process.cwd(), 'index.html'));
+        } else {
+           res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+        }
       }
     });
-  }
 
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
