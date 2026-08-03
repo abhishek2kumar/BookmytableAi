@@ -203,7 +203,7 @@ export interface Restaurant {
     price: number;
     description?: string;
   }[];
-  menuImages?: string[];
+  menuImages?: (string | { url: string; category: string })[];
   secondaryImages?: (string | { url: string; category: string })[];
   foodImages?: string[];
   ambienceImages?: string[];

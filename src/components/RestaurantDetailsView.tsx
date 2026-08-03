@@ -442,7 +442,7 @@ export default function RestaurantDetailsView() {
       ...(restaurant.secondaryImages?.map((img: any) => typeof img === 'string' ? img : img.url) || []),
       ...(restaurant.foodImages || []),
       ...(restaurant.ambienceImages || []),
-      ...(restaurant.menuImages || []),
+      ...(restaurant.menuImages?.map((img: any) => typeof img === 'string' ? img : img.url) || []),
       ...menuCatImages,
     ].filter(Boolean);
     return images;
@@ -603,17 +603,12 @@ export default function RestaurantDetailsView() {
   }, [id]);
 
   useEffect(() => {
-    if (restaurant && !aiSummary) {
-      // Check cache first
-      const sixMonthsInMs = 6 * 30 * 24 * 60 * 60 * 1000;
-      const lastUpdated = restaurant.aiSummaryUpdatedAt?.toMillis?.() || 0;
-      const now = Date.now();
-
-      if (restaurant.aiSummary && now - lastUpdated < sixMonthsInMs) {
-        setAiSummary(restaurant.aiSummary);
-      }
+    if (restaurant?.aiSummary) {
+      setAiSummary(restaurant.aiSummary);
+    } else {
+      setAiSummary(null);
     }
-  }, [restaurant]);
+  }, [restaurant?.aiSummary]);
 
   useEffect(() => {
     async function fetchOwnerEmail() {
@@ -643,7 +638,7 @@ export default function RestaurantDetailsView() {
       setAiSummary(summary);
 
       // Save to Firestore for caching
-      if (summary && !summary.includes("unavailable")) {
+      if (summary && !summary.includes("unavailable") && user) {
         await updateDoc(doc(db, "restaurants", id), {
           aiSummary: summary,
           aiSummaryUpdatedAt: serverTimestamp(),
@@ -1184,6 +1179,9 @@ export default function RestaurantDetailsView() {
         </script>
       </Helmet>
 
+      {/* SEO exact H1 */}
+      <h1 className="sr-only">{restaurant.name}</h1>
+
       {showStoryViewer && usersWithStories && (
          <StoryViewer 
            users={usersWithStories}
@@ -1416,9 +1414,9 @@ export default function RestaurantDetailsView() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <h1 className="text-2xl lg:text-3xl text-[#363636] font-normal leading-[1.2]">
+                    <h2 className="text-2xl lg:text-3xl text-[#363636] font-normal leading-[1.2]">
                       {restaurant.name}
-                    </h1>
+                    </h2>
                     {hasStories && (
                       <button 
                         onClick={() => setShowStoryViewer(true)}
@@ -1545,7 +1543,7 @@ export default function RestaurantDetailsView() {
                       bannerImages[bannerIndex % bannerImages.length] ||
                       RESTAURANT_IMAGE_FALLBACK
                     }
-                    alt=""
+                    alt={restaurant.name}
                     className="absolute left-0 w-full object-cover"
                     style={{
                       height: "75vw",
@@ -1562,9 +1560,9 @@ export default function RestaurantDetailsView() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-3">
-                        <h1 className="text-[26px] text-[#363636] font-normal leading-[1.2]">
+                        <h2 className="text-[26px] text-[#363636] font-normal leading-[1.2]">
                           {restaurant.name}
-                        </h1>
+                        </h2>
                         {hasStories && (
                           <button 
                             onClick={() => setShowStoryViewer(true)}
@@ -1637,8 +1635,8 @@ export default function RestaurantDetailsView() {
                       )}
                       <span>
                         {status.isClosed
-                          ? `Opens at ${status.displayText.split("at ")[1] || "Tomorrow"}`
-                          : `Closes at ${status.displayText.split("at ")[1] || "11:00 PM"}`}
+                          ? `Opens at ${status.displayText.split("opens at ")[1] || "Tomorrow"}`
+                          : `Closes at ${status.closeTime || "11:00 PM"}`}
                       </span>
                       <ChevronDown size={14} />
                     </button>
@@ -2094,14 +2092,17 @@ export default function RestaurantDetailsView() {
                             className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
                             style={{ scrollBehavior: "smooth" }}
                           >
-                            {images.map((img: string, i: number) => (
+                            {images.map((img: any, i: number) => {
+                              const imgSrc = typeof img === 'string' ? img : img.url;
+                              if (!imgSrc) return null;
+                              return (
                               <div
                                 key={i}
                                 className="shrink-0 w-[45vw] md:w-[220px] aspect-[3/4.2] rounded-2xl overflow-hidden border border-slate-300 cursor-zoom-in relative bg-slate-100 snap-center"
-                                onClick={() => openPhotoViewer(img)}
+                                onClick={() => openPhotoViewer(imgSrc)}
                               >
                                 <img
-                                  src={img}
+                                  src={imgSrc}
                                   alt={`Menu page ${i + 1}`}
                                   className="w-full h-full object-cover"
                                   referrerPolicy="no-referrer"
@@ -2111,7 +2112,7 @@ export default function RestaurantDetailsView() {
                                   {i + 1} / {images.length}
                                 </div>
                               </div>
-                            ))}
+                            )})}
                           </div>
 
                           {/* Navigation Arrows for Web/Tab */}
@@ -2360,7 +2361,7 @@ export default function RestaurantDetailsView() {
                       <div className="max-w-4xl space-y-4">
                         <ReactMarkdown
                           components={{
-                            p: ({node, ...props}) => <p className="text-sm font-normal leading-[1.2] text-[#363636] text-justify" {...props} />,
+                            p: ({node, ...props}) => <p className="text-sm font-normal leading-[1.2] text-[#363636] text-justify whitespace-pre-wrap" {...props} />,
                             li: ({node, ...props}) => <li className="text-sm font-normal leading-[1.2] text-[#363636]" {...props} />,
                             ul: ({node, ...props}) => <ul className="list-disc pl-4 space-y-1.5 my-2" {...props} />,
                             ol: ({node, ...props}) => <ol className="list-decimal pl-4 space-y-1.5 my-2" {...props} />,
@@ -2939,7 +2940,7 @@ export default function RestaurantDetailsView() {
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
                               <img
                                 src={res.image || RESTAURANT_IMAGE_FALLBACK}
-                                alt=""
+                                alt={res.name}
                                 className="w-full h-full object-cover"
                                 onError={handleImageError}
                               />

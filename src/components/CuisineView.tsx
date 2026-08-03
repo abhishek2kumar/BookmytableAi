@@ -135,7 +135,7 @@ export default function CuisineView() {
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6"
           >
-            <Link to="/" className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
+            <Link to={`/${(selectedCity || "bangalore").toLowerCase()}`} className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
                <ChevronLeft size={12} /> Back to explore
             </Link>
           </motion.div>

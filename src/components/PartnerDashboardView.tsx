@@ -2468,6 +2468,9 @@ export default function PartnerDashboardView() {
                      {renderImageInputList("Secondary Images", 'secondaryImages')}
                    </div>
                    <div className="pt-4 border-t border-slate-300">
+                     {renderImageInputList("Menu Images", 'menuImages')}
+                   </div>
+                   <div className="pt-4 border-t border-slate-300">
                      {renderMenuCategories()}
                    </div>
                  </div>
@@ -2690,7 +2693,7 @@ export default function PartnerDashboardView() {
                               .map(({ item, idx }) => (
                                 <div key={`${item.id}-${idx}`} className="bg-white border border-slate-200 p-3 rounded-xl relative flex items-center gap-4 shadow-sm hover:border-slate-300 transition-colors group">
                                    <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                                      {item.image ? <img src={item.image} className="w-full h-full object-cover" alt="" /> : <Utensils size={20} className="text-slate-300" />}
+                                      {item.image ? <img src={item.image} className="w-full h-full object-cover" alt={item.name || ""} /> : <Utensils size={20} className="text-slate-300" />}
                                    </div>
                                    <div className="flex-1 min-w-0">
                                        <div className="flex items-center gap-2">

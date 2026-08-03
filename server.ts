@@ -737,6 +737,11 @@ let lastCacheUpdate = 0;
               <meta property="og:description" content="${ogDesc}" />
               <meta property="og:image" content="${bannerImage}" />
               <meta property="og:url" content="${url}" />
+              <meta property="og:type" content="restaurant.restaurant" />
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content="${ogTitle}" />
+              <meta name="twitter:description" content="${ogDesc}" />
+              <meta name="twitter:image" content="${bannerImage}" />
               <meta property="product:brand" content="Bookmytable" />
               <meta property="product:price:amount" content="${costForTwo}" />
               <meta property="product:price:currency" content="INR" />
@@ -753,6 +758,9 @@ let lastCacheUpdate = 0;
             htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
             htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
             htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/ims, '');
+            htmlString = htmlString.replace(/<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gims, '');
             htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
             
             htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
@@ -806,6 +814,12 @@ let lastCacheUpdate = 0;
                 <meta property="og:title" content="${seoTitle}" />
                 <meta property="og:description" content="${colDesc}" />
                 <meta property="og:url" content="${url}" />
+                <meta property="og:image" content="${collectionData.image || 'https://www.bookmytable.co.in/logo-full.png'}" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="${seoTitle}" />
+                <meta name="twitter:description" content="${colDesc}" />
+                <meta name="twitter:image" content="${collectionData.image || 'https://www.bookmytable.co.in/logo-full.png'}" />
                 <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
                 <link rel="canonical" href="${url}" />
               `;
@@ -816,6 +830,9 @@ let lastCacheUpdate = 0;
               htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
               htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
               htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/ims, '');
+              htmlString = htmlString.replace(/<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gims, '');
               htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
               htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
               injected = true;
@@ -867,6 +884,12 @@ let lastCacheUpdate = 0;
                 <meta property="og:title" content="${seoTitle}" />
                 <meta property="og:description" content="${seoDesc}" />
                 <meta property="og:url" content="${url}" />
+                <meta property="og:image" content="${cityData.image || 'https://www.bookmytable.co.in/logo-full.png'}" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="${seoTitle}" />
+                <meta name="twitter:description" content="${seoDesc}" />
+                <meta name="twitter:image" content="${cityData.image || 'https://www.bookmytable.co.in/logo-full.png'}" />
                 <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
                 <link rel="canonical" href="${url}" />
              `;
@@ -877,6 +900,9 @@ let lastCacheUpdate = 0;
              htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
              htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
              htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/ims, '');
+             htmlString = htmlString.replace(/<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gims, '');
              htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
              htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
              injected = true;
@@ -922,6 +948,13 @@ let lastCacheUpdate = 0;
               <meta name="description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
               <meta property="og:title" content="Bookmytable - Discover & Book the Best Restaurants" />
               <meta property="og:description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+              <meta property="og:image" content="https://www.bookmytable.co.in/logo-full.png" />
+              <meta property="og:url" content="${url}" />
+              <meta property="og:type" content="website" />
+              <meta name="twitter:card" content="summary_large_image" />
+              <meta name="twitter:title" content="Bookmytable - Discover & Book the Best Restaurants" />
+              <meta name="twitter:description" content="Discover new flavors, book tables instantly, and enjoy seamless experiences at your favorite restaurants across India." />
+              <meta name="twitter:image" content="https://www.bookmytable.co.in/logo-full.png" />
               <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
               <link rel="canonical" href="${url}" />
            `;
@@ -929,6 +962,10 @@ let lastCacheUpdate = 0;
            htmlString = htmlString.replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/ims, '');
            htmlString = htmlString.replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/ims, '');
            htmlString = htmlString.replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+property="og:type"\s+content="[^"]*"\s*\/?>/ims, '');
+           htmlString = htmlString.replace(/<meta\s+name="twitter:[^"]+"\s+content="[^"]*"\s*\/?>/gims, '');
            htmlString = htmlString.replace(/<script type="application\/ld\+json">.*?<\/script>/ims, '');
            htmlString = htmlString.replace(/<\/head>/im, `${metaTagsToInject}\n</head>`);
            injected = true;

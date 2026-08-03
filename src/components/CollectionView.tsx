@@ -150,23 +150,31 @@ export default function CollectionView() {
       </Helmet>
       {/* Immersive Header Section */}
       <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={collectionInfo?.image} 
+            alt="" 
+            className="w-full h-full object-cover opacity-40 blur-xl scale-125"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div className="absolute inset-0 z-0">
           <img 
             src={collectionInfo?.image} 
             alt={collectionName || 'Collection'} 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
         </div>
         
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto pt-16">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20 mb-6"
           >
-            <Link to={`/${cityToUse}`} className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
+            <Link to={`/${(cityToUse || "bangalore").toLowerCase()}`} className="text-xs font-normal leading-[1.2] text-white hover:text-brand transition-colors uppercase tracking-widest flex items-center gap-1">
                <ChevronLeft size={12} /> Back to explore
             </Link>
           </motion.div>

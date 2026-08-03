@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { uploadImageToStorage } from '../lib/storage';
+import { uploadImageToStorage, deleteImageFromStorage } from '../lib/storage';
 import { useMalls } from '../hooks/useFirebase';
 
 
@@ -592,6 +592,23 @@ export default function AdminOnboardingView() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">AI Culinary Insight (Optional)</label>
+                    <span className="text-[10px] text-slate-400">Supports Markdown (- for bullets, ** for bold)</span>
+                  </div>
+                  <textarea 
+                    placeholder="Provide AI culinary insight details manually..."
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-300 rounded-2xl focus:ring-4 focus:ring-brand/10 focus:border-brand outline-none transition-all font-medium min-h-[120px] resize-none"
+                    value={form.aiSummary || ''}
+                    onChange={e => {
+                      let val = e.target.value;
+                      val = val.replace(/^[•○▪]\s*/gm, "- ");
+                      setForm({...form, aiSummary: val});
+                    }}
+                  />
+                </div>
+
                 <div className="pt-6 border-t border-slate-300">
                   <div className="flex items-center justify-between mb-4">
                      <div className="flex items-center gap-3">
@@ -832,7 +849,10 @@ export default function AdminOnboardingView() {
                       )}
                       {form.image && (
                         <button 
-                          onClick={() => setForm({...form, image: ''})}
+                          onClick={async () => {
+                            if (form.image) await deleteImageFromStorage(form.image);
+                            setForm({...form, image: ''});
+                          }}
                           className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-xl shadow-xl hover:scale-110 active:scale-95 transition-all"
                         >
                           <X size={16} />
@@ -883,16 +903,21 @@ export default function AdminOnboardingView() {
                               type="file" 
                               accept=".jpeg,.jpg,.png" 
                               className="absolute inset-0 opacity-0 cursor-pointer" 
-                              onChange={e => {
+                              onChange={async e => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
-                                const cat = (window as any)._imgCat || 'Food';
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
+                                try {
+                                  setIsUploading(true);
+                                  const url = await uploadImageToStorage(file, 'restaurants/additional');
+                                  const cat = (window as any)._imgCat || 'Food';
                                   const field = cat === 'Food' ? 'foodImages' : cat === 'Ambience' ? 'ambienceImages' : 'secondaryImages';
-                                  setForm({ ...form, [field]: [...(form[field as keyof Restaurant] as string[] || []), reader.result as string] });
-                                };
-                                reader.readAsDataURL(file);
+                                  setForm(prev => ({ ...prev, [field]: [...(prev[field as keyof Restaurant] as string[] || []), url] }));
+                                } catch (err) {
+                                  showNotification('error', 'Failed to upload image.');
+                                  console.error(err);
+                                } finally {
+                                  setIsUploading(false);
+                                }
                               }}
                             />
                           </button>
@@ -933,7 +958,8 @@ export default function AdminOnboardingView() {
                                  <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-white shadow-sm group bg-white">
                                     <img src={img} alt={cat} className="w-full h-full object-cover" />
                                     <button 
-                                      onClick={() => {
+                                      onClick={async () => {
+                                        if (img) await deleteImageFromStorage(img);
                                         const next = [...images];
                                         next.splice(idx, 1);
                                         setForm({ ...form, [field]: next });
@@ -1182,7 +1208,8 @@ export default function AdminOnboardingView() {
                                     <img src={img} className="w-full h-full object-cover" />
                                     <button 
                                       className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => {
+                                      onClick={async () => {
+                                        if (img) await deleteImageFromStorage(img);
                                         const next = [...(form.menuCategories || [])];
                                         next[catIdx].images.splice(imgIdx, 1);
                                         setForm({...form, menuCategories: next});
@@ -1198,16 +1225,25 @@ export default function AdminOnboardingView() {
                                   <input 
                                     type="file" 
                                     className="absolute inset-0 opacity-0 cursor-pointer" 
-                                    onChange={e => {
+                                    onChange={async e => {
                                       const file = e.target.files?.[0];
                                       if (!file) return;
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        const next = [...(form.menuCategories || [])];
-                                        next[catIdx].images.push(reader.result as string);
-                                        setForm({...form, menuCategories: next});
-                                      };
-                                      reader.readAsDataURL(file);
+                                      try {
+                                        setIsUploading(true);
+                                        const url = await uploadImageToStorage(file, 'restaurants/menu');
+                                        setForm(prev => {
+                                          const next = [...(prev.menuCategories || [])];
+                                          if (next[catIdx]) {
+                                            next[catIdx].images.push(url);
+                                          }
+                                          return { ...prev, menuCategories: next };
+                                        });
+                                      } catch (err) {
+                                        showNotification('error', 'Failed to upload menu image.');
+                                        console.error(err);
+                                      } finally {
+                                        setIsUploading(false);
+                                      }
                                     }}
                                   />
                                 </div>

@@ -59,6 +59,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     avgPrice: 0,
     image: '',
     secondaryImages: [],
+    menuImages: [],
     description: '',
     isBookingEnabled: false,
     isTakeawayEnabled: false,
@@ -147,7 +148,10 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     allowedKeys.forEach(key => {
       if (editForm[key] !== undefined) {
         if (key === 'secondaryImages' || key === 'menuImages') {
-          updateData[key] = (editForm[key] || []).filter((url: string) => url.trim() !== '');
+          updateData[key] = (editForm[key] || []).filter((item: any) => {
+            const url = typeof item === 'string' ? item : item?.url;
+            return typeof url === 'string' && url.trim() !== '';
+          });
         } else {
           updateData[key] = editForm[key];
         }
@@ -759,11 +763,25 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                 rows={10}
                 className="w-full px-8 py-8 bg-white border-2 border-slate-300 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
                 placeholder="https://images.unsplash.com/photo-1..."
-                value={(editForm.secondaryImages || []).join('\n')}
+                value={(editForm.secondaryImages || []).map((img: any) => typeof img === 'string' ? img : img?.url || '').join('\n')}
                 onChange={e => setEditForm({...editForm, secondaryImages: e.target.value.split('\n')})}
               />
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-4 leading-relaxed">
                 Add multiple high-resolution images to showcase your space and signature dishes.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Menu Scans & Images (One URL per line)</label>
+              <textarea 
+                rows={5}
+                className="w-full px-8 py-8 bg-white border-2 border-slate-300 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
+                placeholder="https://images.unsplash.com/photo-1..."
+                value={(editForm.menuImages || []).map((img: any) => typeof img === 'string' ? img : img?.url || '').join('\n')}
+                onChange={e => setEditForm({...editForm, menuImages: e.target.value.split('\n')})}
+              />
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-4 leading-relaxed">
+                Add URLs for your menu pages so users can read the detailed menu.
               </p>
             </div>
           </motion.div>

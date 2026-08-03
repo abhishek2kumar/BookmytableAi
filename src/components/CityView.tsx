@@ -1378,7 +1378,7 @@ export default function CityView() {
                             <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden shrink-0 shadow-sm">
                               <img
                                 src={res.image}
-                                alt=""
+                                alt={res.name}
                                 className="w-full h-full object-cover"
                               />
                             </div>

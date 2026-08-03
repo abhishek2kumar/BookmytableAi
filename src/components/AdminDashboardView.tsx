@@ -344,7 +344,7 @@ export default function AdminDashboardView() {
       );
     });
 
-    const unsubTakeaways = onSnapshot(collection(db, "takeawayOrders"), (snapshot) => {
+    const unsubTakeaways = onSnapshot(collection(db, "orders"), (snapshot) => {
       setTakeawayOrders(
         snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -353,7 +353,7 @@ export default function AdminDashboardView() {
       );
     });
 
-    const unsubPageViews = onSnapshot(collection(db, "pageViews"), (snapshot) => {
+    const unsubPageViews = onSnapshot(collection(db, "page_views"), (snapshot) => {
       setPageViews(
         snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -516,6 +516,7 @@ export default function AdminDashboardView() {
       const { id } = editingRestaurant;
 
       const allowedKeys = [
+        "aiSummary",
         "name",
         "description",
         "cuisine",
@@ -1091,7 +1092,7 @@ export default function AdminDashboardView() {
                   </label>
                   <input
                     className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
-                    value={(editingRestaurant.partnerEmails || []).join(", ")}
+                    value={Array.isArray(editingRestaurant.partnerEmails) ? editingRestaurant.partnerEmails.join(", ") : (editingRestaurant.partnerEmails || "")}
                     onChange={(e) =>
                       setEditingRestaurant({
                         ...editingRestaurant,
@@ -1159,6 +1160,29 @@ export default function AdminDashboardView() {
                     description: e.target.value,
                   })
                 }
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-end">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                  AI Culinary Insight (Optional)
+                </label>
+                <span className="text-[10px] text-slate-400">Supports Markdown (- for bullets, ** for bold)</span>
+              </div>
+              <textarea
+                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm min-h-[120px]"
+                value={editingRestaurant.aiSummary || ""}
+                placeholder="Provide AI culinary insight details manually..."
+                onChange={(e) => {
+                  let val = e.target.value;
+                  // Auto-convert pasted literal bullets to markdown bullets
+                  val = val.replace(/^[•○▪]\s*/gm, "- ");
+                  setEditingRestaurant({
+                    ...editingRestaurant,
+                    aiSummary: val,
+                  });
+                }}
               />
             </div>
 
@@ -3924,7 +3948,7 @@ export default function AdminDashboardView() {
                         <div className="w-24 h-24 rounded-3xl overflow-hidden shrink-0 border-4 border-slate-50 shadow-inner group-hover:scale-105 transition-transform">
                           <img
                             src={res.image || RESTAURANT_IMAGE_FALLBACK}
-                            alt=""
+                            alt={res.name || "Restaurant"}
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
                             onError={handleImageError}
@@ -5018,7 +5042,7 @@ export default function AdminDashboardView() {
                                   {u.photoURL ? (
                                     <img
                                       src={u.photoURL}
-                                      alt=""
+                                      alt={u.displayName || "User"}
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
