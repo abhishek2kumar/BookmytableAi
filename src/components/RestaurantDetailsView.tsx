@@ -618,8 +618,10 @@ export default function RestaurantDetailsView() {
           if (ownerDoc.exists()) {
             setRestaurantOwnerEmail(ownerDoc.data()?.email || null);
           }
-        } catch (err) {
-          console.error("Error fetching owner email:", err);
+        } catch (err: any) {
+          if (err.code !== 'permission-denied') {
+            console.error("Error fetching owner email:", err);
+          }
         }
       }
     }

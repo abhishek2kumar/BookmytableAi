@@ -27,7 +27,7 @@ function getResend() {
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.DEFAULT_APP_PORT || process.env.PORT || 3000;
+  const PORT = Number(process.env.DEFAULT_APP_PORT || process.env.PORT || 3000);
 
   app.use(express.json());
   app.get("/api/health", (req, res) => {

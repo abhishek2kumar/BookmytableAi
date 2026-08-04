@@ -728,7 +728,7 @@ export default function PartnerDashboardView() {
     }
   };
 
-  const handleDeleteImage = async (field: 'secondaryImages' | 'menuImages', imgIdx: number, imgUrl: string, label: string) => {
+  const handleDeleteImage = async (field: 'secondaryImages' | 'menuImages' | 'foodImages' | 'ambienceImages', imgIdx: number, imgUrl: string, label: string) => {
     if (!window.confirm(`Do you want to delete this image from ${label}?`)) {
       return;
     }
@@ -752,12 +752,14 @@ export default function PartnerDashboardView() {
     }
   };
 
-  const renderImageInputList = (label: string, field: 'secondaryImages' | 'menuImages') => (
+  const renderImageInputList = (label: string, field: 'secondaryImages' | 'menuImages' | 'foodImages' | 'ambienceImages') => {
+    const isStringArrayOnly = field === 'foodImages' || field === 'ambienceImages';
+    return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">{label}</h3>
         <button onClick={() => {
-          const arr = [...(formData[field] || []), { url: '', category: '' }];
+          const arr = [...(formData[field] || []), isStringArrayOnly ? '' : { url: '', category: '' }];
           updateForm(field, arr as any);
         }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
           <Plus size={14} /> Add Image
@@ -786,22 +788,28 @@ export default function PartnerDashboardView() {
                )}
              </div>
              <div className="p-3 bg-slate-50 border-t border-slate-300 space-y-2 flex-grow">
-                <input
-                  type="text"
-                  placeholder="Category (e.g. All)"
-                  value={categoryStr}
-                  onChange={(e) => {
-                    const arr = [...formData[field]!];
-                    arr[idx] = { url: urlStr, category: e.target.value };
-                    updateForm(field, arr as any);
-                  }}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
-                />
+                {!isStringArrayOnly && (
+                  <input
+                    type="text"
+                    placeholder="Category (e.g. All)"
+                    value={categoryStr}
+                    onChange={(e) => {
+                      const arr = [...formData[field]!];
+                      arr[idx] = { url: urlStr, category: e.target.value };
+                      updateForm(field, arr as any);
+                    }}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
+                  />
+                )}
                 <ImageUploadInput value={urlStr} onChange={(newUrl: string) => {
                    const arr = [...formData[field]!];
-                   arr[idx] = typeof item === 'string' && !categoryStr 
-                     ? newUrl 
-                     : { url: newUrl, category: categoryStr };
+                   if (isStringArrayOnly) {
+                     arr[idx] = newUrl;
+                   } else {
+                     arr[idx] = typeof item === 'string' && !categoryStr 
+                       ? newUrl 
+                       : { url: newUrl, category: categoryStr };
+                   }
                    updateForm(field, arr as any);
                 }} placeholder="Image URL" />
              </div>
@@ -810,6 +818,7 @@ export default function PartnerDashboardView() {
       </div>
     </div>
   );
+  };
 
   const handleDeleteCategoryImage = async (catIdx: number, imgIdx: number, imgUrl: string, catName: string) => {
     if (!window.confirm(`Do you want to delete this image from ${catName || 'this category'}?`)) {
@@ -2219,11 +2228,11 @@ export default function PartnerDashboardView() {
                            );
                          })}
                        </div>
-                       <InputText label="Other Cuisine (Type and press Enter to add)" placeholder="+ Add custom cuisine" value="" onChange={(v:any) => {}} />
+                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Other Cuisine</label>
                        <input 
                          type="text" 
                          placeholder="+ Add custom cuisine (Press Enter)" 
-                         className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600 rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all text-sm mb-2"
+                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all text-sm mb-2"
                          onKeyDown={e => {
                            if (e.key === 'Enter') {
                              e.preventDefault();
@@ -2289,9 +2298,53 @@ export default function PartnerDashboardView() {
                            );
                          })}
                        </div>
+                       <div className="mt-4">
+                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Other Facility</label>
+                         <input 
+                           type="text" 
+                           placeholder="+ Add custom facility (Press Enter)" 
+                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all text-sm mb-2"
+                           onKeyDown={e => {
+                             if (e.key === 'Enter') {
+                               e.preventDefault();
+                               const input = e.target as HTMLInputElement;
+                               const val = input.value.trim();
+                               const facilitiesArray = Array.isArray(formData.facilities) ? formData.facilities : typeof formData.facilities === 'string' ? (formData.facilities as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                               if (val && !facilitiesArray.includes(val)) {
+                                 updateForm('facilities', [...facilitiesArray, val]);
+                                 input.value = '';
+                               }
+                             }
+                           }}
+                         />
+                         {(() => {
+                           const defaultFacilities = [
+                             'WiFi', 'AC', 'Parking', 'Valet Parking', 'Outdoor Seating', 
+                             'Live Music', 'Bar', 'Vegetarian Friendly', 'Home Delivery',
+                             'Takeaway', 'Card Payment', 'Digital Wallet', 'Kid Friendly',
+                             'Smoking Area', 'Rooftop', 'Private Dining'
+                           ];
+                           const facilitiesArray = Array.isArray(formData.facilities) ? formData.facilities : typeof formData.facilities === 'string' ? (formData.facilities as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
+                           return facilitiesArray.filter((x:any) => !defaultFacilities.includes(x)).length > 0 && (
+                           <div className="flex flex-wrap gap-2 mt-2">
+                             {facilitiesArray.filter((x:any) => !defaultFacilities.includes(x)).map((custom: any, cIdx: number) => (
+                               <span key={`${custom}-${cIdx}`} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 border border-slate-300">
+                                 {custom}
+                                 <button 
+                                   type="button" 
+                                   onClick={() => updateForm('facilities', facilitiesArray.filter((item:any) => item !== custom))}
+                                   className="text-slate-400 hover:text-red-500"
+                                 >
+                                   <X size={12} />
+                                 </button>
+                               </span>
+                             ))}
+                           </div>
+                         )})()}
+                       </div>
                      </div>
 
-                     <div>
+                     <div className="mt-8">
                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Associate Collections (Optional)</label>
                        <div className="flex flex-wrap gap-2 mb-4">
                          {sortedCollections.map(c => {
@@ -2465,10 +2518,16 @@ export default function PartnerDashboardView() {
                    {formData.image && <img src={formData.image} alt="Primary" className="w-full max-w-lg h-64 object-cover rounded-xl border border-slate-300 shadow-sm" />}
                    
                    <div className="pt-4 border-t border-slate-300">
+                     {renderImageInputList("Food Images", 'foodImages')}
+                   </div>
+                   <div className="pt-4 border-t border-slate-300">
+                     {renderImageInputList("Ambience Images", 'ambienceImages')}
+                   </div>
+                   <div className="pt-4 border-t border-slate-300">
                      {renderImageInputList("Secondary Images", 'secondaryImages')}
                    </div>
                    <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Menu Images", 'menuImages')}
+                     {renderImageInputList("Menu Images (Legacy)", 'menuImages')}
                    </div>
                    <div className="pt-4 border-t border-slate-300">
                      {renderMenuCategories()}

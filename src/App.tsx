@@ -30,6 +30,7 @@ const ContactView = lazy(() => import('./components/ContactView'));
 const PrivacyView = lazy(() => import('./components/PrivacyView'));
 const TermsView = lazy(() => import('./components/TermsView'));
 const CookiePolicyView = lazy(() => import('./components/CookiePolicyView'));
+const CodeOfConductView = lazy(() => import('./components/CodeOfConductView'));
 const ErrorView = lazy(() => import('./components/ErrorView'));
 const OnboardingRequestView = lazy(() => import('./components/OnboardingRequestView'));
 const AboutView = lazy(() => import('./components/AboutView'));
@@ -115,6 +116,7 @@ export default function App() {
                     <Route path="/privacy" element={<PrivacyView />} />
                     <Route path="/terms" element={<TermsView />} />
                     <Route path="/cookie-policy" element={<CookiePolicyView />} />
+                    <Route path="/code-of-conduct" element={<CodeOfConductView />} />
                     <Route path="/onboarding-request" element={<OnboardingRequestView />} />
                     <Route path="/about" element={<AboutView />} />
                     <Route path="/error" element={<ErrorView />} />

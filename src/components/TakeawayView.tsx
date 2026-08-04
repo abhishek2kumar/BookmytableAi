@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { cn, getRestaurantUrl, slugify } from "../lib/utils";
+import { cn, getRestaurantUrl, slugify, isTakeawayAvailable } from "../lib/utils";
 import { ExpandableText } from "./ExpandableText";
 import { useAuth } from "./AuthProvider";
 import { useMasterData } from "./MasterDataContext";
@@ -113,6 +113,26 @@ export default function TakeawayView() {
           className="mt-6 px-6 py-2 bg-brand text-white rounded-xl font-bold"
         >
           Go Back
+        </button>
+      </div>
+    );
+  }
+
+  if (!isTakeawayAvailable(restaurant)) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <AlertCircle size={48} className="text-slate-400 mb-4" />
+        <h2 className="text-xl text-[#363636] font-normal leading-[1.2] mb-2 text-center">
+          Takeaway is not available
+        </h2>
+        <p className="text-slate-500 text-center max-w-md">
+          {restaurant.name} is currently not accepting takeaway orders. They might be closed or closing soon.
+        </p>
+        <button
+          onClick={() => navigate(getRestaurantUrl(restaurant))}
+          className="mt-6 px-6 py-2 bg-brand text-white rounded-xl font-bold"
+        >
+          View Restaurant Details
         </button>
       </div>
     );

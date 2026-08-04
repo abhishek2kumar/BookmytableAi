@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import AppIcon from "./AppIcon";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
+import { initializeApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { uploadImageToStorage } from "../lib/storage";
 import {
   collection,
@@ -69,6 +72,7 @@ import {
   Building2,
   ShoppingBag,
   BarChart3,
+  Mail,
 } from "lucide-react";
 import { searchRealRestaurants } from "../services/aiService";
 import { useAuth } from "./AuthProvider";
@@ -613,6 +617,42 @@ export default function AdminDashboardView() {
     }
   };
 
+  const handleSendPartnerReset = async (email: string) => {
+    try {
+      // Create a secondary app to create user without logging out admin
+      let secondaryApp;
+      try {
+        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+      } catch (e: any) {
+        if (e.code === 'app/duplicate-app') {
+          const { getApp } = await import('firebase/app');
+          secondaryApp = getApp("Secondary");
+        } else {
+          throw e;
+        }
+      }
+      
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      try {
+        await createUserWithEmailAndPassword(secondaryAuth, email, Math.random().toString(36).slice(-8) + "A1!");
+      } catch (e: any) {
+        if (e.code !== 'auth/email-already-in-use') {
+          console.error("User creation error:", e);
+        }
+      } finally {
+        await secondaryAuth.signOut();
+      }
+
+      await sendPasswordResetEmail(auth, email);
+      setNotification({ type: 'success', message: `Password reset link sent to ${email}` });
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message });
+    } finally {
+      setTimeout(() => setNotification(null), 5000);
+    }
+  };
+
   const handleSeedData = async () => {
     if (!currentUser) return;
     setSeeding(true);
@@ -1101,6 +1141,24 @@ export default function AdminDashboardView() {
                     }
                     placeholder="owner@gmail.com, manager@gmail.com"
                   />
+                  {Array.isArray(editingRestaurant.partnerEmails) && editingRestaurant.partnerEmails.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-2 px-1">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Trigger Password Reset</p>
+                      <div className="flex flex-wrap gap-2">
+                        {editingRestaurant.partnerEmails.map((email, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleSendPartnerReset(email)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-brand text-[10px] font-bold leading-none text-brand rounded-lg hover:bg-brand hover:text-white transition-all shadow-sm"
+                          >
+                            <Mail size={12} />
+                            Send to {email}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

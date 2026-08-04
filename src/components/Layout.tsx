@@ -392,8 +392,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link to="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</Link>
             <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link to="/code-of-conduct" className="hover:text-white transition-colors">Code of Conduct</Link>
             <Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link>
             <Link to="/onboarding-request" className="hover:text-white transition-colors">Partner With Us</Link>
+            <Link to="/partners/dashboard" className="hover:text-white transition-colors">Partner Dashboard</Link>
           </div>
           
           <div className="flex justify-center gap-6 mb-8">
