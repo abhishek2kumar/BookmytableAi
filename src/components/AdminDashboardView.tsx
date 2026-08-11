@@ -12,6 +12,7 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  setDoc,
   serverTimestamp,
   addDoc,
   getDocs,
@@ -175,6 +176,9 @@ export default function AdminDashboardView() {
     | "system"
   >("general");
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
+  const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({ name: '', email: '', password: '', restaurantId: '' });
+  const [isCreatingPartner, setIsCreatingPartner] = useState(false);
   const [isUploadingGlobal, setIsUploadingGlobal] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [notification, setNotification] = useState<{
@@ -620,6 +624,77 @@ export default function AdminDashboardView() {
       setTimeout(() => setNotification(null), 5000);
     } finally {
       setIsSavingRestaurant(false);
+    }
+  };
+
+  const handleAddPartnerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerForm.email || !partnerForm.password || !partnerForm.restaurantId) {
+      setNotification({ type: 'error', message: 'Please fill all required fields.' });
+      return;
+    }
+    
+    setIsCreatingPartner(true);
+    try {
+      let secondaryApp;
+      try {
+        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+      } catch (e: any) {
+        if (e.code === 'app/duplicate-app') {
+          const { getApp } = await import('firebase/app');
+          secondaryApp = getApp("Secondary");
+        } else {
+          throw e;
+        }
+      }
+      
+      const secondaryAuth = getAuth(secondaryApp);
+      let newUserId = '';
+      try {
+        const cred = await createUserWithEmailAndPassword(secondaryAuth, partnerForm.email, partnerForm.password);
+        newUserId = cred.user.uid;
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-in-use') {
+          setNotification({ type: 'error', message: 'Email already in use by another account.' });
+          setIsCreatingPartner(false);
+          return;
+        } else {
+          throw e;
+        }
+      } finally {
+        await secondaryAuth.signOut();
+      }
+
+      // Add to users collection
+      if (newUserId) {
+        await setDoc(doc(db, 'users', newUserId), {
+          email: partnerForm.email,
+          displayName: partnerForm.name,
+          role: 'owner',
+          createdAt: serverTimestamp()
+        });
+      }
+
+      // Update restaurant's partnerEmails array
+      const resDoc = restaurants.find(r => r.id === partnerForm.restaurantId);
+      if (resDoc) {
+        const emails = resDoc.partnerEmails || [];
+        if (!emails.includes(partnerForm.email)) {
+          await updateDoc(doc(db, 'restaurants', resDoc.id), {
+            partnerEmails: [...emails, partnerForm.email]
+          });
+        }
+      }
+
+      setNotification({ type: 'success', message: 'Partner account created and associated successfully.' });
+      setIsAddPartnerModalOpen(false);
+      setPartnerForm({ name: '', email: '', password: '', restaurantId: '' });
+    } catch (err: any) {
+      console.error(err);
+      setNotification({ type: 'error', message: err.message });
+    } finally {
+      setIsCreatingPartner(false);
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -3948,6 +4023,12 @@ export default function AdminDashboardView() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
+                    <button 
+                      onClick={() => setIsAddPartnerModalOpen(true)}
+                      className="px-4 py-2 bg-[#363636] hover:bg-black text-white rounded-xl text-[10px] font-black tracking-widest uppercase transition-colors"
+                    >
+                      + Create Partner
+                    </button>
                     <div className="flex bg-slate-100 p-1 rounded-xl">
                       {[
                         { id: "all", label: "ALL" },
@@ -6010,6 +6091,102 @@ export default function AdminDashboardView() {
               <span className="font-black text-sm tracking-tight">
                 {notification.message}
               </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {confirmModal && (
+          <ConfirmModal
+            isOpen={confirmModal.isOpen}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onConfirm={confirmModal.onConfirm}
+            onCancel={() => setConfirmModal(null)}
+          />
+        )}
+
+        <AnimatePresence>
+          {isAddPartnerModalOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-900/40 backdrop-blur-md"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100"
+              >
+                <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-normal text-[#363636] leading-[1.2]">Create Partner</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Assign to Restaurant</p>
+                  </div>
+                  <button onClick={() => setIsAddPartnerModalOpen(false)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-sm transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <form onSubmit={handleAddPartnerSubmit} className="p-6 md:p-8 space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Partner Name</label>
+                    <input 
+                      type="text" 
+                      value={partnerForm.name} 
+                      onChange={e => setPartnerForm({ ...partnerForm, name: e.target.value })} 
+                      className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-brand" 
+                      placeholder="e.g. John Doe"
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={partnerForm.email} 
+                      onChange={e => setPartnerForm({ ...partnerForm, email: e.target.value })} 
+                      className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-brand" 
+                      placeholder="e.g. partner@example.com"
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Password</label>
+                    <input 
+                      type="text" 
+                      value={partnerForm.password} 
+                      onChange={e => setPartnerForm({ ...partnerForm, password: e.target.value })} 
+                      className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-brand" 
+                      placeholder="Minimum 6 characters"
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Select Restaurant</label>
+                    <select 
+                      value={partnerForm.restaurantId} 
+                      onChange={e => setPartnerForm({ ...partnerForm, restaurantId: e.target.value })} 
+                      className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-brand"
+                      required
+                    >
+                      <option value="">-- Choose a restaurant --</option>
+                      {restaurants.map(r => (
+                        <option key={r.id} value={r.id}>{r.name} - {r.city}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="pt-4 flex justify-end gap-3">
+                    <button type="button" onClick={() => setIsAddPartnerModalOpen(false)} className="px-6 py-3.5 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isCreatingPartner} className="px-8 py-3.5 bg-[#363636] hover:bg-black text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl transition-all disabled:opacity-50 flex items-center gap-2">
+                      {isCreatingPartner ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                      {isCreatingPartner ? 'Creating...' : 'Create Account'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

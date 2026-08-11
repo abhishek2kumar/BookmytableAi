@@ -93,7 +93,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidId(restaurantId) && (
         isAdmin() || (
           isValidRestaurant(incoming()) && 
-          incoming().ownerId == request.auth.uid &&
+          incoming().get('ownerId', '') == request.auth.uid &&
           incoming().get('approved', false) == false &&
           incoming().get('createdAt', request.time) == request.time
         )
@@ -101,7 +101,7 @@ service cloud.firestore {
 
       allow update: if isSignedIn() && (
         isAdmin() || 
-        ((isOwner(existing().ownerId) || (request.auth.token.email in existing().get('partnerEmails', []))) && (
+        ((isOwner(existing().get('ownerId', '')) || (('email' in request.auth.token && request.auth.token.email in existing().get('partnerEmails', [])))) && (
           // Strictly control which keys can be modified by the owner
           incoming().diff(existing()).affectedKeys().hasOnly([
             'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 'contactNumber',
@@ -113,8 +113,8 @@ service cloud.firestore {
             'email', 'floor', 'shopNo', 'area', 'landmark', 'state', 'pincode', 'rating', 'reviewsCount', 'foodImages', 'ambienceImages', 'collections', 'mallName', 'isTakeawayEnabled', 'autoApprovalThresholds', 'blackoutSlots'
           ]) &&
           isValidRestaurant(incoming()) &&
-          incoming().ownerId == existing().ownerId &&
-          incoming().updatedAt == request.time
+          incoming().get('ownerId', '') == existing().get('ownerId', '') &&
+          incoming().get('updatedAt', request.time) == request.time
         )) ||
         (
           // Allow any signed-in user to update the AI cache fields specifically
@@ -144,12 +144,12 @@ service cloud.firestore {
         (isOwner(existing().restaurantOwnerId) && 
          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
          incoming().status in ['confirmed', 'cancelled'] &&
-         incoming().updatedAt == request.time) ||
+         incoming().get('updatedAt', request.time) == request.time) ||
         (isOwner(existing().userId) &&
          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
          existing().status == 'pending' &&
          incoming().status == 'cancelled' &&
-         incoming().updatedAt == request.time)
+         incoming().get('updatedAt', request.time) == request.time)
       );
     }
 
@@ -191,7 +191,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (
         isAdmin() || (
           exists(/databases/$(database)/documents/restaurants/$(existing().restaurantId)) && 
-          get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.ownerId == request.auth.uid
+          get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.get('ownerId', '') == request.auth.uid
         )
       );
     }

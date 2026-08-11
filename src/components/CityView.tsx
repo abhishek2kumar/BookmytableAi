@@ -643,7 +643,6 @@ export default function CityView() {
                 value={searchQuery}
               />
             </div>
-
             <button
               className="md:hidden p-2 text-vibrant-gray hover:text-brand transition-colors"
               onClick={() => setIsSearchOverlayOpen(true)}
@@ -656,10 +655,10 @@ export default function CityView() {
 
       {/* Categories & Cuisines */}
       {!locationSlug && (
-      <section className="relative bg-white pt-4 pb-8">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
+      <section className="relative bg-white pt-2 md:pt-4 pb-4 md:pb-8">
+        <div className="max-w-7xl mx-auto px-3 md:px-8">
           {/* Welcome Banner */}
-          <div className="relative mb-8 rounded-none overflow-hidden h-[130px] md:h-40 w-[calc(100%+48px)] md:w-[calc(100%+64px)] -mx-6 md:-mx-8 flex items-center bg-slate-100">
+          <div className="relative mb-4 md:mb-8 rounded-[20px] md:rounded-none overflow-hidden h-[120px] md:h-40 w-full md:w-[calc(100%+64px)] md:-mx-8 flex items-center bg-slate-100 shadow-sm">
             {loading || authLoading ? (
               <div className="absolute inset-0 bg-slate-200 animate-pulse" />
             ) : (
@@ -691,12 +690,12 @@ export default function CityView() {
 
       {/* CUISINE CAROUSEL */}
       {!locationSlug && !hasActiveFilters && (
-      <section className="relative bg-white pb-8">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
+      <section className="relative bg-white pb-4 md:pb-8">
+        <div className="max-w-7xl mx-auto px-3 md:px-8">
           {/* Cuisine Cards Carousel */}
           {!hasActiveFilters && (
           <div>
-            <ScrollCarousel className="flex items-start gap-4 md:gap-6 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex items-start gap-3 md:gap-6 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0">
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <div
@@ -737,18 +736,19 @@ export default function CityView() {
 
       {/* COLLECTIONS SECTION */}
       {!locationSlug && !hasActiveFilters && diningCollections.some(c => c.isActive && (!c.city || c.city.toLowerCase() === queryCityName.toLowerCase())) && (
-      <section className="relative bg-slate-50 py-12 md:py-16 border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="mb-6">
+      <section className="relative bg-slate-50 py-6 md:py-16 border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-3 md:px-8">
+          <div className="mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
               Collections
             </h2>
-            <p className="text-slate-500 text-sm mt-1">
-              Explore curated lists of top restaurants, cafes, pubs, and bars in {cityName}, based on trends
+            <p className="text-slate-500 text-xs md:text-sm mt-1">
+              <span className="md:hidden">Explore curated lists of top restaurants, cafes, pubs, and bars</span>
+              <span className="hidden md:inline">Explore curated lists of top restaurants, cafes, pubs, and bars in {cityName}, based on trends</span>
             </p>
           </div>
           
-          <ScrollCarousel className="flex gap-4 md:gap-6 pb-4 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+          <ScrollCarousel className="flex gap-3 md:gap-6 pb-4 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0">
             {diningCollections.filter(c => c.isActive && (!c.city || c.city.toLowerCase() === queryCityName.toLowerCase())).sort((a, b) => a.order - b.order).map(collection => (
                <Link
                  key={collection.id}
@@ -781,7 +781,7 @@ export default function CityView() {
         {/* END COLLECTIONS SECTION */}
 
       {locationSlug && (
-        <div className="max-w-7xl mx-auto px-6 mt-6 md:mt-8 mb-6 md:mb-8">
+        <div className="max-w-7xl mx-auto px-6 mt-6 md:mt-8 mb-4 md:mb-8">
           <div className="pt-4 pb-0 md:pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <button 
@@ -807,7 +807,7 @@ export default function CityView() {
       {!hasActiveFilters && (!storiesLoading && usersWithStories.length > 0) && (
         <div className="max-w-7xl mx-auto px-6 mt-4 md:mt-6 mb-2">
           <section className="relative">
-            <ScrollCarousel className="flex gap-4 pb-2 scrollbar-hide snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex gap-3 pb-2 scrollbar-hide snap-x -mx-3 px-3 scroll-px-3 md:scroll-px-0 md:mx-0 md:px-0">
                {usersWithStories.map((storyUser, idx) => (
                   <div key={storyUser.restaurantId} className="flex flex-col items-center gap-2 shrink-0 cursor-pointer snap-start" onClick={() => setActiveStoryIndex(idx)}>
                       <StoryAvatar 
@@ -839,14 +839,14 @@ export default function CityView() {
 
         {/* Featured Section */}
         {!hasActiveFilters && !locationSlug && (loading || featuredRestaurants.length > 0) && (
-          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Featured Restaurants
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   Handpicked selections by our food experts
                 </p>
               </div>
@@ -855,7 +855,7 @@ export default function CityView() {
               </div>
             </div>
 
-            <ScrollCarousel className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0">
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
                     <div
@@ -881,14 +881,14 @@ export default function CityView() {
 
         {/* Spotlight Section */}
         {!hasActiveFilters && !locationSlug && !loading && spotlightRestaurants.length > 0 && (
-          <section className="relative group/section py-12 md:py-16 bg-slate-50">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Spotlight in {cityName}
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   Sponsored places you must try
                 </p>
               </div>
@@ -896,9 +896,8 @@ export default function CityView() {
                 <Star className="text-amber-500 fill-amber-500" size={24} />
               </div>
             </div>
-
             <ScrollCarousel
-              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
+              className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0"
             >
               {spotlightRestaurants.map((restaurant) => {
                 const activeAd = restaurant.advertisements?.find(ad => ad.active);
@@ -951,14 +950,14 @@ export default function CityView() {
 
         {/* Top Discount Section */}
         {!hasActiveFilters && !locationSlug && (loading || discountedRestaurants.length > 0) && (
-          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Top Discounts in {cityName}
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   Save big on your next meal
                 </p>
               </div>
@@ -969,9 +968,8 @@ export default function CityView() {
                 </div>
               </div>
             </div>
-
             <ScrollCarousel
-              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
+              className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0"
             >
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
@@ -999,20 +997,20 @@ export default function CityView() {
 
         {/* Food Courts Section */}
         {!hasActiveFilters && !locationSlug && mallGroups.length > 0 && (
-          <section className="relative group/section py-12 md:py-16 bg-orange-50/50">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-orange-50/50">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Food Courts in <span className="text-brand">{currentCity?.name || queryCityName}</span>
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   Skip the queue and order from your favorite mall outlets
                 </p>
               </div>
             </div>
 
-            <ScrollCarousel className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0">
+            <ScrollCarousel className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0">
               {mallGroups.map((group) => (
                 <Link
                   key={group.slug}
@@ -1047,14 +1045,14 @@ export default function CityView() {
 
         {/* Nearby Section */}
         {!hasActiveFilters && !locationSlug && (loading || nearbyRestaurants.length > 0) && (
-          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   Restaurants Near You
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   Quick dining options in your immediate vicinity
                 </p>
               </div>
@@ -1064,7 +1062,7 @@ export default function CityView() {
             </div>
 
             <ScrollCarousel
-              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
+              className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0"
             >
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => (
@@ -1091,17 +1089,17 @@ export default function CityView() {
 
         {/* Famous Locations */}
         {!hasActiveFilters && !locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section py-12 md:py-16 bg-slate-50">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="mb-6">
+          <section className="relative group/section py-6 md:py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
               </h2>
-              <p className="text-vibrant-gray font-medium text-sm">
+              <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                 Explore top areas in {cityName}
               </p>
             </div>
-            <ScrollCarousel className="flex gap-4 pb-4 scrollbar-none -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0 snap-x">
+            <ScrollCarousel className="flex gap-3 pb-2 scrollbar-none -mx-3 px-3 scroll-px-3 md:scroll-px-0 md:mx-0 md:px-0 snap-x">
               {famousLocations.map((locationName, idx) => (
                 <div
                   key={idx}
@@ -1131,14 +1129,14 @@ export default function CityView() {
 
         {/* Takeaway Restaurants */}
         {!hasActiveFilters && !loading && takeawayRestaurants.length > 0 && (
-          <section className="relative group/section py-12 md:py-16 bg-white border-y border-slate-100">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="flex items-center justify-between mb-8">
+          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
                 <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                   {locationSlug ? `Take Away Restaurants in ${famousLocations.find(loc => loc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === locationSlug) || locationSlug.split('-').map(s=>s.charAt(0).toUpperCase()+s.slice(1)).join(' ')}` : "Takeaway restaurants near You"}
                 </h2>
-                <p className="text-vibrant-gray font-medium text-sm">
+                <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                   {locationSlug ? "Quick bites ready for pickup" : "Order online & pick up quickly"}
                 </p>
               </div>
@@ -1148,7 +1146,7 @@ export default function CityView() {
             </div>
 
             <ScrollCarousel
-              className="flex gap-4 md:gap-8 pb-6 scrollbar-none snap-x -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0"
+              className="flex gap-3 md:gap-8 pb-2 md:pb-6 scrollbar-none snap-x -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0"
             >
               {takeawayRestaurants.map((restaurant) => {
                 const isAvailable = isTakeawayAvailable(restaurant);
@@ -1179,11 +1177,11 @@ export default function CityView() {
         {/* Main Listing Section */}
         <section
           id="all-restaurants"
-          className={cn("py-12 md:py-16 bg-slate-50")}
+          className={cn("py-6 md:py-16 bg-slate-50")}
         >
-          <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <div className="max-w-7xl mx-auto px-3 md:px-8">
           {!hasActiveFilters && !locationSlug && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 md:mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6 mb-6 md:mb-12">
             <h2 className="text-2xl md:text-3xl text-[#363636] font-normal leading-[1.2]">
               {searchQuery
                 ? `Search results for "${searchQuery}"`
@@ -1222,7 +1220,7 @@ export default function CityView() {
               ))}
             </div>
           ) : filteredListing.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-x-6 md:gap-y-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 md:gap-x-6 md:gap-y-10">
               {filteredListing
                 .slice(0, visibleCount)
                 .map((restaurant, index) => (
@@ -1264,17 +1262,17 @@ export default function CityView() {
 
         {/* Famous Locations on Area Page */}
         {!hasActiveFilters && locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section py-12 md:py-16 bg-white border-t border-gray-100">
-            <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <div className="mb-6">
+          <section className="relative group/section py-6 md:py-16 bg-white border-t border-gray-100">
+            <div className="max-w-7xl mx-auto px-3 md:px-8">
+            <div className="mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
                 Browse by Famous locations
               </h2>
-              <p className="text-vibrant-gray font-medium text-sm">
+              <p className="text-vibrant-gray font-medium text-xs md:text-sm">
                 Explore top areas in {cityName}
               </p>
             </div>
-            <ScrollCarousel className="flex gap-4 pb-4 scrollbar-none -mx-6 px-6 scroll-px-6 md:scroll-px-0 md:mx-0 md:px-0 snap-x">
+            <ScrollCarousel className="flex gap-3 pb-2 scrollbar-none -mx-3 md:-mx-0 px-3 md:px-0 scroll-px-3 md:scroll-px-0 snap-x">
               {famousLocations.map((locationName, idx) => (
                 <div
                   key={idx}

@@ -13,3 +13,9 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 });
 
 export const storage = getStorage(app);
+
+export const createSecondaryAuth = () => {
+  const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
+  return getAuth(secondaryApp);
+};
+

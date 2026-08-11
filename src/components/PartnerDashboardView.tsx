@@ -3,6 +3,9 @@ import { useAuth } from './AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, updateDoc, doc, onSnapshot, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { QRCodeCanvas } from 'qrcode.react';
 import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
@@ -44,6 +47,7 @@ const SIDEBAR_GROUPS = [
       { id: 'general', label: 'General Info', icon: Info },
       { id: 'status', label: 'Operational Hours', icon: Clock },
       { id: 'bookingSettings', label: 'Booking Settings', icon: Calendar },
+      { id: 'staff', label: 'Staff Access', icon: Users },
     ]
   },
   {
@@ -455,7 +459,11 @@ export default function PartnerDashboardView() {
   const [overviewYear, setOverviewYear] = useState(new Date().getFullYear());
   const [formData, setFormData] = useState<Partial<Restaurant>>({});
   const [saving, setSaving] = useState(false);
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [newStaffForm, setNewStaffForm] = useState({ name: '', email: '', password: '' });
+  const [creatingStaff, setCreatingStaff] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [notification, setNotification] = useState<{type: 'success'|'error', message: string} | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
   const [bookingFilter, setBookingFilter] = useState<'today' | 'upcoming' | 'previous'>('today');
@@ -687,6 +695,76 @@ export default function PartnerDashboardView() {
     setHasChanges(true);
   };
 
+  const handleAddStaffSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffForm.email || !newStaffForm.password || !selectedRes) return;
+    
+    setCreatingStaff(true);
+    try {
+      let secondaryApp;
+      try {
+        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+      } catch (e: any) {
+        if (e.code === 'app/duplicate-app') {
+          const { getApp } = await import('firebase/app');
+          secondaryApp = getApp("Secondary");
+        } else {
+          throw e;
+        }
+      }
+      
+      const secondaryAuth = getAuth(secondaryApp);
+      let newUserId = '';
+      try {
+        const cred = await createUserWithEmailAndPassword(secondaryAuth, newStaffForm.email, newStaffForm.password);
+        newUserId = cred.user.uid;
+      } catch (e: any) {
+        if (e.code === 'auth/email-already-in-use') {
+          setNotification({ type: 'error', message: 'Email already in use.' });
+          setCreatingStaff(false);
+          return;
+        } else {
+          throw e;
+        }
+      } finally {
+        await secondaryAuth.signOut();
+      }
+
+      // Add to users collection
+      if (newUserId) {
+        await updateDoc(doc(db, 'restaurants', selectedRes.id), {
+          partnerEmails: [...(selectedRes.partnerEmails || []), newStaffForm.email]
+        });
+      }
+
+      setNotification({ type: 'success', message: 'Staff account created successfully.' });
+      setIsAddingStaff(false);
+      setNewStaffForm({ name: '', email: '', password: '' });
+    } catch (err: any) {
+      console.error(err);
+      setNotification({ type: 'error', message: err.message });
+    } finally {
+      setCreatingStaff(false);
+      setTimeout(() => setNotification(null), 5000);
+    }
+  };
+
+  const handleRemoveStaff = async (emailToRemove: string) => {
+    if (!selectedRes) return;
+    const confirm = window.confirm(`Remove access for ${emailToRemove}?`);
+    if (!confirm) return;
+    
+    const newEmails = (selectedRes.partnerEmails || []).filter(e => e !== emailToRemove);
+    try {
+      await updateDoc(doc(db, 'restaurants', selectedRes.id), {
+        partnerEmails: newEmails
+      });
+      setNotification({ type: 'success', message: 'Staff access removed.' });
+    } catch (err: any) {
+      setNotification({ type: 'error', message: 'Error removing staff' });
+    }
+  };
+
   const handleSave = async (dataToSave?: any) => {
     if (!selectedRes) return;
     setSaving(true);
@@ -739,15 +817,33 @@ export default function PartnerDashboardView() {
     };
 
     const cleanData = stripUndefined(data);
-    cleanData.updatedAt = serverTimestamp();
-    delete cleanData.id;
+    
+    const allowedKeys = [
+      'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'city', 'contactNumber',
+      'isOpen', 'aiSummary', 'aiSummaryUpdatedAt', 'facilities', 
+      'offers', 'signatureDishes', 'menuImages', 'openingHours', 'secondaryImages', 'updatedAt',
+      'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'instantBookingLimit', 
+      'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories',
+      'address', 'lat', 'lng', 'liveMenu', 'isQrMenuEnabled', 'partnerEmails', 'advertisements',
+      'email', 'floor', 'shopNo', 'area', 'landmark', 'state', 'pincode', 'rating', 'reviewsCount', 
+      'foodImages', 'ambienceImages', 'collections', 'mallName', 'isTakeawayEnabled', 
+      'autoApprovalThresholds', 'blackoutSlots'
+    ];
+    
+    const finalData: any = {};
+    for (const key of allowedKeys) {
+      if (cleanData[key] !== undefined) {
+        finalData[key] = cleanData[key];
+      }
+    }
+    finalData.updatedAt = serverTimestamp();
 
     try {
       const docRef = doc(db, 'restaurants', selectedRes.id);
-      await updateDoc(docRef, cleanData);
+      await updateDoc(docRef, finalData);
       
       // Update local state
-      const updatedRes = { ...selectedRes, ...cleanData } as Restaurant;
+      const updatedRes = { ...selectedRes, ...finalData } as Restaurant;
       setSelectedRes(updatedRes);
       setRestaurants(prev => prev.map(r => r.id === updatedRes.id ? updatedRes : r));
       setHasChanges(false);
@@ -1782,10 +1878,14 @@ export default function PartnerDashboardView() {
                
               <div className="flex items-center gap-4">
                 <div className="hidden md:block text-right">
-                  <p className="text-sm font-normal text-[#363636] leading-[1.2]">{user?.displayName}</p>
+                  <p className="text-sm font-normal text-[#363636] leading-[1.2]">{user?.displayName || user?.email}</p>
                 </div>
-                {user?.photoURL && (
+                {user?.photoURL ? (
                   <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border-2 border-slate-300" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full border-2 border-slate-300 bg-brand text-white flex items-center justify-center text-xs font-bold uppercase">
+                    {(user?.displayName || user?.email || 'U').charAt(0)}
+                  </div>
                 )}
                 <button onClick={handleLogout} className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors" title="Logout">
                   <LogOut size={14} />
@@ -2575,6 +2675,53 @@ export default function PartnerDashboardView() {
                  </div>
                )}
 
+               {activeTab === 'staff' && (
+                 <div className="space-y-6">
+                   <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl shadow-slate-200/40 border border-slate-100 relative overflow-hidden">
+                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+                       <div>
+                         <h3 className="text-xl font-bold text-slate-800">Staff Access</h3>
+                         <p className="text-slate-500 text-sm mt-1">Manage who has access to this restaurant's dashboard.</p>
+                       </div>
+                       <button
+                         onClick={() => setIsAddingStaff(true)}
+                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2"
+                       >
+                         <Plus size={16} /> Add Staff
+                       </button>
+                     </div>
+                     
+                     <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                       {(selectedRes?.partnerEmails || []).length === 0 ? (
+                         <div className="p-8 text-center text-slate-400 text-sm">No staff members found.</div>
+                       ) : (
+                         <ul className="divide-y divide-slate-100">
+                           {(selectedRes?.partnerEmails || []).map((email, idx) => (
+                             <li key={idx} className="flex items-center justify-between p-4 hover:bg-white transition-colors">
+                               <div className="flex items-center gap-4">
+                                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold uppercase">
+                                   {email[0]}
+                                 </div>
+                                 <div>
+                                   <div className="font-bold text-slate-800 text-sm">{email}</div>
+                                   <div className="text-xs text-slate-500">Authorized Partner</div>
+                                 </div>
+                               </div>
+                               <button 
+                                 type="button"
+                                 onClick={() => handleRemoveStaff(email)}
+                                 className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                               >
+                                 <Trash2 size={16} />
+                               </button>
+                             </li>
+                           ))}
+                         </ul>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+               )}
                {activeTab === 'stories' && selectedRes && (
                  <StoryManager restaurant={selectedRes} />
                )}
@@ -3685,7 +3832,79 @@ export default function PartnerDashboardView() {
 
       {/* Floating Save Bar */}
       <AnimatePresence>
-              {/* Add Image Modal */}
+              <AnimatePresence>
+        {isAddingStaff && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-900/40 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100"
+            >
+              <div className="p-6 md:p-8 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-normal text-[#363636] leading-[1.2]">Add Staff Account</h3>
+                  <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Create Dashboard Access</p>
+                </div>
+                <button type="button" onClick={() => setIsAddingStaff(false)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 shadow-sm transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleAddStaffSubmit} className="p-6 md:p-8 space-y-6">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Staff Name</label>
+                  <input 
+                    type="text" 
+                    value={newStaffForm.name} 
+                    onChange={e => setNewStaffForm({ ...newStaffForm, name: e.target.value })} 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-blue-600 outline-none" 
+                    placeholder="e.g. John Doe"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Email Address</label>
+                  <input 
+                    type="email" 
+                    value={newStaffForm.email} 
+                    onChange={e => setNewStaffForm({ ...newStaffForm, email: e.target.value })} 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-blue-600 outline-none" 
+                    placeholder="e.g. staff@example.com"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Password</label>
+                  <input 
+                    type="text" 
+                    value={newStaffForm.password} 
+                    onChange={e => setNewStaffForm({ ...newStaffForm, password: e.target.value })} 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-[#363636] focus:ring-2 focus:ring-blue-600 outline-none" 
+                    placeholder="Minimum 6 characters"
+                    required 
+                  />
+                </div>
+                <div className="pt-4 flex justify-end gap-3">
+                  <button type="button" onClick={() => setIsAddingStaff(false)} className="px-6 py-3.5 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={creatingStaff} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl transition-all disabled:opacity-50 flex items-center gap-2">
+                    {creatingStaff ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                    {creatingStaff ? 'Creating...' : 'Create Account'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Image Modal */}
       {addImageModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
