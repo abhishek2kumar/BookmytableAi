@@ -505,7 +505,7 @@ return allDates;
               ))}
             </div>
 
-            {restaurant?.blackoutDates?.includes(format(selectedDate, 'yyyy-MM-dd')) || slotData.categories.length === 0 ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="text-sm mb-4 text-[#363636] font-normal leading-[1.2]">
+            {slotData.categories.length === 0 ? (<div className="text-center p-8 bg-slate-50 rounded-[20px] text-slate-500 font-medium">Not accepting bookings on this date.</div>) : (<><h3 className="text-sm mb-4 text-[#363636] font-normal leading-[1.2]">
               Select the time of day to see the offers
             </h3>
             <div className="space-y-4">

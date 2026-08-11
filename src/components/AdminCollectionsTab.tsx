@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { Plus, Edit2, Trash2, Image as ImageIcon } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 import { useMasterData } from './MasterDataContext';
 
 export default function AdminCollectionsTab() {
   const { diningCollections } = useMasterData();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -61,13 +63,20 @@ export default function AdminCollectionsTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this collection?')) {
-      await deleteDoc(doc(db, 'dining_collections', id));
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Collection',
+      message: 'Are you sure you want to delete this collection?',
+      onConfirm: async () => {
+        await deleteDoc(doc(db, 'dining_collections', id));
+        setConfirmModal(null);
+      }
+    });
   };
 
   return (
     <div className="space-y-6">
+      {confirmModal && <ConfirmModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-bold text-slate-800">Dining Collections</h3>
         <button

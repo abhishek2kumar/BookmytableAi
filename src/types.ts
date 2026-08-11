@@ -155,6 +155,7 @@ export interface Restaurant {
   id: string;
   name: string;
   legalEntityName?: string;
+  isClaimed?: boolean;
   description: string;
   cuisine: string[];
   rating: number;
@@ -190,7 +191,6 @@ export interface Restaurant {
   isQrMenuEnabled?: boolean;
   instantBookingLimit?: number;
   autoApprovalThresholds?: AutoApprovalThreshold[];
-  blackoutDates?: string[]; // Legacy
   blackoutSlots?: BlackoutSlot[];
   slotCategories?: SlotCategory[];
   bookingSlots?: string[];
@@ -203,7 +203,6 @@ export interface Restaurant {
     price: number;
     description?: string;
   }[];
-  menuImages?: (string | { url: string; category: string })[];
   secondaryImages?: (string | { url: string; category: string })[];
   foodImages?: string[];
   ambienceImages?: string[];

@@ -1162,7 +1162,7 @@ export default function AdminOnboardingView() {
 
                   <div className="pt-8 border-t border-slate-300 space-y-6">
                     <div className="flex items-center justify-between">
-                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Menu Categories (e.g. Food, Drinks)</label>
+                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Menu Images (e.g. Food, Drinks)</label>
                        <button 
                         type="button"
                         onClick={() => {

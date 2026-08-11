@@ -442,7 +442,7 @@ export default function RestaurantDetailsView() {
       ...(restaurant.secondaryImages?.map((img: any) => typeof img === 'string' ? img : img.url) || []),
       ...(restaurant.foodImages || []),
       ...(restaurant.ambienceImages || []),
-      ...(restaurant.menuImages?.map((img: any) => typeof img === 'string' ? img : img.url) || []),
+
       ...menuCatImages,
     ].filter(Boolean);
     return images;
@@ -773,17 +773,10 @@ export default function RestaurantDetailsView() {
 
   const status = useMemo(() => getRestaurantStatus(restaurant), [restaurant]);
   const dates = useMemo(() => {
-    const allDates = Array.from({ length: 7 }, (_, i) =>
+    return Array.from({ length: 7 }, (_, i) =>
       addDays(startOfToday(), i),
     );
-    if (!restaurant?.blackoutDates || restaurant.blackoutDates.length === 0)
-      return allDates;
-
-    return allDates.filter((date) => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      return !restaurant.blackoutDates?.includes(dateStr);
-    });
-  }, [restaurant?.blackoutDates]);
+  }, []);
 
   const slotData = useMemo(() => {
     const parseTimeForGrouping = (timeStr: string) => {
@@ -2006,19 +1999,18 @@ export default function RestaurantDetailsView() {
               </div>
             )}
 
-            {/* Visual Menu Categories */}
+            {/* Visual Menu Images */}
             {(() => {
               const validMenuCategories = (restaurant.menuCategories || []).filter((c: any) => c.images && c.images.length > 0);
-              const hasLegacyMenuImages = restaurant.menuImages && restaurant.menuImages.length > 0;
               
-              if (validMenuCategories.length === 0 && !hasLegacyMenuImages) return null;
+              if (validMenuCategories.length === 0) return null;
 
               return (
               <div className="mt-8">
                 <h3 className="text-[20px] md:text-2xl mb-4 text-[#363636] font-normal leading-[1.2]">
                   {restaurant.name} {restaurant.location || restaurant.city || city} Menu & Prices
                 </h3>
-                {(validMenuCategories.length > 0 || hasLegacyMenuImages) && (
+                {validMenuCategories.length > 0 && (
                     <div className="flex bg-slate-50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide mb-6 max-w-max">
                       {validMenuCategories.map((cat: any, idx: number) => (
                         <button
@@ -2043,23 +2035,6 @@ export default function RestaurantDetailsView() {
                           {cat.name}
                         </button>
                       ))}
-                      {hasLegacyMenuImages && (
-                          <button
-                            onClick={() => {
-                              setActiveMenuCategory("legacy");
-                              setMenuSlideIndex(0);
-                            }}
-                            className={cn(
-                              "px-6 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap uppercase tracking-widest",
-                              activeMenuCategory === "legacy" ||
-                              (!activeMenuCategory && validMenuCategories.length === 0)
-                                ? "bg-white text-brand shadow-sm"
-                                : "text-slate-400 hover:text-slate-600",
-                            )}
-                          >
-                            Menu
-                          </button>
-                        )}
                     </div>
                   )}
 
@@ -2067,8 +2042,7 @@ export default function RestaurantDetailsView() {
                   <motion.div
                     key={
                       activeMenuCategory ||
-                      validMenuCategories[0]?.id ||
-                      "legacy"
+                      validMenuCategories[0]?.id
                     }
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2076,14 +2050,10 @@ export default function RestaurantDetailsView() {
                   >
                     {(() => {
                       const currentCat =
-                        activeMenuCategory === "legacy" || (!activeMenuCategory && validMenuCategories.length === 0)
-                          ? { images: restaurant.menuImages }
-                          : validMenuCategories.find(
-                              (c: any) => c.id === activeMenuCategory,
-                            ) ||
-                            validMenuCategories[0] || {
-                              images: restaurant.menuImages,
-                            };
+                        validMenuCategories.find(
+                          (c: any) => c.id === activeMenuCategory,
+                        ) ||
+                        validMenuCategories[0];
                       const images = currentCat?.images || [];
                       if (images.length === 0) return null;
 
@@ -2494,7 +2464,7 @@ export default function RestaurantDetailsView() {
             <hr className="my-8 border-slate-300" />
             
             {/* Claim Listing Banner */}
-            {(!restaurant.contactEmail || !restaurant.contactNumber || (restaurant.contactNumber || '').includes('9999999999') || (restaurant.contactEmail || '').includes('contact@bookmytable.co.in')) && (
+            {(!restaurant.isClaimed && (!restaurant.contactEmail || !restaurant.contactNumber || (restaurant.contactNumber || '').includes('9999999999') || (restaurant.contactEmail || '').includes('contact@bookmytable.co.in'))) && (
               <div className="bg-brand/5 border border-brand/20 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                  <div>
                     <h3 className="text-brand font-bold text-lg mb-1">Is this your restaurant?</h3>

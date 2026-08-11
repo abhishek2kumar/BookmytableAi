@@ -17,6 +17,25 @@ let isAllCached = false;
 let cachedApprovedRestaurants: Restaurant[] = [];
 let isApprovedCached = false;
 
+export function usePlatformSettings() {
+  const [settings, setSettings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, "platform_settings", "global"), (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.data());
+      } else {
+        setSettings({});
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return { settings, loading };
+}
+
 export function useRestaurants(onlyApproved = false) {
   const [restaurants, setRestaurants] = useState<Restaurant[]>(
     onlyApproved ? cachedApprovedRestaurants : cachedAllRestaurants,

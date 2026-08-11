@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import AppIcon from "./AppIcon";
+import { ConfirmModal } from './ConfirmModal';
 import { db, auth } from "../lib/firebase";
 import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
@@ -137,6 +138,7 @@ export default function AdminDashboardView() {
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
   const [importCity, setImportCity] = useState("Bangalore");
 
   // Modal states
@@ -528,6 +530,7 @@ export default function AdminDashboardView() {
         "contactNumber",
         "contactEmail",
         "partnerEmails",
+        "isClaimed",
         "image",
         "location",
         "address",
@@ -545,7 +548,6 @@ export default function AdminDashboardView() {
         "facilities",
         "offers",
         "advertisements",
-        "menuImages",
         "secondaryImages",
         "foodImages",
         "ambienceImages",
@@ -553,11 +555,11 @@ export default function AdminDashboardView() {
         "signatureDishes",
         "dailyTimings",
         "isBookingEnabled",
+        "isTakeawayEnabled",
         "bookingSlots",
         "lat",
         "lng",
         "instantBookingLimit",
-        "blackoutDates",
         "slotCategories",
         "categorySlots",
         "menuCategories",
@@ -576,6 +578,10 @@ export default function AdminDashboardView() {
           if (key === "cuisine") updateData[key] = [];
         }
       });
+
+      if (typeof updateData.partnerEmails === 'string') {
+        updateData.partnerEmails = updateData.partnerEmails.split(',').map((s:string) => s.trim()).filter(Boolean);
+      }
 
       // Re-compose address
       updateData.address = [
@@ -777,17 +783,22 @@ export default function AdminDashboardView() {
   };
 
   const handleDeleteCity = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this city?")) return;
-    try {
-      await updateDoc(doc(db, "cities", id), {
-        isKnown: false,
-        isPopular: false,
-      }); // Or actually delete? Better to delete if requested
-      // Actually the rules allow delete? Let's check.
-      // await deleteDoc(doc(db, 'cities', id)); // Need to import deleteDoc
-    } catch (err) {
-      console.error(err);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete City',
+      message: 'Are you sure you want to delete this city?',
+      onConfirm: async () => {
+        try {
+          await updateDoc(doc(db, "cities", id), {
+            isKnown: false,
+            isPopular: false,
+          });
+        } catch (err) {
+          console.error(err);
+        }
+        setConfirmModal(null);
+      }
+    });
   };
 
   const usersWithBiz = useMemo(() => {
@@ -1127,18 +1138,40 @@ export default function AdminDashboardView() {
                   />
                 </div>
                 <div className="space-y-2 lg:col-span-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                    Partner Emails (Comma Separated)
-                  </label>
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Partner Emails (Comma Separated)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isClaimed"
+                        checked={editingRestaurant.isClaimed || false}
+                        onChange={(e) => setEditingRestaurant({...editingRestaurant, isClaimed: e.target.checked})}
+                        className="w-3 h-3 text-brand border-slate-300 rounded focus:ring-brand"
+                      />
+                      <label htmlFor="isClaimed" className="text-[10px] font-black text-brand uppercase tracking-widest cursor-pointer select-none">
+                        Claimed
+                      </label>
+                    </div>
+                  </div>
                   <input
                     className="w-full px-5 py-3.5 bg-white border border-slate-300 rounded-2xl font-normal text-[#363636] leading-[1.2] focus:border-brand outline-none transition-all shadow-sm"
-                    value={Array.isArray(editingRestaurant.partnerEmails) ? editingRestaurant.partnerEmails.join(", ") : (editingRestaurant.partnerEmails || "")}
+                    value={typeof editingRestaurant.partnerEmails === 'string' ? (editingRestaurant.partnerEmails as string) : (Array.isArray(editingRestaurant.partnerEmails) ? editingRestaurant.partnerEmails.join(", ") : "")}
                     onChange={(e) =>
                       setEditingRestaurant({
                         ...editingRestaurant,
-                        partnerEmails: e.target.value.split(',').map(s=>s.trim()).filter(Boolean),
+                        partnerEmails: e.target.value as any,
                       })
                     }
+                    onBlur={(e) => {
+                      if (typeof editingRestaurant.partnerEmails === 'string') {
+                        setEditingRestaurant({
+                          ...editingRestaurant,
+                          partnerEmails: (editingRestaurant.partnerEmails as string).split(',').map((s:any)=>s.trim()).filter(Boolean),
+                        });
+                      }
+                    }}
                     placeholder="owner@gmail.com, manager@gmail.com"
                   />
                   {Array.isArray(editingRestaurant.partnerEmails) && editingRestaurant.partnerEmails.length > 0 && (
@@ -1345,7 +1378,6 @@ export default function AdminDashboardView() {
         );
       case "operational":
         const currentTimings = editingRestaurant.dailyTimings || {};
-        const blackoutDates = editingRestaurant.blackoutDates || [];
 
         return (
           <motion.div
@@ -1444,9 +1476,9 @@ export default function AdminDashboardView() {
                     : "Activate"}
                 </button>
               </div>
+
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6">
                 <div className="flex items-center gap-3 px-1">
                   <Clock className="text-brand" size={18} />
@@ -1474,75 +1506,6 @@ export default function AdminDashboardView() {
                   />
                 </div>
               </div>
-
-              <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-3 text-red-500">
-                    <PowerOff size={18} />
-                    <h3 className="text-sm uppercase tracking-widest font-normal leading-[1.2]">
-                      Blackout Protocol
-                    </h3>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <input type="date" id="blackout-date-input" className="flex-grow px-4 py-3 bg-white border border-slate-300 rounded-xl font-bold text-xs" min={new Date().toISOString().split('T')[0]} />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.getElementById(
-                          "blackout-date-input",
-                        ) as HTMLInputElement;
-                        if(input.value && !isNaN(new Date(input.value).getTime()) && !blackoutDates.includes(input.value)) {
-                          setEditingRestaurant({
-                            ...editingRestaurant,
-                            blackoutDates: [
-                              ...blackoutDates,
-                              input.value,
-                            ].sort(),
-                          });
-                          input.value = "";
-                        }
-                      }}
-                      className="px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand transition-all"
-                    >
-                      Lock
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {blackoutDates.map((date) => (
-                      <div
-                        key={date}
-                        className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm"
-                      >
-                        <span className="text-[10px] font-bold text-slate-600">
-                          {date}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditingRestaurant({
-                              ...editingRestaurant,
-                              blackoutDates: blackoutDates.filter(
-                                (d) => d !== date,
-                              ),
-                            })
-                          }
-                          className="text-slate-300 hover:text-red-500"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    {blackoutDates.length === 0 && (
-                      <p className="text-[10px] font-bold text-slate-400 italic">
-                        No blackout dates active
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-8">
               <div className="flex items-center gap-3">
@@ -2230,15 +2193,20 @@ export default function AdminDashboardView() {
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              setEditingRestaurant({
-                                ...editingRestaurant,
-                                foodImages:
-                                  editingRestaurant.foodImages?.filter(
-                                    (_, idx) => idx !== i,
-                                  ),
-                              })
-                            }
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Remove Image',
+                                message: 'Remove this food image?',
+                                onConfirm: () => {
+                                  setEditingRestaurant({
+                                    ...editingRestaurant,
+                                    foodImages: editingRestaurant.foodImages?.filter((_, idx) => idx !== i),
+                                  });
+                                  setConfirmModal(null);
+                                }
+                              });
+                            }}
                             className="px-6 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-red-600 transition-colors"
                           >
                             Remove
@@ -2304,15 +2272,20 @@ export default function AdminDashboardView() {
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              setEditingRestaurant({
-                                ...editingRestaurant,
-                                ambienceImages:
-                                  editingRestaurant.ambienceImages?.filter(
-                                    (_, idx) => idx !== i,
-                                  ),
-                              })
-                            }
+                            onClick={() => {
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Remove Image',
+                                message: 'Remove this ambience image?',
+                                onConfirm: () => {
+                                  setEditingRestaurant({
+                                    ...editingRestaurant,
+                                    ambienceImages: editingRestaurant.ambienceImages?.filter((_, idx) => idx !== i),
+                                  });
+                                  setConfirmModal(null);
+                                }
+                              });
+                            }}
                             className="px-6 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-red-600 transition-colors"
                           >
                             Remove
@@ -2780,16 +2753,22 @@ export default function AdminDashboardView() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm("Delete entire menu section?")) {
-                          const next = [
-                            ...(editingRestaurant.menuCategories || []),
-                          ];
-                          next.splice(catIdx, 1);
-                          setEditingRestaurant({
-                            ...editingRestaurant,
-                            menuCategories: next,
-                          });
-                        }
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Delete Menu Section',
+                          message: 'Delete entire menu section?',
+                          onConfirm: () => {
+                            const next = [
+                              ...(editingRestaurant.menuCategories || []),
+                            ];
+                            next.splice(catIdx, 1);
+                            setEditingRestaurant({
+                              ...editingRestaurant,
+                              menuCategories: next,
+                            });
+                            setConfirmModal(null);
+                          }
+                        });
                       }}
                       className="p-4 bg-white text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-xl shadow-red-500/5 flex items-center justify-center shrink-0 border border-red-50"
                     >
@@ -2812,13 +2791,16 @@ export default function AdminDashboardView() {
                             <button
                               type="button"
                               onClick={() => {
-                                const next = [
-                                  ...(editingRestaurant.menuCategories || []),
-                                ];
-                                next[catIdx].images.splice(imgIdx, 1);
-                                setEditingRestaurant({
-                                  ...editingRestaurant,
-                                  menuCategories: next,
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Remove Menu Image',
+                                  message: 'Are you sure you want to delete this menu image?',
+                                  onConfirm: () => {
+                                    const next = [...(editingRestaurant.menuCategories || [])];
+                                    next[catIdx].images.splice(imgIdx, 1);
+                                    setEditingRestaurant({ ...editingRestaurant, menuCategories: next });
+                                    setConfirmModal(null);
+                                  }
                                 });
                               }}
                               className="bg-red-500 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl"
@@ -3806,15 +3788,17 @@ export default function AdminDashboardView() {
             </button>
 
             <button
-              onClick={async () => {
-                if (
-                  confirm(
-                    "This will seed initial cities and cuisines if they are missing. Continue?",
-                  )
-                ) {
-                  await seedData();
-                  alert("Seed process completed.");
-                }
+              onClick={() => {
+                setConfirmModal({
+                  isOpen: true,
+                  title: 'Seed Data',
+                  message: 'This will seed initial cities and cuisines if they are missing. Continue?',
+                  onConfirm: async () => {
+                    setConfirmModal(null);
+                    await seedData();
+                    alert("Seed process completed.");
+                  }
+                });
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black hover:bg-slate-200 transition-all"
             >
@@ -3822,11 +3806,15 @@ export default function AdminDashboardView() {
               <span>Seed Data</span>
             </button>
             <button
-              onClick={async () => {
-                if (!confirm("This will find all base64 string images in restaurants and migrate them to Firebase Storage. This might take a minute and consume bandwidth. Proceed?")) return;
-                
-                try {
-                  setIsUploadingGlobal(true);
+              onClick={() => {
+                setConfirmModal({
+                  isOpen: true,
+                  title: 'Migrate Images',
+                  message: 'This will find all base64 string images in restaurants and migrate them to Firebase Storage. This might take a minute and consume bandwidth. Proceed?',
+                  onConfirm: async () => {
+                    setConfirmModal(null);
+                    try {
+                      setIsUploadingGlobal(true);
                   setNotification({ type: 'success', message: 'Migrating images... Check console for progress.' });
                   let count = 0;
 
@@ -3870,7 +3858,6 @@ export default function AdminDashboardView() {
                     await migrateArray('foodImages');
                     await migrateArray('ambienceImages');
                     await migrateArray('secondaryImages');
-                    await migrateArray('menuImages');
 
                     if (nextR.advertisements) {
                       for (const ad of nextR.advertisements) {
@@ -3898,6 +3885,8 @@ export default function AdminDashboardView() {
                 } finally {
                   setIsUploadingGlobal(false);
                 }
+                  }
+                });
               }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black hover:bg-brand/10 hover:text-brand transition-all"
             >

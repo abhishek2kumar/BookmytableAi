@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
+import { ConfirmModal } from './ConfirmModal';
 import { 
   Users, Calendar, Clock, ChevronRight, 
   Settings, Save, AlertCircle, CheckCircle2,
@@ -48,6 +49,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
   const [activeMgmtTab, setActiveMgmtTab] = useState<'general' | 'operational' | 'visuals' | 'offers' | 'reservations'>('general');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
   // Edit Form State
@@ -59,14 +61,12 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     avgPrice: 0,
     image: '',
     secondaryImages: [],
-    menuImages: [],
     description: '',
     isBookingEnabled: false,
     isTakeawayEnabled: false,
     isQrMenuEnabled: false,
     bookingSlots: [],
     instantBookingLimit: 4,
-    blackoutDates: [],
     slotCategories: [
       { id: 'breakfast', name: 'Breakfast', slots: [] },
       { id: 'lunch', name: 'Lunch', slots: [] },
@@ -141,13 +141,13 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
     const allowedKeys = [
       'name', 'description', 'cuisine', 'avgPrice', 'image', 'location', 'address', 'contactNumber',
       'isOpen', 'facilities', 'collections', 'secondaryImages', 'isBookingEnabled', 'isTakeawayEnabled', 'isQrMenuEnabled', 'bookingSlots', 
-      'instantBookingLimit', 'blackoutDates', 'menuCategories', 'menuImages', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
+      'instantBookingLimit', 'menuCategories', 'lat', 'lng', 'offers', 'dailyTimings', 'slotCategories', 'liveMenu'
     ];
 
     const updateData: any = {};
     allowedKeys.forEach(key => {
       if (editForm[key] !== undefined) {
-        if (key === 'secondaryImages' || key === 'menuImages') {
+        if (key === 'secondaryImages') {
           updateData[key] = (editForm[key] || []).filter((item: any) => {
             const url = typeof item === 'string' ? item : item?.url;
             return typeof url === 'string' && url.trim() !== '';
@@ -396,10 +396,20 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                         <img src={img || RESTAURANT_IMAGE_FALLBACK} className="w-full h-full object-cover" onError={handleImageError} />
                         <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                           <button 
-                            onClick={() => {
-                              const next = [...editForm.menuCategories];
-                              next[catIdx].images = next[catIdx].images.filter((_:any, i:any) => i !== imgIdx);
-                              setEditForm({...editForm, menuCategories: next});
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setConfirmModal({
+                                isOpen: true,
+                                title: 'Delete Menu Image',
+                                message: 'Are you sure you want to delete this menu image?',
+                                onConfirm: () => {
+                                  const next = [...editForm.menuCategories];
+                                  next[catIdx].images = next[catIdx].images.filter((_:any, i:any) => i !== imgIdx);
+                                  setEditForm({...editForm, menuCategories: next});
+                                  setConfirmModal(null);
+                                }
+                              });
                             }}
                             className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest"
                           >
@@ -771,19 +781,6 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
               </p>
             </div>
             
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Menu Scans & Images (One URL per line)</label>
-              <textarea 
-                rows={5}
-                className="w-full px-8 py-8 bg-white border-2 border-slate-300 rounded-[40px] font-mono text-xs font-bold outline-none focus:border-blue-500 focus:ring-8 focus:ring-blue-500/5 transition-all shadow-inner"
-                placeholder="https://images.unsplash.com/photo-1..."
-                value={(editForm.menuImages || []).map((img: any) => typeof img === 'string' ? img : img?.url || '').join('\n')}
-                onChange={e => setEditForm({...editForm, menuImages: e.target.value.split('\n')})}
-              />
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-4 leading-relaxed">
-                Add URLs for your menu pages so users can read the detailed menu.
-              </p>
-            </div>
           </motion.div>
         );
       case 'reservations':
@@ -835,38 +832,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                     <p className="text-[10px] text-slate-400 font-bold px-2 italic">Bookings up to this size are auto-confirmed.</p>
                   </div>
 
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Blackout Dates (Closed for bookings)</label>
-                    <div className="flex gap-3">
-                       <input type="date" id="owner-blackout-input" min={new Date().toISOString().split('T')[0]}
-                         className="flex-grow px-6 py-4 bg-white border-2 border-slate-300 rounded-[24px] font-bold outline-none focus:border-brand"
-                       />
-                       <button
-                         type="button"
-                         onClick={() => {
-                           const el = document.getElementById('owner-blackout-input') as HTMLInputElement;
-                           if(el?.value && !isNaN(new Date(el.value).getTime())) {
-                             if (!editForm.blackoutDates?.includes(el.value)) {
-                               setEditForm({...editForm, blackoutDates: [...(editForm.blackoutDates || []), el.value]});
-                             }
-                             el.value = '';
-                           }
-                         }}
-                         className="bg-vibrant-dark text-white px-8 rounded-[24px] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all"
-                       >
-                         Block
-                       </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-4 min-h-[44px]">
-                       {(editForm.blackoutDates || []).map((date: string) => (
-                         <div key={date} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl border border-red-100 text-[10px] font-black flex items-center gap-2 group shadow-sm transition-all hover:pr-2">
-                           {date}
-                           <button type="button" onClick={() => setEditForm({...editForm, blackoutDates: editForm.blackoutDates.filter((d:any) => d !== date)})} className="opacity-40 hover:opacity-100"><X size={14} /></button>
-                         </div>
-                       ))}
-                       {(editForm.blackoutDates || []).length === 0 && <p className="text-[10px] text-slate-300 font-bold flex items-center px-2">No dates blocked.</p>}
-                    </div>
-                  </div>
+                  
                </div>
 
                <div className="space-y-6 pt-6 border-t border-slate-300">
@@ -1447,6 +1413,16 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           </AnimatePresence>
         </div>
       </div>
+      <ConfirmModal
+        isOpen={confirmModal?.isOpen || false}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        onConfirm={() => {
+          if (confirmModal?.onConfirm) confirmModal.onConfirm();
+          setConfirmModal(null);
+        }}
+        onCancel={() => setConfirmModal(null)}
+      />
     </div>
   );
 }

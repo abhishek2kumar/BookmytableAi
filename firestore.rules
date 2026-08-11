@@ -76,6 +76,14 @@ service cloud.firestore {
         && (!('lastModifiedByType' in data) || data.lastModifiedByType is string)
         && (!('aiSummary' in data) || data.aiSummary is string)
         && (!('aiSummaryUpdatedAt' in data) || data.aiSummaryUpdatedAt is timestamp || data.aiSummaryUpdatedAt == null)
+        && (!('foodImages' in data) || data.foodImages is list)
+        && (!('ambienceImages' in data) || data.ambienceImages is list)
+        && (!('collections' in data) || data.collections is list)
+        && (!('mallName' in data) || data.mallName is string)
+        && (!('isTakeawayEnabled' in data) || data.isTakeawayEnabled is bool)
+        && (!('advertisements' in data) || data.advertisements is list)
+        && (!('autoApprovalThresholds' in data) || data.autoApprovalThresholds is list)
+        && (!('blackoutSlots' in data) || data.blackoutSlots is list)
         && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
@@ -102,7 +110,7 @@ service cloud.firestore {
             'dailyTimings', 'isBookingEnabled', 'bookingSlots', 'instantBookingLimit', 
             'blackoutDates', 'slotCategories', 'lastModifiedBy', 'lastModifiedByType', 'menuCategories',
             'address', 'lat', 'lng', 'liveMenu', 'isQrMenuEnabled', 'partnerEmails', 'advertisements',
-            'email', 'floor', 'shopNo', 'area', 'landmark', 'state', 'pincode', 'rating', 'reviewsCount'
+            'email', 'floor', 'shopNo', 'area', 'landmark', 'state', 'pincode', 'rating', 'reviewsCount', 'foodImages', 'ambienceImages', 'collections', 'mallName', 'isTakeawayEnabled', 'autoApprovalThresholds', 'blackoutSlots'
           ]) &&
           isValidRestaurant(incoming()) &&
           incoming().ownerId == existing().ownerId &&

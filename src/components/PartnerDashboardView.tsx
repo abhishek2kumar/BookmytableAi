@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, updateDoc, doc, onSnapshot, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -6,9 +6,11 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { QRCodeCanvas } from 'qrcode.react';
 import { db, storage } from '../lib/firebase';
 import AppIcon from './AppIcon';
+import { ConfirmModal } from './ConfirmModal';
 import { Restaurant, LiveMenuItem, Offer } from '../types';
-import { Loader2, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video, BarChart3, MessageSquare, LayoutDashboard, SlidersHorizontal, MoreVertical, Search, Printer, QrCode } from 'lucide-react';
+import { Loader2, ImagePlus, UtensilsCrossed, LogOut, Store, MapPin, Image as ImageIcon, ChevronRight, ChevronDown, Info, Clock, Utensils, Tag, Save, Eye, Plus, X, Star, Calendar, Users, Trash2, ShoppingBag, CheckCircle, AlertCircle, UploadCloud, Megaphone, Upload, Video, BarChart3, MessageSquare, LayoutDashboard, SlidersHorizontal, MoreVertical, Search, Printer, QrCode } from 'lucide-react';
 import StoryManager from './StoryManager';
+
 import { cn, convertTo12Hour, convertTo24Hour, generateSeoFriendlyFileName, getCroppedImg } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import Cropper from 'react-easy-crop';
@@ -22,7 +24,7 @@ const SIDEBAR_GROUPS = [
     title: 'Operations',
     tabs: [
       { id: 'overview', label: 'Operations Center', icon: LayoutDashboard },
-      { id: 'orders', label: 'Live Orders', icon: ShoppingBag },
+      { id: 'orders', label: 'Takeaway Orders', icon: ShoppingBag },
       { id: 'bookings', label: 'Table Bookings', icon: Calendar },
     ]
   },
@@ -196,19 +198,37 @@ const BookingCard = ({ b, updateBookingStatus }: { b: any; updateBookingStatus?:
             </div>
          </div>
       </div>
+
+
+      
     </div>
   );
 }
 
 // Helper renderers for form
-const InputText = ({ label, value, onChange, placeholder = '', disabled = false }: any) => (
+const FieldLabel = ({ label, tooltip }: { label: string, tooltip?: string }) => (
+  <label className="flex items-center text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">
+    {label}
+    {tooltip && (
+      <div className="relative group inline-block ml-1.5 cursor-help">
+        <Info size={14} className="text-slate-400 hover:text-blue-500 transition-colors" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-56 p-2.5 bg-slate-800 text-white text-xs font-medium normal-case rounded-lg shadow-xl z-50 whitespace-normal text-center leading-relaxed">
+          {tooltip}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-[6px] border-x-transparent border-t-[6px] border-t-slate-800"></div>
+        </div>
+      </div>
+    )}
+  </label>
+);
+
+const InputText = ({ label, value, onChange, placeholder = '', disabled = false, tooltip = '' }: any) => (
   <div>
-    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
+    <FieldLabel label={label} tooltip={tooltip} />
     <input type="text" disabled={disabled} value={value || ''} onChange={e => !disabled && onChange(e.target.value)} placeholder={placeholder} className={cn("w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm", disabled && "opacity-50 cursor-not-allowed")} />
   </div>
 );
 
-const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => {
+const ImageUploadInput = ({ label, value, onChange, placeholder = '', tooltip = '', onError }: any) => {
   const [uploading, setUploading] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -256,7 +276,8 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
         () => {},
         (error) => {
           console.error("Upload failed", error);
-          alert("Image upload failed");
+          if (onError) onError("Image upload failed");
+          else alert("Image upload failed");
           setUploading(false);
         },
         async () => {
@@ -279,9 +300,9 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
 
   return (
     <div>
-      {label && <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-        <div className="relative w-full sm:w-1/3 shrink-0">
+      {label && <FieldLabel label={label} tooltip={tooltip} />}
+      <div className="flex flex-col gap-3">
+        <div className="relative w-full shrink-0">
           <input 
             type="file" 
             accept="image/*" 
@@ -294,8 +315,8 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
             <span>{uploading ? 'Uploading...' : 'Upload Image'}</span>
           </button>
         </div>
-        <div className="text-center shrink-0 -my-0.5 sm:my-0">
-            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OR<span className="sm:hidden"> Provide URL</span></span>
+        <div className="text-center shrink-0 -my-1">
+            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OR Provide URL</span>
         </div>
         <div className="w-full flex-1">
           <input 
@@ -370,16 +391,38 @@ const ImageUploadInput = ({ label, value, onChange, placeholder = '' }: any) => 
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 };
 
-const TextArea = ({ label, value, onChange, placeholder = '' }: any) => (
-  <div>
-    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</label>
-    <textarea value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={4} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all resize-none shadow-sm" />
-  </div>
-);
+const TextArea = ({ label, value, onChange, placeholder = '', tooltip = '' }: any) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <div>
+      <FieldLabel label={label} tooltip={tooltip} />
+      <textarea 
+        ref={textareaRef}
+        value={value || ''} 
+        onChange={e => {
+          onChange(e.target.value);
+          e.target.style.height = 'auto';
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }} 
+        placeholder={placeholder} 
+        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all resize-none shadow-sm overflow-hidden min-h-[120px]" 
+      />
+    </div>
+  );
+};
 
 const Toggle = ({ label, checked, onChange }: any) => (
   <label className="flex items-center gap-3 cursor-pointer">
@@ -415,14 +458,28 @@ export default function PartnerDashboardView() {
   const [hasChanges, setHasChanges] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
+  const [bookingFilter, setBookingFilter] = useState<'today' | 'upcoming' | 'previous'>('today');
   const [pageViews, setPageViews] = useState<any[]>([]);
 
   const pendingBookingsCount = bookings.filter(b => b.status === 'pending').length;
   const unreadConfirmedBookingsCount = bookings.filter(b => b.status === 'confirmed' && !b.ownerViewed).length;
-  const pendingOrdersCount = takeawayOrders.filter(o => !['Completed', 'Cancelled'].includes(o.status)).length;
+  const pendingOrdersCount = takeawayOrders.filter(o => o.type !== 'dine_in' && !['Completed', 'Cancelled'].includes(o.status)).length;
   const totalBookingsBadge = pendingBookingsCount + unreadConfirmedBookingsCount;
 
   const [showNewBookingModal, setShowNewBookingModal] = useState(false);
+  const [addImageModal, setAddImageModal] = useState<{ field: string, label: string, isStringArrayOnly: boolean, catIdx?: number } | null>(null);
+  const [newImageForm, setNewImageForm] = useState({ url: '', category: '' });
+  
+  const [addMenuCategoryModal, setAddMenuCategoryModal] = useState(false);
+  const [newMenuCategoryName, setNewMenuCategoryName] = useState('');
+  
+  const [addSignatureDishModal, setAddSignatureDishModal] = useState(false);
+  const [newSignatureDish, setNewSignatureDish] = useState({ name: '', price: 0, description: '' });
+  
+  const [addOfferModal, setAddOfferModal] = useState(false);
+  const [addAdModal, setAddAdModal] = useState(false);
+  const [newAdForm, setNewAdForm] = useState({ title: '', description: '', image: '', validFrom: '' });
+  const [newOffer, setNewOffer] = useState({ title: '', description: '', validFrom: '', validUntil: '' });
   const [newBookingForm, setNewBookingForm] = useState({
     name: '',
     phone: '',
@@ -435,6 +492,9 @@ export default function PartnerDashboardView() {
 
   const [qrTableTarget, setQrTableTarget] = useState("");
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
+  const [adUploadIndex, setAdUploadIndex] = useState<number | null>(null);
+  const adFileInputRef = useRef<HTMLInputElement>(null);
 
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [openMenuDropdown, setOpenMenuDropdown] = useState<number | null>(null);
@@ -679,6 +739,7 @@ export default function PartnerDashboardView() {
     };
 
     const cleanData = stripUndefined(data);
+    cleanData.updatedAt = serverTimestamp();
 
     try {
       const docRef = doc(db, 'restaurants', selectedRes.id);
@@ -728,91 +789,93 @@ export default function PartnerDashboardView() {
     }
   };
 
-  const handleDeleteImage = async (field: 'secondaryImages' | 'menuImages' | 'foodImages' | 'ambienceImages', imgIdx: number, imgUrl: string, label: string) => {
-    if (!window.confirm(`Do you want to delete this image from ${label}?`)) {
-      return;
-    }
-
-    const arr = [...(formData[field] || [])];
-    arr.splice(imgIdx, 1);
-    updateForm(field, arr);
-
-    if (selectedRes?.id) {
-       try {
-         const docRef = doc(db, 'restaurants', selectedRes.id);
-         await updateDoc(docRef, { [field]: arr });
-         
-         if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
-           const storageRef = ref(storage, imgUrl);
-           await deleteObject(storageRef);
-         }
-       } catch (error) {
-           console.error("Failed to delete image:", error);
-       }
-    }
+  const handleDeleteImage = async (field: 'secondaryImages' | 'foodImages' | 'ambienceImages', imgIdx: number, imgUrl: string, label: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Image',
+      message: `Do you want to delete this image from ${label}?`,
+      onConfirm: async () => {
+        const arr = [...(formData[field] || [])];
+        arr.splice(imgIdx, 1);
+        updateForm(field, arr);
+        if (selectedRes?.id) {
+          try {
+            const docRef = doc(db, 'restaurants', selectedRes.id);
+            await updateDoc(docRef, { [field]: arr });
+            if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
+              const storageRef = ref(storage, imgUrl);
+              await deleteObject(storageRef);
+            }
+          } catch (error) {
+            console.error("Failed to delete image:", error);
+          }
+        }
+      }
+    });
   };
 
-  const renderImageInputList = (label: string, field: 'secondaryImages' | 'menuImages' | 'foodImages' | 'ambienceImages') => {
+  const renderImageInputList = (label: string, field: 'secondaryImages' | 'foodImages' | 'ambienceImages', tooltip?: string) => {
     const isStringArrayOnly = field === 'foodImages' || field === 'ambienceImages';
     return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">{label}</h3>
+    <div className="py-8 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 border-b border-slate-100 pb-4">
+        <div>
+           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">{label}</h3>
+           {tooltip && <p className="text-sm text-slate-500 mt-1">{tooltip}</p>}
+        </div>
         <button onClick={() => {
-          const arr = [...(formData[field] || []), isStringArrayOnly ? '' : { url: '', category: '' }];
-          updateForm(field, arr as any);
-        }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
-          <Plus size={14} /> Add Image
+          setNewImageForm({ url: '', category: '' });
+          setAddImageModal({ field, label, isStringArrayOnly });
+        }} className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto shadow-sm shadow-blue-100">
+          <Plus size={16} /> Add Image
         </button>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {(!formData[field] || formData[field].length === 0) ? (
-           <div className="col-span-full p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
-             No images added.
+           <div className="col-span-full py-12 text-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 font-medium text-sm flex flex-col items-center justify-center gap-3">
+             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-300">
+               <ImageIcon size={24} />
+             </div>
+             <p>No images added yet.</p>
            </div>
         ) : formData[field].map((item: any, idx: number) => {
           const urlStr = typeof item === 'string' ? item : item.url;
           const categoryStr = typeof item === 'string' ? '' : (item.category || '');
 
           return (
-          <div key={idx} className="bg-white border border-slate-300 rounded-xl overflow-hidden relative group transition-all shrink-0 flex flex-col">
-             <button onClick={() => handleDeleteImage(field, idx, urlStr, label)} className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm text-red-500 rounded-lg hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover:opacity-100">
-                <X size={14} />
+          <div key={idx} className="group relative aspect-square bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all">
+             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteImage(field, idx, urlStr, label); }} className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full hover:bg-red-50 transition-all z-10 shadow-sm opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
+                <Trash2 size={16} />
              </button>
-             <div className="h-32 bg-slate-100 flex items-center justify-center relative shrink-0">
-               {urlStr ? (
-                 <img src={urlStr} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-               ) : (
-                 <ImageIcon className="text-slate-300" size={24} />
-               )}
-             </div>
-             <div className="p-3 bg-slate-50 border-t border-slate-300 space-y-2 flex-grow">
-                {!isStringArrayOnly && (
+             {urlStr ? (
+               <img src={urlStr} alt={`Preview ${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+             ) : (
+               <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                 <ImageIcon size={28} />
+                 <span className="text-xs font-medium">Empty</span>
+               </div>
+             )}
+             {!isStringArrayOnly && (
+               <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-slate-900/90 via-slate-900/60 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                   <input
                     type="text"
-                    placeholder="Category (e.g. All)"
+                    placeholder="Set category..."
                     value={categoryStr}
                     onChange={(e) => {
                       const arr = [...formData[field]!];
                       arr[idx] = { url: urlStr, category: e.target.value };
                       updateForm(field, arr as any);
                     }}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
+                    className="w-full px-3 py-1.5 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:border-white focus:ring-1 focus:ring-white text-xs font-medium backdrop-blur-md"
                   />
-                )}
-                <ImageUploadInput value={urlStr} onChange={(newUrl: string) => {
-                   const arr = [...formData[field]!];
-                   if (isStringArrayOnly) {
-                     arr[idx] = newUrl;
-                   } else {
-                     arr[idx] = typeof item === 'string' && !categoryStr 
-                       ? newUrl 
-                       : { url: newUrl, category: categoryStr };
-                   }
-                   updateForm(field, arr as any);
-                }} placeholder="Image URL" />
-             </div>
+               </div>
+             )}
+             {!isStringArrayOnly && categoryStr && (
+               <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none group-hover:opacity-0 transition-opacity duration-300">
+                  <span className="text-xs font-bold text-white drop-shadow-sm truncate">{categoryStr}</span>
+               </div>
+             )}
           </div>
         )})}
       </div>
@@ -821,60 +884,66 @@ export default function PartnerDashboardView() {
   };
 
   const handleDeleteCategoryImage = async (catIdx: number, imgIdx: number, imgUrl: string, catName: string) => {
-    if (!window.confirm(`Do you want to delete this image from ${catName || 'this category'}?`)) {
-      return;
-    }
-
-    const arr = [...(formData.menuCategories || [])];
-    const imgs = [...arr[catIdx].images];
-    imgs.splice(imgIdx, 1);
-    arr[catIdx] = { ...arr[catIdx], images: imgs };
-    updateForm('menuCategories', arr);
-
-    if (selectedRes?.id) {
-       try {
-         const docRef = doc(db, 'restaurants', selectedRes.id);
-         await updateDoc(docRef, { menuCategories: arr });
-         
-         if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
-           const storageRef = ref(storage, imgUrl);
-           await deleteObject(storageRef);
-         }
-       } catch (error) {
-           console.error("Failed to delete image:", error);
-       }
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Image',
+      message: `Do you want to delete this image from ${catName || 'this category'}?`,
+      onConfirm: async () => {
+        const arr = [...(formData.menuCategories || [])];
+        const imgs = [...arr[catIdx].images];
+        imgs.splice(imgIdx, 1);
+        arr[catIdx] = { ...arr[catIdx], images: imgs };
+        updateForm('menuCategories', arr);
+        if (selectedRes?.id) {
+          try {
+            const docRef = doc(db, 'restaurants', selectedRes.id);
+            await updateDoc(docRef, { menuCategories: arr });
+            if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
+              const storageRef = ref(storage, imgUrl);
+              await deleteObject(storageRef);
+            }
+          } catch (error) {
+            console.error("Failed to delete image:", error);
+          }
+        }
+      }
+    });
   };
 
   const renderMenuCategories = () => (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Menu Categories</h3>
+    <div className="py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 border-b border-slate-100 pb-4">
+        <div>
+           <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">Menu Images</h3>
+           <p className="text-sm text-slate-500 mt-1">Organize your menu images into categories like 'Starters', 'Main Course', 'Desserts', etc.</p>
+        </div>
         <button onClick={() => {
-          const arr = [...(formData.menuCategories || [])];
-          arr.push({ id: Math.random().toString(36).substr(2, 9), name: '', images: [] });
-          updateForm('menuCategories', arr);
-        }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
-          <Plus size={14} /> Add Category
+          setNewMenuCategoryName('');
+          setAddMenuCategoryModal(true);
+        }} className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto shadow-sm shadow-blue-100">
+          <Plus size={16} /> Add Category
         </button>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {(!formData.menuCategories || formData.menuCategories.length === 0) ? (
-          <div className="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
-            No menu categories added.
+          <div className="col-span-full py-12 text-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 font-medium text-sm flex flex-col items-center justify-center gap-3">
+             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-300">
+               <ImageIcon size={24} />
+             </div>
+             <p>No menu categories added yet.</p>
           </div>
         ) : formData.menuCategories.map((cat, catIdx) => (
-          <div key={cat.id || catIdx} className="bg-white border text-sm font-medium border-slate-300 rounded-2xl p-5 relative group transition-all">
+          <div key={cat.id || catIdx} className="bg-slate-50/50 border border-slate-200 rounded-3xl p-6 relative group transition-all hover:shadow-sm">
              <button onClick={() => {
                 const arr = [...formData.menuCategories!];
                 arr.splice(catIdx, 1);
                 updateForm('menuCategories', arr);
-             }} className="absolute top-4 right-4 p-2 bg-slate-100 text-red-500 rounded-lg hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover:opacity-100">
-                <X size={16} />
+             }} className="absolute top-6 right-6 p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full hover:bg-red-50 transition-all z-10 shadow-sm opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
+                <Trash2 size={16} />
              </button>
              
-             <div className="mb-4 pr-12">
+             <div className="mb-6 pr-12">
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category Name</label>
                 <input
                   type="text"
@@ -885,49 +954,38 @@ export default function PartnerDashboardView() {
                     arr[catIdx] = { ...cat, name: e.target.value };
                     updateForm('menuCategories', arr);
                   }}
-                  className="w-full lg:w-1/2 px-4 py-3 rounded-xl border border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm font-medium"
+                  className="w-full lg:w-1/2 px-4 py-3 rounded-2xl border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium bg-white"
                 />
              </div>
-
-             <div className="flex items-center justify-between mb-3">
-               <h4 className="text-xs text-slate-500 uppercase tracking-wider font-normal leading-[1.2]">Category Images</h4>
+             
+             <div className="flex items-center justify-between mb-4 border-t border-slate-200 pt-6">
+               <h4 className="text-sm font-bold text-slate-700"></h4>
                <button onClick={() => {
-                  const arr = [...formData.menuCategories!];
-                  const imgs = [...(cat.images || [])];
-                  imgs.push('');
-                  arr[catIdx] = { ...cat, images: imgs };
-                  updateForm('menuCategories', arr);
-               }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors">
+                  setNewImageForm({ url: '', category: '' });
+                  setAddImageModal({ field: 'menuCategories', label: 'Image for ' + cat.name, isStringArrayOnly: true, catIdx: catIdx } as any);
+               }} className="flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors shadow-sm shadow-blue-100">
                   <Plus size={14} /> Add Image
                </button>
              </div>
-
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+             
+             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {(!cat.images || cat.images.length === 0) ? (
-                   <div className="col-span-full p-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-xs">
+                   <div className="col-span-full py-8 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 font-medium text-xs">
                      No images in this category.
                    </div>
                 ) : cat.images.map((imgUrl, imgIdx) => (
-                  <div key={imgIdx} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden relative group/img transition-all shrink-0 flex flex-col">
-                     <button onClick={() => handleDeleteCategoryImage(catIdx, imgIdx, imgUrl, cat.name)} className="absolute top-1.5 right-1.5 p-1 bg-white/80 backdrop-blur-sm text-red-500 rounded-md hover:bg-red-50 transition-colors z-10 shadow-sm opacity-0 group-hover/img:opacity-100">
-                        <X size={12} />
+                  <div key={imgIdx} className="group/img relative aspect-[3/4] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCategoryImage(catIdx, imgIdx, imgUrl, cat.name); }} className="absolute top-2 right-2 p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full hover:bg-red-50 transition-all z-10 shadow-sm opacity-0 group-hover/img:opacity-100 scale-90 group-hover/img:scale-100">
+                        <Trash2 size={16} />
                      </button>
-                     <div className="h-24 bg-slate-100 flex items-center justify-center relative shrink-0">
-                       {imgUrl ? (
-                         <img src={imgUrl} alt={`Preview ${imgIdx}`} className="w-full h-full object-cover" />
-                       ) : (
-                         <ImageIcon className="text-slate-300" size={20} />
-                       )}
-                     </div>
-                     <div className="p-2 border-t border-slate-200 space-y-2 flex-grow">
-                        <ImageUploadInput value={imgUrl} onChange={(newUrl: string) => {
-                           const arr = [...formData.menuCategories!];
-                           const imgs = [...cat.images!];
-                           imgs[imgIdx] = newUrl;
-                           arr[catIdx] = { ...cat, images: imgs };
-                           updateForm('menuCategories', arr);
-                        }} placeholder="Image URL" />
-                     </div>
+                     {imgUrl ? (
+                       <img src={imgUrl} alt={`Preview ${imgIdx}`} className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500" />
+                     ) : (
+                       <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                         <ImageIcon size={24} />
+                         <span className="text-xs font-medium">Empty</span>
+                       </div>
+                     )}
                   </div>
                 ))}
              </div>
@@ -947,7 +1005,7 @@ export default function PartnerDashboardView() {
       if (b.date) return new Date(b.date);
       if (b.dateTime?.seconds) return new Date(b.dateTime.seconds * 1000);
       if (b.dateTime) return new Date(b.dateTime);
-      return new Date(0); // fallback
+      return new Date(0);
     };
 
     const sortedBookings = [...bookings].sort((a, b) => {
@@ -978,15 +1036,19 @@ export default function PartnerDashboardView() {
       }
     };
 
+    let displayBookings = todayBookings;
+    if (bookingFilter === 'upcoming') displayBookings = upcomingBookings;
+    if (bookingFilter === 'previous') displayBookings = previousBookings;
+
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <div className="flex justify-between items-center bg-white p-6 rounded-[24px] border border-slate-300 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden gap-6 md:gap-4">
            <div>
              <h2 className="text-xl text-[#363636] font-normal leading-[1.2]">Table Reservations</h2>
              <p className="text-slate-500 text-xs font-semibold mt-1">Manage all your table bookings.</p>
            </div>
-           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 mr-4 border-r border-slate-200 pr-4">
+           <div className="flex items-center gap-4 w-full md:w-auto">
+             <div className="flex items-center gap-2 mr-0 md:mr-4 border-r-0 md:border-r border-slate-200 pr-0 md:pr-4">
                <span className="text-sm font-bold text-slate-700">Accepting Bookings</span>
                <button 
                  onClick={() => toggleFeature('isBookingEnabled', !selectedRes?.isBookingEnabled)}
@@ -995,30 +1057,29 @@ export default function PartnerDashboardView() {
                  <div className={cn("w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm", selectedRes?.isBookingEnabled ? "left-[26px]" : "left-[2px]")} />
                </button>
              </div>
-             <button onClick={() => setShowNewBookingModal(true)} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+             <button onClick={() => setShowNewBookingModal(true)} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all ml-auto md:ml-0">
                 <Plus size={18} />
                 New Booking
              </button>
            </div>
         </div>
-        <div>
-          <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Today's Bookings</h3>
-          {todayBookings.length === 0 ? <p className="text-sm text-slate-500 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-300">No bookings for today.</p> : todayBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
-        </div>
-        
-        {upcomingBookings.length > 0 && (
-          <div>
-            <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Upcoming Bookings</h3>
-            {upcomingBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
-          </div>
-        )}
 
-        {previousBookings.length > 0 && (
-          <div>
-            <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Previous Bookings</h3>
-            {previousBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)}
-          </div>
-        )}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+           <button onClick={() => setBookingFilter('today')} className={cn("px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap", bookingFilter === 'today' ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>Today's Bookings ({todayBookings.length})</button>
+           <button onClick={() => setBookingFilter('upcoming')} className={cn("px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap", bookingFilter === 'upcoming' ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>Upcoming ({upcomingBookings.length})</button>
+           <button onClick={() => setBookingFilter('previous')} className={cn("px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap", bookingFilter === 'previous' ? "bg-slate-800 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>Previous ({previousBookings.length})</button>
+        </div>
+
+        <div>
+          {displayBookings.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-3xl border border-slate-200">
+               <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
+               <p className="text-sm font-bold text-slate-600">No {bookingFilter} bookings found.</p>
+            </div>
+          ) : (
+            displayBookings.map(b => <BookingCard key={b.id} b={b} updateBookingStatus={updateBookingStatus} />)
+          )}
+        </div>
       </div>
     );
   };
@@ -1200,9 +1261,10 @@ export default function PartnerDashboardView() {
 
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {STATUSES.map(status => {
+            const validTakeaway = takeawayOrders.filter((o:any) => o.type !== 'dine_in');
             const count = status === 'All' 
-              ? takeawayOrders.length 
-              : takeawayOrders.filter(o => o.status === status || (!o.status && status === 'Received')).length;
+              ? validTakeaway.length 
+              : validTakeaway.filter(o => o.status === status || (!o.status && status === 'Received')).length;
               
             return (
               <button
@@ -1239,7 +1301,7 @@ export default function PartnerDashboardView() {
           <div className="space-y-8">
             {['Received', 'Preparing', 'Ready', 'Completed', 'Cancelled'].filter(s => activeOrderFilter === 'All' || activeOrderFilter === s).map(status => {
               const getOrderTime = (o: any) => o.createdAt?.toDate ? o.createdAt.toDate().getTime() : (o.createdAt ? new Date(o.createdAt).getTime() : 0);
-              const ordersInStatus = takeawayOrders
+              const ordersInStatus = takeawayOrders.filter((o:any) => o.type !== 'dine_in')
                 .filter(o => o.status === status || (!o.status && status === 'Received'))
                 .sort((a,b) => getOrderTime(b) - getOrderTime(a));
               
@@ -1520,10 +1582,23 @@ export default function PartnerDashboardView() {
 
     const blackoutSlots = formData.blackoutSlots || [];
     const addBlackoutSlot = () => {
-      setFormData({ ...formData, blackoutSlots: [...blackoutSlots, { date: new Date().toISOString().split('T')[0], categories: [] }] });
+      const today = new Date().toISOString().split('T')[0];
+      let newDate = today;
+      let counter = 1;
+      while(blackoutSlots.some((s:any) => s.date === newDate)) {
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + counter);
+        newDate = nextDate.toISOString().split('T')[0];
+        counter++;
+      }
+      setFormData({ ...formData, blackoutSlots: [...blackoutSlots, { date: newDate, categories: [] }] });
       setHasChanges(true);
     };
     const updateBlackoutSlot = (index: number, key: string, value: any) => {
+      if (key === 'date' && blackoutSlots.some((s:any, i:number) => s.date === value && i !== index)) {
+        setToastMessage({ message: 'This date is already added as a blackout date.', type: 'error' });
+        return;
+      }
       const newSlots = [...blackoutSlots];
       newSlots[index] = { ...newSlots[index], [key]: value };
       setFormData({ ...formData, blackoutSlots: newSlots });
@@ -1541,9 +1616,16 @@ export default function PartnerDashboardView() {
       setHasChanges(true);
     };
     const removeBlackoutSlot = (index: number) => {
-      const newSlots = blackoutSlots.filter((_: any, i: number) => i !== index);
-      setFormData({ ...formData, blackoutSlots: newSlots });
-      setHasChanges(true);
+      setConfirmModal({
+        isOpen: true,
+        title: 'Remove Blackout Date',
+        message: 'Are you sure you want to remove this blackout date?',
+        onConfirm: () => {
+          const newSlots = blackoutSlots.filter((_: any, i: number) => i !== index);
+          setFormData({ ...formData, blackoutSlots: newSlots });
+          setHasChanges(true);
+        }
+      });
     };
 
     return (
@@ -1602,14 +1684,30 @@ export default function PartnerDashboardView() {
             ) : (
               blackoutSlots.map((slot: any, idx: number) => (
                 <div key={idx} className="flex flex-col lg:flex-row items-start lg:items-center gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
-                  <div className="w-full lg:w-auto shrink-0">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Date</label>
-                    <input 
-                      type="date"
-                      value={slot.date}
-                      onChange={(e) => updateBlackoutSlot(idx, 'date', e.target.value)}
-                      className="bg-white border border-slate-300 focus:border-blue-600/20 px-3 py-2 rounded-lg font-bold outline-none text-sm"
-                    />
+                  <div className="w-full lg:w-auto shrink-0 flex items-center gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Date</label>
+                      <input 
+                        type="date"
+                        value={slot.date}
+                        onChange={(e) => updateBlackoutSlot(idx, 'date', e.target.value)}
+                        className="bg-white border border-slate-300 focus:border-blue-600/20 px-3 py-2 rounded-lg font-bold outline-none text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 mt-4">
+                      <input 
+                        type="checkbox"
+                        id={`full-day-${idx}`}
+                        checked={(slot.categories || []).length === CATEGORIES.length}
+                        onChange={(e) => {
+                          updateBlackoutSlot(idx, 'categories', e.target.checked ? CATEGORIES : []);
+                        }}
+                        className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor={`full-day-${idx}`} className="text-xs font-bold text-slate-700 select-none cursor-pointer">
+                        Full Day
+                      </label>
+                    </div>
                   </div>
                   <div className="flex-1 w-full">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Categories to Disable</label>
@@ -1758,12 +1856,16 @@ export default function PartnerDashboardView() {
 
           <div className="bg-white p-4 rounded-xl border border-slate-300">
             <div className="space-y-6">
-              {SIDEBAR_GROUPS.map((group, groupIndex) => (
-                <div key={groupIndex}>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">{group.title}</p>
-                  <div className="space-y-1">
-                    {group.tabs.map(tab => {
-                      const Icon = tab.icon;
+              {SIDEBAR_GROUPS.map((group, groupIndex) => {
+                const visibleTabs = group.tabs;
+                if (visibleTabs.length === 0) return null;
+                
+                return (
+                  <div key={groupIndex}>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-2">{group.title}</p>
+                    <div className="space-y-1">
+                      {visibleTabs.map(tab => {
+                        const Icon = tab.icon;
                       return (
                         <button
                           key={tab.id}
@@ -1808,7 +1910,8 @@ export default function PartnerDashboardView() {
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </aside>
@@ -2155,34 +2258,36 @@ export default function PartnerDashboardView() {
                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
                      <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Basic Details</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                       <InputText label="Restaurant Name *" value={formData.name} onChange={(v:any) => updateForm('name', v)} disabled={true} />
-                       <InputText label="Contact Number *" value={formData.contactNumber} onChange={(v:any) => updateForm('contactNumber', v)} />
-                       <InputText label="Contact Email (Receive order notification)" value={(formData as any).email} onChange={(v:any) => updateForm('email', v)} />
-                       <InputText label="Login Emails (Comma Separated)" value={Array.isArray(formData.partnerEmails) ? formData.partnerEmails.join(', ') : ''} onChange={(v:any) => updateForm('partnerEmails', v.split(',').map((s:any)=>s.trim()).filter(Boolean))} />
-                       <InputText label="Average Price for two (₹)" value={formData.avgPrice?.toString()} onChange={(v:any) => updateForm('avgPrice', parseInt(v) || 0)} />
+                       <InputText label="Restaurant Name *" tooltip="The official name of your restaurant as it appears to customers." value={formData.name} onChange={(v:any) => updateForm('name', v)} disabled={true} />
+                       <InputText label="Contact Number *" tooltip="Primary phone number for customer inquiries and reservations." value={formData.contactNumber} onChange={(v:any) => updateForm('contactNumber', v)} />
+                       <InputText label="Contact Email (Receive order notification)" tooltip="Email address where you will receive notifications for new orders and bookings." value={(formData as any).email} onChange={(v:any) => updateForm('email', v)} />
+                       <InputText label="Login Emails (Comma Separated)" tooltip="Email addresses that have access to this partner dashboard. Multiple emails can be separated by commas." value={Array.isArray(formData.partnerEmails) ? formData.partnerEmails.join(', ') : ''} onChange={(v:any) => updateForm('partnerEmails', v.split(',').map((s:any)=>s.trim()).filter(Boolean))} />
+                       <InputText label="Average Price for two (₹)" tooltip="Estimated cost for a meal for two people, used for filtering by price." value={formData.avgPrice?.toString()} onChange={(v:any) => updateForm('avgPrice', parseInt(v) || 0)} />
                      </div>
-                     <TextArea label={`About ${formData.name || 'Restaurant'} (Brand Description / Story)`} value={formData.description} onChange={(v:any) => updateForm('description', v)} />
+                     <TextArea label={`About ${formData.name || 'Restaurant'} (Brand Description / Story)`} tooltip="A detailed description of your restaurant, its story, and what makes it special." value={formData.description} onChange={(v:any) => updateForm('description', v)} />
                    </div>
 
                    {/* Address Details */}
-                   <div className="bg-slate-50 p-6 rounded-2xl border border-slate-300">
-                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Address Details</h3>
+                   <div className="bg-white p-6 lg:p-8 rounded-3xl border border-slate-200 shadow-sm mt-8">
+                     <div className="mb-6 pb-4 border-b border-slate-100">
+                       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">Address Details</h3>
+                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                        <div className="md:col-span-2">
-                         <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Mall / Food Court Name (Optional - Only for outlets)</label><select value={formData.mallName || ''} onChange={(e) => updateForm('mallName', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm appearance-none"><option value="">None (Standalone Outlet)</option>{malls.filter((m: any) => !formData.city || m.city?.toLowerCase() === formData.city?.toLowerCase()).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")).map((m: any) => (<option key={m.id} value={m.name}>{m.name}</option>))}</select></div>
+                         <div><FieldLabel label="Mall / Food Court Name (Optional - Only for outlets)" tooltip="If your restaurant is inside a mall or food court, select it here." /><select value={formData.mallName || ''} onChange={(e) => updateForm('mallName', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm appearance-none"><option value="">None (Standalone Outlet)</option>{malls.filter((m: any) => !formData.city || m.city?.toLowerCase() === formData.city?.toLowerCase()).sort((a: any, b: any) => (a.name || "").localeCompare(b.name || "")).map((m: any) => (<option key={m.id} value={m.name}>{m.name}</option>))}</select></div>
                        </div>
-                       <InputText label="Floor / Tower" value={formData.floor} onChange={(v:any) => updateForm('floor', v)} />
-                       <InputText label="Shop / Building No." value={formData.shopNo} onChange={(v:any) => updateForm('shopNo', v)} />
-                       <InputText label="Area / Locality *" value={formData.area} onChange={(v:any) => updateForm('area', v)} />
-                       <InputText label="Landmark (Optional)" value={formData.landmark} onChange={(v:any) => updateForm('landmark', v)} />
-                       <div><label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">City *</label><select value={formData.city || ''} onChange={(e) => updateForm('city', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm"><option value="" disabled>Select City</option>{cities.map((city: any, i: number) => (<option key={city.id || i} value={city.name}>{city.name}</option>))}</select></div>
-                       <InputText label="State *" value={formData.state} onChange={(v:any) => updateForm('state', v)} />
-                       <InputText label="Pincode *" value={formData.pincode} onChange={(v:any) => updateForm('pincode', v)} />
+                       <InputText label="Floor / Tower" tooltip="Which floor or tower the restaurant is located in." value={formData.floor} onChange={(v:any) => updateForm('floor', v)} />
+                       <InputText label="Shop / Building No." tooltip="Specific shop or building number." value={formData.shopNo} onChange={(v:any) => updateForm('shopNo', v)} />
+                       <InputText label="Area / Locality *" tooltip="The general neighborhood or locality." value={formData.area} onChange={(v:any) => updateForm('area', v)} />
+                       <InputText label="Landmark (Optional)" tooltip="A nearby famous landmark to help customers find you." value={formData.landmark} onChange={(v:any) => updateForm('landmark', v)} />
+                       <div><FieldLabel label="City *" tooltip="The city your restaurant operates in." /><select value={formData.city || ''} onChange={(e) => updateForm('city', e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-blue-600/50 focus:bg-white rounded-xl font-normal text-[#363636] leading-[1.2] outline-none transition-all shadow-sm"><option value="" disabled>Select City</option>{cities.map((city: any, i: number) => (<option key={city.id || i} value={city.name}>{city.name}</option>))}</select></div>
+                       <InputText label="State *" tooltip="State or province." value={formData.state} onChange={(v:any) => updateForm('state', v)} />
+                       <InputText label="Pincode *" tooltip="Postal code or pincode." value={formData.pincode} onChange={(v:any) => updateForm('pincode', v)} />
                      </div>
                      
-                     <div className="pt-6 border-t border-slate-300">
-                       <div className="flex items-center justify-between mb-4">
-                         <h4 className="text-xs uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Coordinates</h4>
+                     <div className="pt-8 mt-8 border-t border-slate-100">
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                         <h4 className="text-sm font-bold text-slate-700">GPS Coordinates</h4>
                          <button
                            type="button"
                            onClick={handleGeocodeAddress}
@@ -2194,8 +2299,8 @@ export default function PartnerDashboardView() {
                          </button>
                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <InputText label="Latitude" value={formData.lat} onChange={(v:any) => updateForm('lat', v)} />
-                         <InputText label="Longitude" value={formData.lng} onChange={(v:any) => updateForm('lng', v)} />
+                         <InputText label="Latitude" tooltip="GPS coordinates for the exact location on the map." value={formData.lat} onChange={(v:any) => updateForm('lat', v)} />
+                         <InputText label="Longitude" tooltip="GPS coordinates for the exact location on the map." value={formData.lng} onChange={(v:any) => updateForm('lng', v)} />
                        </div>
                      </div>
                    </div>
@@ -2205,7 +2310,7 @@ export default function PartnerDashboardView() {
                      <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Cuisines & Facilities</h3>
                      
                      <div className="mb-6">
-                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Select Cuisines</label>
+                       <FieldLabel label="Select Cuisines" tooltip="The types of cuisine your restaurant offers. Select all that apply." />
                        <div className="flex flex-wrap gap-2 mb-4">
                          {sortedCuisines.map(c => {
                            const cuisineArray = Array.isArray(formData.cuisine) ? formData.cuisine : typeof formData.cuisine === 'string' ? (formData.cuisine as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
@@ -2228,7 +2333,7 @@ export default function PartnerDashboardView() {
                            );
                          })}
                        </div>
-                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Other Cuisine</label>
+                       <FieldLabel label="Other Cuisine" tooltip="If your cuisine is not listed above, you can add it manually here." />
                        <input 
                          type="text" 
                          placeholder="+ Add custom cuisine (Press Enter)" 
@@ -2267,7 +2372,7 @@ export default function PartnerDashboardView() {
                      </div>
 
                      <div>
-                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Facilities</label>
+                       <FieldLabel label="Facilities" tooltip="Amenities available at your restaurant. Select all that apply." />
                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                          {[
                            'WiFi', 'AC', 'Parking', 'Valet Parking', 'Outdoor Seating', 
@@ -2299,7 +2404,7 @@ export default function PartnerDashboardView() {
                          })}
                        </div>
                        <div className="mt-4">
-                         <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Other Facility</label>
+                         <FieldLabel label="Other Facility" tooltip="If a facility is not listed above, you can add it manually here." />
                          <input 
                            type="text" 
                            placeholder="+ Add custom facility (Press Enter)" 
@@ -2345,7 +2450,7 @@ export default function PartnerDashboardView() {
                      </div>
 
                      <div className="mt-8">
-                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Associate Collections (Optional)</label>
+                       <FieldLabel label="Associate Collections (Optional)" tooltip="Select curated collections that your restaurant should be part of (e.g., 'Best Cafes', 'Romantic Dining')." />
                        <div className="flex flex-wrap gap-2 mb-4">
                          {sortedCollections.map(c => {
                            const collectionArray = Array.isArray(formData.collections) ? formData.collections : typeof formData.collections === 'string' ? (formData.collections as unknown as string).split(',').map((x:any)=>x.trim()).filter(Boolean) : [];
@@ -2377,7 +2482,7 @@ export default function PartnerDashboardView() {
                {activeTab === 'status' && (
                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    <div>
-                     <h3 className="text-sm uppercase tracking-widest mb-4 text-[#363636] font-normal leading-[1.2]">Daily Timings</h3>
+                     <FieldLabel label="Daily Timings" tooltip="Set the opening and closing hours for each day of the week. You can add multiple shifts (e.g., lunch and dinner) per day." />
                      <div className="space-y-4">
                        {DAYS.map(day => {
                          const timing = (formData.dailyTimings as any)?.[day] || { closed: false };
@@ -2400,18 +2505,17 @@ export default function PartnerDashboardView() {
                                <button 
                                  type="button"
                                  onClick={() => {
-                                   if(window.confirm(`Copy ${day}'s timings to all other days?`)) {
+                                   setConfirmModal({ isOpen: true, title: 'Copy Timings', message: `Copy ${day}'s timings to all other days?`, onConfirm: () => {
                                      const newTimings = { ...(formData.dailyTimings || {}) };
                                      DAYS.forEach(d => {
                                        newTimings[d] = {
                                          ...newTimings[d],
                                          closed: timing.closed,
                                          ranges: JSON.parse(JSON.stringify(ranges)),
-                                         
                                        };
                                      });
                                      updateForm('dailyTimings', newTimings);
-                                   }
+                                   }});
                                  }}
                                  className="text-[10px] uppercase tracking-widest font-normal leading-[1.2] text-blue-600 hover:underline transition-colors flex items-center justify-center gap-1 sm:w-auto bg-blue-600/5 px-3 py-1.5 rounded-lg border border-blue-600/20"
                                >
@@ -2467,41 +2571,6 @@ export default function PartnerDashboardView() {
                        })}
                      </div>
                    </div>
-
-                   <div>
-                     <h3 className="text-sm uppercase tracking-widest mb-2 text-[#363636] font-normal leading-[1.2]">Blackout Dates</h3>
-                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-relaxed mb-4">Dates when your restaurant is closed or unable to accept online bookings.</p>
-                     <div className="p-5 bg-slate-50 rounded-2xl border border-slate-300 space-y-4">
-                       <div className="flex gap-3 max-w-sm">
-                         <input type="date" id="newBlackoutDate" min={new Date().toISOString().split('T')[0]} className="flex-1 px-4 py-2.5 bg-white border border-slate-300 focus:border-blue-600/50 rounded-xl font-normal text-[#363636] leading-[1.2] text-sm outline-none transition-all shadow-sm" />
-                         <button type="button" onClick={() => {
-                           const el = document.getElementById('newBlackoutDate') as HTMLInputElement;
-                           if(el && el.value && !isNaN(new Date(el.value).getTime())) {
-                             const dates = formData.blackoutDates || [];
-                             if(!dates.includes(el.value)) {
-                               updateForm('blackoutDates', [...dates, el.value].sort());
-                             }
-                             el.value = '';
-                           }
-                         }} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-md hover:bg-opacity-90 transition-all text-sm whitespace-nowrap">
-                           Add Date
-                         </button>
-                       </div>
-                       
-                       {(formData.blackoutDates || []).length > 0 && (
-                         <div className="flex flex-wrap gap-2 pt-2">
-                           {(formData.blackoutDates || []).map((date: string) => (
-                             <span key={date} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 border border-slate-300 shadow-sm">
-                               {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(date))}
-                               <button type="button" onClick={() => {
-                                 updateForm('blackoutDates', (formData.blackoutDates || []).filter((d:string) => d !== date));
-                               }} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={14}/></button>
-                             </span>
-                           ))}
-                         </div>
-                       )}
-                     </div>
-                   </div>
                  </div>
                )}
 
@@ -2510,28 +2579,53 @@ export default function PartnerDashboardView() {
                )}
 
                {activeTab === 'media' && (
-                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                   <div className="p-4 bg-blue-50 text-blue-700 rounded-xl text-sm font-medium border border-blue-100 mb-6">
-                     <strong>Tip:</strong> Provide direct, absolute URLs (https://...) pointing to your images, or use the Upload button to upload an image from your device.
-                   </div>
-                   <ImageUploadInput label="Primary Image URL" value={formData.image} onChange={(v:any) => updateForm('image', v)} />
-                   {formData.image && <img src={formData.image} alt="Primary" className="w-full max-w-lg h-64 object-cover rounded-xl border border-slate-300 shadow-sm" />}
+                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                    
-                   <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Food Images", 'foodImages')}
+                   <div className="pb-8 border-b border-slate-100">
+                     <div className="mb-6">
+                       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">Primary Cover Image</h3>
+                       <p className="text-sm text-slate-500 mt-1">The main cover photo displayed on your restaurant's profile and in search results.</p>
+                     </div>
+                     <div className="flex flex-col lg:flex-row gap-8">
+                       <div className="w-full lg:w-1/2">
+                         {formData.image ? (
+                           <div className="relative group rounded-3xl overflow-hidden shadow-md aspect-video border border-slate-200">
+                             <button onClick={() => {
+                               setConfirmModal({
+                                 isOpen: true,
+                                 title: 'Remove Cover Image',
+                                 message: 'Are you sure you want to remove the primary cover image?',
+                                 onConfirm: () => {
+                                   updateForm('image', '');
+                                   setConfirmModal(null);
+                                 }
+                               });
+                             }} className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-md text-red-500 rounded-full hover:bg-red-50 transition-all z-10 shadow-sm opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
+                               <X size={16} />
+                             </button>
+                             <img src={formData.image} alt="Primary Cover" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                           </div>
+                         ) : (
+                           <div className="w-full aspect-video bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-3">
+                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                               <ImageIcon size={24} />
+                             </div>
+                             <p className="font-medium text-sm">No cover image set.</p>
+                           </div>
+                         )}
+                       </div>
+                       <div className="w-full lg:w-1/2 flex flex-col justify-center">
+                         <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                           <ImageUploadInput onError={(msg: string) => showToast(msg, 'error')} label="Upload New Cover Image" value={formData.image} onChange={(v:any) => updateForm('image', v)} />
+                         </div>
+                       </div>
+                     </div>
                    </div>
-                   <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Ambience Images", 'ambienceImages')}
-                   </div>
-                   <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Secondary Images", 'secondaryImages')}
-                   </div>
-                   <div className="pt-4 border-t border-slate-300">
-                     {renderImageInputList("Menu Images (Legacy)", 'menuImages')}
-                   </div>
-                   <div className="pt-4 border-t border-slate-300">
-                     {renderMenuCategories()}
-                   </div>
+
+                   {renderImageInputList("Secondary Images", 'secondaryImages', "Additional photos highlighting special features, exterior, or events to give customers a complete feel.")}
+                   {renderImageInputList("Food Images", 'foodImages', "Photos of your signature dishes.")}
+                   {renderImageInputList("Ambience Images", 'ambienceImages', "Photos showing the interior, seating, and general atmosphere of your restaurant.")}
+                   {renderMenuCategories()}
                  </div>
                )}
 
@@ -2837,51 +2931,74 @@ export default function PartnerDashboardView() {
 
                {activeTab === 'specialties' && (
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Signature Dishes</h3>
                         <p className="text-xs text-slate-500 mt-1">Highlight your best dishes to attract diners</p>
                       </div>
-                      <button onClick={() => {
-                        const newSig = [...(formData.signatureDishes || []), { name: '', price: 0, description: '' }];
-                        updateForm('signatureDishes', newSig);
-                      }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                        <Plus size={14} /> Add Signature
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => {
+                          setNewSignatureDish({ name: '', price: 0, description: '' });
+                          setAddSignatureDishModal(true);
+                        }} className="flex items-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-xl font-bold text-xs transition-colors">
+                          <Plus size={14} /> Add Signature
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
                       {(!formData.signatureDishes || formData.signatureDishes.length === 0) ? (
-                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
-                          No signature dishes configured.
+                        <div className="py-12 text-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 font-medium text-sm flex flex-col items-center justify-center gap-3">
+                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-300">
+                            <UtensilsCrossed size={24} />
+                          </div>
+                          <p>No signature dishes configured.</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {formData.signatureDishes.map((item, idx) => (
-                            <div key={idx} className="bg-slate-50 border border-slate-300 px-4 py-2.5 rounded-xl relative group">
+                            <div key={idx} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl relative group hover:shadow-md transition-all">
                               <button onClick={() => {
-                                const newSig = [...formData.signatureDishes!];
-                                newSig.splice(idx, 1);
-                                updateForm('signatureDishes', newSig);
-                              }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
-                                <X size={14} />
-                              </button>
-                              <div className="space-y-2 mt-1 pr-6">
-                                <input type="text" placeholder="Dish Name" value={item.name} onChange={e => {
-                                  const newSig = [...formData.signatureDishes!];
-                                  newSig[idx].name = e.target.value;
-                                  updateForm('signatureDishes', newSig);
-                                }} className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-bold outline-none" />
-                                <input type="number" placeholder="Price (₹)" value={item.price} onChange={e => {
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Remove Signature Dish',
+                                  message: 'Are you sure you want to remove this signature dish?',
+                                  onConfirm: () => {
                                     const newSig = [...formData.signatureDishes!];
-                                    newSig[idx].price = parseInt(e.target.value) || 0;
+                                    newSig.splice(idx, 1);
                                     updateForm('signatureDishes', newSig);
-                                  }} className="w-32 px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-semibold outline-none" />
-                                <textarea placeholder="Description" value={item.description || ''} onChange={e => {
-                                  const newSig = [...formData.signatureDishes!];
-                                  newSig[idx].description = e.target.value;
-                                  updateForm('signatureDishes', newSig);
-                                }} className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-blue-600 rounded-lg text-sm font-medium outline-none resize-none" rows={2} />
+                                  }
+                                });
+                              }} className="absolute top-3 right-3 p-2 bg-white text-red-500 rounded-full hover:bg-red-50 shadow-sm opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 z-10">
+                                <Trash2 size={16} />
+                              </button>
+                              <div className="space-y-4 pr-10">
+                                <div className="flex gap-4">
+                                  <div className="flex-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Dish Name</label>
+                                    <input type="text" placeholder="e.g. Truffle Mushroom Risotto" value={item.name} onChange={e => {
+                                      const newSig = [...formData.signatureDishes!];
+                                      newSig[idx].name = e.target.value;
+                                      updateForm('signatureDishes', newSig);
+                                    }} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm" />
+                                  </div>
+                                  <div className="w-32">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Price (₹)</label>
+                                    <input type="number" placeholder="0" value={item.price} onChange={e => {
+                                        const newSig = [...formData.signatureDishes!];
+                                        newSig[idx].price = parseInt(e.target.value) || 0;
+                                        updateForm('signatureDishes', newSig);
+                                      }} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm" />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</label>
+                                  <textarea placeholder="Describe the dish, its ingredients and what makes it special..." value={item.description || ''} onChange={e => {
+                                    const newSig = [...formData.signatureDishes!];
+                                    newSig[idx].description = e.target.value;
+                                    updateForm('signatureDishes', newSig);
+                                  }} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm resize-none" rows={2} />
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -2893,70 +3010,84 @@ export default function PartnerDashboardView() {
 
                {activeTab === 'offers' && (
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Ongoing Offers</h3>
                         <p className="text-xs text-slate-500 mt-1">Manage discounts and seasonal promotions</p>
                       </div>
-                      <button onClick={() => {
-                        const newOffer = [...(formData.offers || []), { title: '', description: '', validFrom: '', validUntil: '' }];
-                        updateForm('offers', newOffer);
-                      }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                        <Plus size={14} /> Add Offer
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => {
+                          setNewOffer({ title: '', description: '', validFrom: '', validUntil: '' });
+                          setAddOfferModal(true);
+                        }} className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 px-4 py-2 rounded-xl font-bold text-xs transition-colors">
+                          <Plus size={14} /> Add Offer
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
                       {(!formData.offers || formData.offers.length === 0) ? (
-                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
-                          No active offers.
+                        <div className="py-12 text-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 font-medium text-sm flex flex-col items-center justify-center gap-3">
+                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-300">
+                            <Tag size={24} />
+                          </div>
+                          <p>No active offers configured.</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {formData.offers.map((item, idx) => (
-                            <div key={idx} className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl relative group">
+                            <div key={idx} className="bg-amber-50/50 border border-amber-200 p-5 rounded-2xl relative group hover:shadow-md transition-all">
                               <button onClick={() => {
-                                const newOffers = [...formData.offers!];
-                                newOffers.splice(idx, 1);
-                                updateForm('offers', newOffers);
-                              }} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
-                                <X size={14} />
+                                setConfirmModal({
+                                  isOpen: true,
+                                  title: 'Remove Offer',
+                                  message: 'Are you sure you want to remove this offer?',
+                                  onConfirm: () => {
+                                    const newOffers = [...formData.offers!];
+                                    newOffers.splice(idx, 1);
+                                    updateForm('offers', newOffers);
+                                  }
+                                });
+                              }} className="absolute top-3 right-3 p-2 bg-white text-red-500 rounded-full hover:bg-red-50 shadow-sm opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100 z-10">
+                                <Trash2 size={16} />
                               </button>
-                              <div className="space-y-2 mt-1 pr-6">
-                                <input type="text" placeholder="Offer Title" value={item.title} onChange={e => {
-                                  const newOffers = [...formData.offers!];
-                                  newOffers[idx].title = e.target.value;
-                                  updateForm('offers', newOffers);
-                                }} className="w-full px-3 py-2 bg-white border border-amber-200 focus:border-blue-600 rounded-lg text-sm font-bold outline-none" />
+                              <div className="space-y-4 pr-10">
+                                <div>
+                                  <label className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest block mb-1">Offer Title</label>
+                                  <input type="text" placeholder="e.g. 20% Off Weekend" value={item.title} onChange={e => {
+                                    const newOffers = [...formData.offers!];
+                                    newOffers[idx].title = e.target.value;
+                                    updateForm('offers', newOffers);
+                                  }} className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all shadow-sm" />
+                                </div>
                                 
-                                <div className="flex gap-3">
+                                <div className="flex gap-4">
                                   <div className="flex-1">
-                                    <span className="text-[10px] text-amber-700 font-black mb-1 block uppercase">Valid From</span>
+                                    <label className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest block mb-1">Valid From</label>
                                     <input type="date" value={item.validFrom} onChange={e => {
                                       const newOffers = [...formData.offers!];
                                       newOffers[idx].validFrom = e.target.value;
                                       updateForm('offers', newOffers);
-                                    }} className="w-full px-3 py-2 bg-white border border-amber-200 focus:border-blue-600 rounded-lg text-sm font-medium outline-none" />
+                                    }} className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all shadow-sm" />
                                   </div>
                                   <div className="flex-1">
-                                    <span className="text-[10px] text-amber-700 font-black mb-1 block uppercase">Valid Until</span>
+                                    <label className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest block mb-1">Valid Until</label>
                                     <input type="date" value={item.validUntil} onChange={e => {
                                       const newOffers = [...formData.offers!];
                                       newOffers[idx].validUntil = e.target.value;
                                       updateForm('offers', newOffers);
-                                    }} className="w-full px-3 py-2 bg-white border border-amber-200 focus:border-blue-600 rounded-lg text-sm font-medium outline-none" />
+                                    }} className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all shadow-sm" />
                                   </div>
                                 </div>
-                                <input type="text" placeholder="Terms & Conditions" value={item.terms || ''} onChange={e => {
-                                  const newOffers = [...formData.offers!];
-                                  newOffers[idx].terms = e.target.value;
-                                  updateForm('offers', newOffers);
-                                }} className="w-full px-3 py-2 bg-white border border-amber-200 focus:border-blue-600 rounded-lg text-sm font-medium outline-none" />
-                                <textarea placeholder="Description" value={item.description || ''} onChange={e => {
-                                  const newOffers = [...formData.offers!];
-                                  newOffers[idx].description = e.target.value;
-                                  updateForm('offers', newOffers);
-                                }} className="w-full px-3 py-2 bg-white border border-amber-200 focus:border-blue-600 rounded-lg text-sm font-medium outline-none resize-none" rows={2} />
+                                
+                                <div>
+                                  <label className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest block mb-1">Description</label>
+                                  <textarea placeholder="e.g. 20% off on bills above ₹1000" value={item.description || ''} onChange={e => {
+                                    const newOffers = [...formData.offers!];
+                                    newOffers[idx].description = e.target.value;
+                                    updateForm('offers', newOffers);
+                                  }} className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm font-medium text-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all shadow-sm resize-none" rows={2} />
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -2968,152 +3099,122 @@ export default function PartnerDashboardView() {
 
                {activeTab === 'ads' && (
                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Advertisement Campaigns</h3>
                         <p className="text-xs text-slate-500 mt-1">Manage visual ads and video promos</p>
                       </div>
-                      <button onClick={() => {
-                        const newAd = [{ 
-                            id: Math.random().toString(36).substr(2, 9),
-                            title: '', 
-                            description: '', 
-                            active: true,
-                            validFrom: new Date().toISOString().split('T')[0]
-                        }, ...(formData.advertisements || [])];
-                        updateForm('advertisements', newAd);
-                      }} className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                        <Plus size={14} /> Create New Ad
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => {
+                          setNewAdForm({ title: '', description: '', image: '', validFrom: new Date().toISOString().split('T')[0] });
+                          setAddAdModal(true);
+                        }} className="flex items-center gap-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 px-4 py-2 rounded-xl font-bold text-xs transition-colors">
+                          <Plus size={14} /> Create New Ad
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-4">
                       {(!formData.advertisements || formData.advertisements.length === 0) ? (
-                        <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-300 font-medium text-sm">
-                          No active advertisements.
+                        <div className="py-12 text-center text-slate-400 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 font-medium text-sm flex flex-col items-center justify-center gap-3">
+                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-slate-300">
+                            <Megaphone size={24} />
+                          </div>
+                          <p>No active advertisements.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 gap-6">
                           {formData.advertisements.map((ad, idx) => (
-                            <div key={`${ad.id || 'ad'}-${idx}`} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6">
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-6 flex-grow mr-6 text-left">
+                            <div key={`${ad.id || 'ad'}-${idx}`} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-6 hover:shadow-md transition-all group">
+                              <div className="flex flex-col md:flex-row items-start justify-between gap-6">
+                                <div className="space-y-6 flex-grow text-left w-full md:w-auto">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                       <span className={cn("w-3 h-3 rounded-full animate-pulse", ad.active ? "bg-green-500" : "bg-slate-300")} />
-                                      <h4 className="text-sm uppercase tracking-widest text-[#363636] font-normal leading-[1.2]">Ad Slot #{idx + 1}</h4>
+                                      <h4 className="text-sm font-bold text-slate-700">Ad Slot #{idx + 1}</h4>
                                     </div>
                                     <button type="button" onClick={() => {
                                       const newAds = [...formData.advertisements!];
                                       newAds[idx].active = !ad.active;
                                       updateForm('advertisements', newAds);
-                                    }} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all", ad.active ? "bg-green-100 text-green-600" : "bg-slate-200 text-slate-400")}>
+                                    }} className={cn("px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all", ad.active ? "bg-green-100 text-green-600" : "bg-slate-200 text-slate-500")}>
                                       {ad.active ? "Active" : "Paused"}
                                     </button>
                                   </div>
 
                                   <div className="space-y-4">
-                                    <div className="space-y-2">
-                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Campaign Title</label>
-                                      <input className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-normal text-[#363636] leading-[1.2] focus:border-blue-600 outline-none" value={ad.title} onChange={(e) => {
+                                    <div>
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Campaign Title</label>
+                                      <input className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm" value={ad.title} onChange={(e) => {
                                         const newAds = [...formData.advertisements!];
                                         newAds[idx].title = e.target.value;
                                         updateForm('advertisements', newAds);
                                       }} placeholder="Monsoon Special Ad..." />
                                     </div>
 
-                                    <div className="space-y-2">
-                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description / Hook Line</label>
-                                      <textarea className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-blue-600 outline-none min-h-[80px]" value={ad.description || ""} onChange={(e) => {
+                                    <div>
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Ad Description / Target URL</label>
+                                      <input className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm" value={ad.description} onChange={(e) => {
                                         const newAds = [...formData.advertisements!];
                                         newAds[idx].description = e.target.value;
                                         updateForm('advertisements', newAds);
-                                      }} />
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Poster Image URL</label>
-                                        <div className="flex flex-col gap-2">
-                                          {ad.image && ad.image !== "Uploading..." && (
-                                            <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                                              <img src={ad.image} className="w-full h-full object-contain" alt="Ad Preview" />
-                                            </div>
-                                          )}
-                                          <div className="flex gap-2">
-                                            <input className="flex-grow px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-blue-600 outline-none" value={ad.image || ""} onChange={(e) => {
-                                              const newAds = [...formData.advertisements!];
-                                              newAds[idx].image = e.target.value;
-                                              updateForm('advertisements', newAds);
-                                            }} placeholder="https://..." />
-                                            <input type="file" id={`partner-ad-image-upload-${idx}`} className="hidden" accept="image/*" onChange={async (e) => {
-                                              const file = e.target.files?.[0];
-                                              if (!file) return;
-                                              try {
-                                                const newAds = [...formData.advertisements!];
-                                                newAds[idx].image = "Uploading...";
-                                                updateForm('advertisements', newAds);
-                                                
-                                                const seoFileName = generateSeoFriendlyFileName(file.name, 'spotlight', selectedRes?.name);
-                                                const storageRef = ref(storage, `restaurants/${seoFileName}`);
-                                                const uploadTask = uploadBytesResumable(storageRef, file);
-                                                uploadTask.on('state_changed', null, null, async () => {
-                                                  const url = await getDownloadURL(uploadTask.snapshot.ref);
-                                                  const updatedAds = [...formData.advertisements!];
-                                                  updatedAds[idx].image = url;
-                                                  updateForm('advertisements', updatedAds);
-                                                });
-                                              } catch (err) {
-                                                console.error(err);
-                                              }
-                                            }} />
-                                            <button type="button" onClick={() => document.getElementById(`partner-ad-image-upload-${idx}`)?.click()} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 transition-all" title="Upload Image">
-                                              <Upload size={18} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">YouTube Video Link</label>
-                                        <div className="flex gap-2">
-                                          <input className="flex-grow px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-blue-600 outline-none" value={ad.videoUrl || ""} onChange={(e) => {
-                                            const newAds = [...formData.advertisements!];
-                                            newAds[idx].videoUrl = e.target.value;
-                                            updateForm('advertisements', newAds);
-                                          }} placeholder="https://youtube.com/watch?v=..." />
-                                          <div className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400">
-                                            <Video size={18} />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valid From</label>
-                                        <input type="date" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-blue-600 outline-none" value={ad.validFrom || ""} onChange={(e) => {
-                                          const newAds = [...formData.advertisements!];
-                                          newAds[idx].validFrom = e.target.value;
-                                          updateForm('advertisements', newAds);
-                                        }} />
-                                      </div>
-                                      <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valid Until</label>
-                                        <input type="date" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-medium text-[#363636] focus:border-blue-600 outline-none" value={ad.validUntil || ""} onChange={(e) => {
-                                          const newAds = [...formData.advertisements!];
-                                          newAds[idx].validUntil = e.target.value;
-                                          updateForm('advertisements', newAds);
-                                        }} />
-                                      </div>
+                                      }} placeholder="https://..." />
                                     </div>
                                   </div>
                                 </div>
+                                <div className="w-full md:w-56 h-40 bg-white rounded-2xl border border-slate-200 overflow-hidden shrink-0 relative group/img shadow-sm flex-shrink-0">
+                                  {ad.image ? (
+                                    <img src={ad.image} alt="Ad" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                      <ImagePlus size={32} className="mb-2" />
+                                      <span className="text-[10px] uppercase tracking-widest font-black">No Image</span>
+                                    </div>
+                                  )}
+                                  <button onClick={() => {
+                                    setAdUploadIndex(idx);
+                                    if (adFileInputRef.current) {
+                                      adFileInputRef.current.click();
+                                    }
+                                  }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm text-white flex-col items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all flex">
+                                    <Upload size={24} className="mb-2" />
+                                    <span className="text-xs font-bold">Change Image</span>
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-6 border-t border-slate-200 gap-4">
+                                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                  <div className="flex-1 sm:flex-none">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Start Date</label>
+                                    <input type="date" value={ad.validFrom} onChange={(e) => {
+                                      const newAds = [...formData.advertisements!];
+                                      newAds[idx].validFrom = e.target.value;
+                                      updateForm('advertisements', newAds);
+                                    }} className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none shadow-sm" />
+                                  </div>
+                                  <div className="flex-1 sm:flex-none">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">End Date</label>
+                                    <input type="date" value={ad.validUntil} onChange={(e) => {
+                                      const newAds = [...formData.advertisements!];
+                                      newAds[idx].validUntil = e.target.value;
+                                      updateForm('advertisements', newAds);
+                                    }} className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none shadow-sm" />
+                                  </div>
+                                </div>
                                 <button type="button" onClick={() => {
-                                  const newAds = [...formData.advertisements!];
-                                  newAds.splice(idx, 1);
-                                  updateForm('advertisements', newAds);
-                                }} className="p-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition-colors">
-                                  <Trash2 size={16} />
+                                  setConfirmModal({
+                                    isOpen: true,
+                                    title: 'Remove Advertisement',
+                                    message: 'Are you sure you want to remove this advertisement?',
+                                    onConfirm: () => {
+                                      const newAds = [...formData.advertisements!];
+                                      newAds.splice(idx, 1);
+                                      updateForm('advertisements', newAds);
+                                    }
+                                  });
+                                }} className="flex items-center justify-center p-2.5 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors self-end sm:self-auto w-full sm:w-auto shadow-sm sm:shadow-none bg-white sm:bg-transparent border border-red-100 sm:border-none">
+                                  <Trash2 size={18} />
+                                  <span className="ml-2 text-sm font-bold sm:hidden">Remove Ad</span>
                                 </button>
                               </div>
                             </div>
@@ -3309,7 +3410,7 @@ export default function PartnerDashboardView() {
                  </div>
 
                  <div>
-                   <ImageUploadInput label="Dish Image (Optional)" value={newItemData.image} onChange={(v:any) => setNewItemData({...newItemData, image: v})} />
+                   <ImageUploadInput onError={(msg: string) => showToast(msg, 'error')} label="Dish Image (Optional)" value={newItemData.image} onChange={(v:any) => setNewItemData({...newItemData, image: v})} />
                  </div>
                </div>
                
@@ -3583,6 +3684,244 @@ export default function PartnerDashboardView() {
 
       {/* Floating Save Bar */}
       <AnimatePresence>
+              {/* Add Image Modal */}
+      {addImageModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-300 flex justify-between items-center shrink-0">
+               <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">Add {addImageModal.label}</h3>
+               <button onClick={() => setAddImageModal(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              {!addImageModal.isStringArrayOnly && (
+                <InputText 
+                  label="Category (e.g. Food, Ambience)" 
+                  value={newImageForm.category} 
+                  onChange={(v: string) => setNewImageForm({...newImageForm, category: v})} 
+                />
+              )}
+              <ImageUploadInput 
+                label="Select Image or URL" 
+                value={newImageForm.url} 
+                onChange={(v: string) => setNewImageForm({...newImageForm, url: v})} 
+                onError={(msg: string) => showToast(msg, 'error')}
+              />
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-300 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setAddImageModal(null)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => {
+                if (addImageModal.field === 'menuCategories') {
+                  const arr = [...(formData.menuCategories || [])];
+                  const catIdx = (addImageModal as any).catIdx;
+                  const imgs = [...(arr[catIdx].images || [])];
+                  imgs.push(newImageForm.url);
+                  arr[catIdx] = { ...arr[catIdx], images: imgs };
+                  updateForm('menuCategories', arr);
+                } else {
+                  const arr = [...(formData[addImageModal.field] || [])];
+                  if (addImageModal.isStringArrayOnly) {
+                    arr.push(newImageForm.url);
+                  } else {
+                    arr.push({ url: newImageForm.url, category: newImageForm.category });
+                  }
+                  updateForm(addImageModal.field, arr as any);
+                }
+                setAddImageModal(null);
+              }} disabled={!newImageForm.url} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Add
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Menu Category Modal */}
+      {addMenuCategoryModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-300 flex justify-between items-center shrink-0">
+               <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">Add Menu Category</h3>
+               <button onClick={() => setAddMenuCategoryModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              <InputText 
+                label="Category Name (e.g. Starters, Main Course)" 
+                value={newMenuCategoryName} 
+                onChange={(v: string) => setNewMenuCategoryName(v)} 
+              />
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-300 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setAddMenuCategoryModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => {
+                const arr = [...(formData.menuCategories || [])];
+                arr.push({ id: Math.random().toString(36).substr(2, 9), name: newMenuCategoryName, images: [] });
+                updateForm('menuCategories', arr);
+                setAddMenuCategoryModal(false);
+              }} disabled={!newMenuCategoryName.trim()} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Add
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+              {/* Add Signature Dish Modal */}
+      {addSignatureDishModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-300 flex justify-between items-center shrink-0">
+               <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">Add Signature Dish</h3>
+               <button onClick={() => setAddSignatureDishModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              <InputText 
+                label="Dish Name *" 
+                value={newSignatureDish.name} 
+                onChange={(v: string) => setNewSignatureDish({...newSignatureDish, name: v})} 
+              />
+              <InputText 
+                label="Price (₹)" 
+                value={newSignatureDish.price.toString()} 
+                onChange={(v: string) => setNewSignatureDish({...newSignatureDish, price: parseInt(v) || 0})} 
+              />
+              <TextArea 
+                label="Description" 
+                value={newSignatureDish.description} 
+                onChange={(v: string) => setNewSignatureDish({...newSignatureDish, description: v})} 
+              />
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-300 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setAddSignatureDishModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => {
+                const arr = [...(formData.signatureDishes || [])];
+                arr.push(newSignatureDish);
+                updateForm('signatureDishes', arr);
+                setAddSignatureDishModal(false);
+              }} disabled={!newSignatureDish.name.trim()} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Add
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Offer Modal */}
+      {addOfferModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-300 flex justify-between items-center shrink-0">
+               <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">Add Offer</h3>
+               <button onClick={() => setAddOfferModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              <InputText 
+                label="Offer Title *" 
+                value={newOffer.title} 
+                onChange={(v: string) => setNewOffer({...newOffer, title: v})} 
+              />
+              <TextArea 
+                label="Description" 
+                value={newOffer.description} 
+                onChange={(v: string) => setNewOffer({...newOffer, description: v})} 
+              />
+              <InputText 
+                label="Valid From (YYYY-MM-DD)" 
+                value={newOffer.validFrom} 
+                onChange={(v: string) => setNewOffer({...newOffer, validFrom: v})} 
+              />
+              <InputText 
+                label="Valid Until (YYYY-MM-DD)" 
+                value={newOffer.validUntil} 
+                onChange={(v: string) => setNewOffer({...newOffer, validUntil: v})} 
+              />
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-300 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setAddOfferModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => {
+                const arr = [...(formData.offers || [])];
+                arr.push({ ...newOffer, id: Math.random().toString(36).substr(2, 9) });
+                updateForm('offers', arr);
+                setAddOfferModal(false);
+              }} disabled={!newOffer.title.trim()} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Add
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+              {/* Create Ad Modal */}
+      {addAdModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[90vh]">
+            <div className="p-6 bg-slate-50 border-b border-slate-300 flex justify-between items-center shrink-0">
+               <h3 className="text-xl text-[#363636] font-normal leading-[1.2]">Create New Ad</h3>
+               <button onClick={() => setAddAdModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-5">
+              <InputText 
+                label="Ad Title *" 
+                value={newAdForm.title} 
+                onChange={(v: string) => setNewAdForm({...newAdForm, title: v})} 
+              />
+              <TextArea 
+                label="Description" 
+                value={newAdForm.description} 
+                onChange={(v: string) => setNewAdForm({...newAdForm, description: v})} 
+              />
+              <ImageUploadInput 
+                label="Banner Image URL" 
+                value={newAdForm.image} 
+                onChange={(v: string) => setNewAdForm({...newAdForm, image: v})} 
+                onError={(msg: string) => showToast(msg, 'error')}
+              />
+              <InputText 
+                label="Valid From (YYYY-MM-DD)" 
+                value={newAdForm.validFrom} 
+                onChange={(v: string) => setNewAdForm({...newAdForm, validFrom: v})} 
+              />
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-300 flex justify-end gap-3 shrink-0">
+              <button onClick={() => setAddAdModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => {
+                const newAd = [{ 
+                  id: Math.random().toString(36).substr(2, 9),
+                  title: newAdForm.title, 
+                  description: newAdForm.description, 
+                  image: newAdForm.image,
+                  active: true,
+                  validFrom: newAdForm.validFrom || new Date().toISOString().split('T')[0]
+                }, ...(formData.advertisements || [])];
+                updateForm('advertisements', newAd);
+                setAddAdModal(false);
+              }} disabled={!newAdForm.title.trim()} className="px-6 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                Create
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
         {hasChanges && (
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-300 shadow-[0_-4px_24px_rgba(0,0,0,0.05)] z-50 transform transition-transform">
              <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -3608,6 +3947,22 @@ export default function PartnerDashboardView() {
           </div>
         )}
       </AnimatePresence>
+
+
+      
+
+      
+
+      <ConfirmModal
+        isOpen={confirmModal?.isOpen || false}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        onConfirm={() => {
+          if (confirmModal?.onConfirm) confirmModal.onConfirm();
+          setConfirmModal(null);
+        }}
+        onCancel={() => setConfirmModal(null)}
+      />
     </div>
   );
 }

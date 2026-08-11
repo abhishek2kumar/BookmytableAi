@@ -4,6 +4,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { db, storage } from '../lib/firebase';
 import { Story, Restaurant } from '../types';
 import { Loader2, Plus, X, Eye, Trash2, Image as ImageIcon, Video, Clock, Users } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 import { generateSeoFriendlyFileName } from '../lib/utils';
 
 interface Props {
@@ -16,6 +17,7 @@ export default function StoryManager({ restaurant }: Props) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mobileViewersStory, setMobileViewersStory] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     if (!restaurant?.id) return;
@@ -127,16 +129,23 @@ export default function StoryManager({ restaurant }: Props) {
   }, [stories]);
 
   const handleDelete = async (story: Story) => {
-    if (!window.confirm("Delete this story?")) return;
-    try {
-        await deleteDoc(doc(db, 'stories', story.id));
-        if (story.mediaUrl.includes('firebasestorage')) {
-             const storageRef = ref(storage, story.mediaUrl);
-             await deleteObject(storageRef).catch(console.error);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Story',
+      message: 'Delete this story?',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'stories', story.id));
+          if (story.mediaUrl.includes('firebasestorage')) {
+               const storageRef = ref(storage, story.mediaUrl);
+               await deleteObject(storageRef).catch(console.error);
+          }
+        } catch (err) {
+          console.error("Failed to delete story:", err);
         }
-    } catch (err) {
-        console.error("Failed to delete story:", err);
-    }
+        setConfirmModal(null);
+      }
+    });
   };
 
   if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-slate-400" /></div>;
@@ -147,6 +156,7 @@ export default function StoryManager({ restaurant }: Props) {
 
   return (
     <div className="space-y-8 animate-in fade-in">
+      {confirmModal && <ConfirmModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(null)} />}
         {/* Upload Section */}
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-16 h-16 bg-brand/10 text-brand rounded-full flex items-center justify-center">
