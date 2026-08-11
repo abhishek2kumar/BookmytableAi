@@ -130,9 +130,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navItems.push({ label: 'Admin', path: '/admin', icon: ShieldCheck });
   }
 
-  const isBookPage = location.pathname.endsWith('/book') || location.pathname.startsWith('/book/');
+  const isBookPage = location.pathname.endsWith('/book') || location.pathname.includes('/book/');
   const isTakeawayPage = location.pathname.includes('/takeaway');
-  const isRestaurantPage = location.pathname.startsWith('/restaurant/') || isBookPage || isTakeawayPage;
+  const isRestaurantPage = location.pathname.includes('/restaurant/') || isBookPage || isTakeawayPage;
   const isHomePage = location.pathname === '/';
   const isPartnersPage = location.pathname.startsWith('/partners');
   const isQrMenuPage = location.pathname.startsWith('/qr-menu/');
@@ -422,79 +422,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </p>
         </div>
       </footer>
-      )}
-      {/* Mobile Bottom Navigation - Hidden on Restaurant and Home pages */}
-      {!showComingSoon && (!isRestaurantPage && !isHomePage && !isQrMenuPage) && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-gray-100 px-8 py-4 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.05)] pb-8">
-          <Link
-            to="/"
-            className={cn(
-              "flex flex-col items-center gap-1 transition-all active:scale-95",
-              location.pathname === "/" ? "text-brand" : "text-vibrant-gray opacity-50"
-            )}
-          >
-            <div className={cn(
-              "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-              location.pathname === "/" ? "bg-brand/10" : ""
-            )}>
-              <Search size={22} className={location.pathname === "/" ? "stroke-[2.5]" : ""} />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest">Explore</span>
-          </Link>
-
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all active:scale-95",
-                location.pathname === item.path ? "text-brand" : "text-vibrant-gray opacity-50"
-              )}
-            >
-              <div className={cn(
-                "w-12 h-8 flex items-center justify-center rounded-2xl transition-all",
-                location.pathname === item.path ? "bg-brand/10" : ""
-              )}>
-                <item.icon size={22} className={location.pathname === item.path ? "stroke-[2.5]" : ""} />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-            </Link>
-          ))}
-
-          {profile ? (
-            <button
-              ref={mobileProfileBtnRef}
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all active:scale-95",
-                isProfileOpen ? "text-brand" : "text-vibrant-gray opacity-50"
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-full border-2 transition-all overflow-hidden",
-                isProfileOpen ? "border-brand" : "border-slate-300"
-              )}>
-                <img
-                  src={profile.photoURL || `https://ui-avatars.com/api/?name=${profile.displayName}&background=0D8ABC&color=fff`}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Profile</span>
-            </button>
-          ) : (
-            <button
-              onClick={signInWithGoogle}
-              className="flex flex-col items-center gap-1 text-brand active:scale-95"
-            >
-              <div className="w-12 h-8 flex items-center justify-center rounded-2xl bg-brand/10">
-                <UserIcon size={22} className="stroke-[2.5]" />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest">Login</span>
-            </button>
-          )}
-        </div>
       )}
     </div>
   );

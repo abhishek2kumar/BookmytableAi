@@ -149,7 +149,7 @@ export default function CollectionView() {
         </script>
       </Helmet>
       {/* Immersive Header Section */}
-      <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">
+      <div className="relative aspect-video md:aspect-auto md:h-[450px] w-full flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
             src={collectionInfo?.image} 
@@ -162,7 +162,7 @@ export default function CollectionView() {
           <img 
             src={collectionInfo?.image} 
             alt={collectionName || 'Collection'} 
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
