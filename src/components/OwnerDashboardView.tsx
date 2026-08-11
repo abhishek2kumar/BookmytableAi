@@ -366,7 +366,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
           </div>
           <div className="flex-1 space-y-10">
             {editForm.menuCategories?.map((cat: any, catIdx: number) => (
-              <motion.div layout key={cat.id} className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-300 space-y-8">
+              <motion.div layout key={cat.id || catIdx} className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-300 space-y-8">
                 <div className="flex items-center justify-between gap-6">
                   <div className="flex-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2 block">Category Name</label>
@@ -855,7 +855,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
                   
                   <div className="space-y-6">
                      {(editForm.slotCategories || []).map((cat: any, catIdx: number) => (
-                        <div key={cat.id} className="bg-slate-50 border border-slate-300 p-8 rounded-[32px] shadow-sm">
+                        <div key={cat.id || catIdx} className="bg-slate-50 border border-slate-300 p-8 rounded-[32px] shadow-sm">
                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                               <input 
                                  className="bg-transparent text-2xl font-normal leading-[1.2] text-[#363636] focus:outline-none focus:ring-0 p-0 border-none w-full"
@@ -1055,7 +1055,7 @@ export default function OwnerDashboardView({ ownerId: propOwnerId }: OwnerDashbo
             )}
             
             {(editForm.liveMenu || []).map((item: any, idx: number) => (
-               <div key={item.id} className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
+               <div key={item.id || idx} className="bg-white p-8 rounded-[32px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
                  <button 
                    onClick={() => {
                      const nextMenu = [...(editForm.liveMenu || [])];

@@ -509,7 +509,7 @@ return allDates;
               Select the time of day to see the offers
             </h3>
             <div className="space-y-4">
-              {slotData.categories.map((cat) => {
+              {slotData.categories.map((cat: any, idx: number) => {
                 const isActive = activeTimeCategory === cat.id;
                 let icon = <Clock size={24} className="text-slate-400" />;
                 if (cat.id === "breakfast")
@@ -560,7 +560,7 @@ return allDates;
 
                 return (
                   <div
-                    key={cat.id}
+                    key={cat.id || idx}
                     className="border border-slate-300 rounded-[20px] overflow-hidden bg-white"
                   >
                     <button

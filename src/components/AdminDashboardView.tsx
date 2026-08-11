@@ -1784,7 +1784,7 @@ export default function AdminDashboardView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {(editingRestaurant.slotCategories || []).map((cat, catIdx) => (
                   <div
-                    key={cat.id}
+                    key={cat.id || catIdx}
                     className="bg-white border border-slate-300 p-6 rounded-[32px] shadow-sm space-y-6 transition-all hover:border-brand/30"
                   >
                     <div className="flex items-center justify-between gap-4 border-b border-slate-300 pb-4">
@@ -2726,7 +2726,7 @@ export default function AdminDashboardView() {
             <div className="space-y-6">
               {(editingRestaurant.menuCategories || []).map((cat, catIdx) => (
                 <div
-                  key={cat.id}
+                  key={cat.id || catIdx}
                   className="bg-slate-50 rounded-[40px] border border-slate-300 p-8 space-y-8 relative group/cat"
                 >
                   <div className="flex items-center justify-between gap-6 border-b border-slate-300 pb-6">
@@ -2889,7 +2889,7 @@ export default function AdminDashboardView() {
               ) : (
                 <div className="space-y-4">
                   {editingRestaurant.liveMenu.map((item: any, idx: number) => (
-                    <div key={item.id} className="bg-white p-6 rounded-[24px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
+                    <div key={item.id || idx} className="bg-white p-6 rounded-[24px] border border-slate-300 shadow-sm relative group hover:shadow-md transition-all">
                       <button 
                          type="button"
                          onClick={() => {
@@ -3060,7 +3060,7 @@ export default function AdminDashboardView() {
             <div className="space-y-6">
               {offers.map((offer, idx) => (
                 <div
-                  key={offer.id}
+                  key={offer.id || idx}
                   className="bg-slate-50 p-8 rounded-[40px] border border-slate-300 space-y-6 group transition-all hover:bg-white hover:border-brand/40 shadow-sm relative overflow-hidden"
                 >
                   <div className="flex items-center justify-between gap-6 border-b border-slate-300 pb-6">
@@ -3331,7 +3331,7 @@ export default function AdminDashboardView() {
             <div className="grid grid-cols-1 gap-6">
               {(editingRestaurant.advertisements || []).map((ad, idx) => (
                 <div
-                  key={ad.id}
+                  key={ad.id || idx}
                   className="bg-slate-50 p-6 rounded-[32px] border border-slate-300 space-y-6"
                 >
                   <div className="flex items-start justify-between">

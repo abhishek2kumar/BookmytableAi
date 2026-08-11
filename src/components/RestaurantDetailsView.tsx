@@ -1895,9 +1895,9 @@ export default function RestaurantDetailsView() {
                 >
                   {restaurant.advertisements
                     .filter((ad) => ad.active)
-                    .map((ad) => (
+                    .map((ad, idx) => (
                       <div
-                        key={ad.id}
+                        key={ad.id || idx}
                         className="snap-start shrink-0 w-full bg-white rounded-[24px] border border-slate-300 shadow-sm hover:shadow-xl hover:border-brand/50 transition-all overflow-hidden flex flex-col md:flex-row group"
                       >
                         <div
@@ -2311,11 +2311,6 @@ export default function RestaurantDetailsView() {
                             Based on Google review
                           </p>
                         </div>
-                      </div>
-                      <div className="bg-slate-200/50 backdrop-blur-md px-4 py-1.5 rounded-full border border-slate-300">
-                        <span className="text-[10px] md:text-xs font-normal leading-[1.2] text-slate-600">
-                          BETA
-                        </span>
                       </div>
                     </div>
 

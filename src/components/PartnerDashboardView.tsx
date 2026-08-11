@@ -740,6 +740,7 @@ export default function PartnerDashboardView() {
 
     const cleanData = stripUndefined(data);
     cleanData.updatedAt = serverTimestamp();
+    delete cleanData.id;
 
     try {
       const docRef = doc(db, 'restaurants', selectedRes.id);
