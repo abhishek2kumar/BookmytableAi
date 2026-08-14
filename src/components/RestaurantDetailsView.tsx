@@ -17,6 +17,7 @@ import { db } from "../lib/firebase";
 import { useAuth } from "./AuthProvider";
 import { useRestaurants } from "../hooks/useFirebase";
 import { useLocationContext } from "./LocationContext";
+import { useMasterData } from "./MasterDataContext";
 import { RestaurantCard } from "./RestaurantCard";
 import { Restaurant, Booking, Review } from "../types";
 import {
@@ -100,7 +101,19 @@ export default function RestaurantDetailsView() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile, signInWithGoogle } = useAuth();
-  const { coords: userCoords } = useLocationContext();
+  const { coords: userCoords, city: contextCity, setCity, setCoords } = useLocationContext();
+  const { cities } = useMasterData();
+
+  useEffect(() => {
+    if (city && city.toLowerCase() !== contextCity.toLowerCase()) {
+      setCity(city);
+      const matchingCity = cities.find(c => c.name.toLowerCase() === city.toLowerCase());
+      if (matchingCity && matchingCity.lat && matchingCity.lng) {
+        setCoords({ lat: matchingCity.lat, lng: matchingCity.lng });
+      }
+    }
+  }, [city, contextCity, setCity, setCoords, cities]);
+
   const { restaurants: allRestaurants, loading: restaurantsLoading } =
     useRestaurants(true);
 
@@ -1238,9 +1251,12 @@ export default function RestaurantDetailsView() {
             onClick={() =>
               navigate(`/${(restaurant.city || "").toLowerCase()}`)
             }
-            className="p-2 transition-all drop-shadow-sm text-slate-600 hover:text-black hover:scale-110 active:scale-95"
+            className={cn(
+              "w-10 h-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95",
+              scrolled ? "text-slate-700 bg-slate-100/80" : "bg-black/30 backdrop-blur-md text-white shadow-sm border border-white/10"
+            )}
           >
-            <ChevronLeft size={28} strokeWidth={2.5} />
+            <ChevronLeft size={24} strokeWidth={2.5} />
           </button>
 
           <AnimatePresence>
@@ -1257,27 +1273,42 @@ export default function RestaurantDetailsView() {
           </AnimatePresence>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsSearchOverlayOpen(true)}
+            className={cn(
+              "w-10 h-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95",
+              scrolled ? "text-slate-700 bg-slate-100/80" : "bg-black/30 backdrop-blur-md text-white shadow-sm border border-white/10"
+            )}
+          >
+            <Search size={20} strokeWidth={2.5} />
+          </button>
+          
           <button
             onClick={toggleBookmark}
             disabled={isBookmarking}
             className={cn(
-              "p-2 transition-all drop-shadow-sm",
-              isBookmarked ? "text-red-500 scale-110" : "text-slate-600 hover:text-red-500 hover:scale-110",
+              "w-10 h-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95",
+              scrolled ? "text-slate-700 bg-slate-100/80" : "bg-black/30 backdrop-blur-md text-white shadow-sm border border-white/10",
+              isBookmarked ? "text-red-500" : "",
               isBookmarking && "opacity-50",
             )}
           >
             <Heart
-              size={24}
+              size={20}
               strokeWidth={2.5}
               className={cn(
-                isBookmarked ? "fill-current" : "",
+                isBookmarked ? "fill-current text-red-500" : "",
                 isBookmarking && "animate-pulse",
               )}
             />
           </button>
+
           <button
-            className="p-2 transition-all drop-shadow-sm text-slate-600 hover:text-brand hover:scale-110"
+            className={cn(
+              "w-10 h-10 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95",
+              scrolled ? "text-slate-700 bg-slate-100/80" : "bg-black/30 backdrop-blur-md text-white shadow-sm border border-white/10"
+            )}
             onClick={() => {
               if (navigator.share) {
                 navigator
@@ -1290,11 +1321,10 @@ export default function RestaurantDetailsView() {
               }
             }}
           >
-            <Share2 size={24} strokeWidth={2.5} />
+            <Share2 size={20} strokeWidth={2.5} />
           </button>
         </div>
       </div>
-
       {/* Restaurant Header */}
       <div className="relative bg-transparent md:bg-white md:border-b md:border-gray-200 md:shadow-sm md:pt-0 pt-0">
         <div className="relative z-10 max-w-6xl mx-auto px-0 sm:px-4 md:px-12 lg:px-16 md:py-8 py-0">

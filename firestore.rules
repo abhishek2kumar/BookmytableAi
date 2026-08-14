@@ -134,20 +134,34 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         isAdmin() || (
           incoming().userId == request.auth.uid &&
-          incoming().get('status', 'pending') == 'pending' &&
+          incoming().get('status', 'pending') in ['pending', 'confirmed'] &&
+          incoming().get('createdAt', request.time) == request.time
+        ) || (
+          exists(/databases/$(database)/documents/restaurants/$(incoming().restaurantId)) &&
+          (
+            get(/databases/$(database)/documents/restaurants/$(incoming().restaurantId)).data.get('ownerId', '') == request.auth.uid ||
+            ('email' in request.auth.token && request.auth.token.email in get(/databases/$(database)/documents/restaurants/$(incoming().restaurantId)).data.get('partnerEmails', []))
+          ) &&
           incoming().get('createdAt', request.time) == request.time
         )
       );
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (isOwner(existing().restaurantOwnerId) && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
-         incoming().status in ['confirmed', 'cancelled'] &&
+        ((
+            existing().get('restaurantOwnerId', '') == request.auth.uid ||
+            (
+              exists(/databases/$(database)/documents/restaurants/$(existing().restaurantId)) &&
+              'email' in request.auth.token && 
+              request.auth.token.email in get(/databases/$(database)/documents/restaurants/$(existing().restaurantId)).data.get('partnerEmails', [])
+            )
+         ) &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt', 'ownerViewed']) &&
+         (incoming().get('status', 'pending') in ['pending', 'confirmed', 'cancelled']) &&
          incoming().get('updatedAt', request.time) == request.time) ||
         (isOwner(existing().userId) &&
          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
-         existing().status == 'pending' &&
+         existing().status in ['pending', 'confirmed'] &&
          incoming().status == 'cancelled' &&
          incoming().get('updatedAt', request.time) == request.time)
       );
@@ -175,12 +189,13 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow update: if isSignedIn() && (
         (request.auth.uid == userId && (
           !incoming().diff(existing()).affectedKeys().hasAny(['role', 'createdAt'])
         )) || isAdmin()
       );
+      allow delete: if isAdmin();
     }
 
     match /stories/{storyId} {
@@ -201,15 +216,15 @@ service cloud.firestore {
       return data.get('name', '') is string && data.get('name', '').size() > 0
         && data.get('lat', 0) is number
         && data.get('lng', 0) is number
-        && (!('image' in data) || data.image is string)
+        && (!('image' in data) || data.image is string || data.image == null)
         && (!('isPopular' in data) || data.isPopular is bool)
         && (!('isKnown' in data) || data.isKnown is bool);
     }
 
     function isValidCuisine(data) {
       return data.get('name', '') is string && data.get('name', '').size() > 0
-        && (!('image' in data) || data.image is string)
-        && (!('description' in data) || data.description is string);
+        && (!('image' in data) || data.image is string || data.image == null)
+        && (!('description' in data) || data.description is string || data.description == null);
     }
 
     function isValidSettings(data) {

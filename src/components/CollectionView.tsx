@@ -12,12 +12,23 @@ import { useLocationContext } from './LocationContext';
 export default function CollectionView() {
   const { collectionSlug, city: paramsCity } = useParams();
   const navigate = useNavigate();
-  const { diningCollections } = useMasterData();
+  const { diningCollections, cities } = useMasterData();
   const { restaurants, loading } = useRestaurants(true);
-  const { coords: userCoords, city: selectedCity } = useLocationContext();
+  const { coords: userCoords, city: selectedCity, setCity, setCoords } = useLocationContext();
   const [visibleCount, setVisibleCount] = useState(8);
 
   const cityToUse = paramsCity || selectedCity;
+
+  // Sync URL param city with global context so the navbar reflects the correct location
+  useEffect(() => {
+    if (paramsCity && paramsCity.toLowerCase() !== selectedCity.toLowerCase()) {
+      setCity(paramsCity);
+      const matchingCity = cities.find(c => c.name.toLowerCase() === paramsCity.toLowerCase());
+      if (matchingCity && matchingCity.lat && matchingCity.lng) {
+        setCoords({ lat: matchingCity.lat, lng: matchingCity.lng });
+      }
+    }
+  }, [paramsCity, selectedCity, setCity, setCoords, cities]);
 
   const collectionInfo = diningCollections.find(c => c.slug === collectionSlug);
   const collectionName = collectionInfo?.name || collectionSlug?.replace(/-/g, ' ');
@@ -103,10 +114,11 @@ export default function CollectionView() {
   
   const getSeoData = () => {
     let locName = collectionName || collectionSlug || 'Collection';
+    let currentCityName = cityToUse.charAt(0).toUpperCase() + cityToUse.slice(1);
     let url = `https://www.bookmytable.co.in/${cityToUse}/collections/${collectionSlug}`;
-    let title = `${locName} Restaurants, ${cityToUse} - Bookmytable`;
-    let description = `Explore ${locName} restaurants in ${cityToUse} and book table instantly with discounts on Bookmytable...`;
-    let keywords = `book table online, resturants in ${cityToUse}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
+    let title = `Explore ${locName} in ${currentCityName} - Bookmytable`;
+    let description = `Explore ${locName} in ${currentCityName} and book table instantly with discounts on Bookmytable.`;
+    let keywords = `${locName} in ${currentCityName}, best ${locName} in ${currentCityName}, book table online, restaurants in ${currentCityName}, online table booking, bookmytable, booking, hotel, restaurant`;
     
     const itemListElement = filteredRestaurants.slice(0, 15).map((r, index) => {
       const seoCity = r.city ? r.city.toLowerCase().replace(/[^a-z0-9]+/g, '-') : "ind";
@@ -130,7 +142,7 @@ export default function CollectionView() {
       "itemListElement": itemListElement
     };
 
-    return { title, url, description, keywords, locName, jsonLd };
+    return { title, url, description, keywords, locName, jsonLd, currentCityName };
   };
 
   const seoData = getSeoData();
@@ -142,7 +154,7 @@ export default function CollectionView() {
         <link rel="alternate" hrefLang="en" href={seoData.url} /> 
         <meta name="description" content={seoData.description} />
         <meta name="keywords" content={seoData.keywords} />
-        <meta property="og:title" content={`${seoData.locName} Restaurants, ${cityToUse} - Bookmytable India`} />
+        <meta property="og:title" content={seoData.title} />
         <meta property="og:description" content={seoData.description} />
         <script type="application/ld+json">
           {JSON.stringify(seoData.jsonLd)}
@@ -182,9 +194,9 @@ export default function CollectionView() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
+            className="text-4xl md:text-6xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
           >
-            {collectionName}
+            {collectionName} in {seoData.currentCityName}
           </motion.h1>
           
           <motion.p 

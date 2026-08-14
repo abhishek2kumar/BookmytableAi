@@ -43,6 +43,7 @@ interface MasterDataContextType {
   loading: boolean;
   seedData: () => Promise<void>;
   updateComingSoon: (status: boolean) => Promise<void>;
+  updateGlobalSettings: (settings: any) => Promise<void>;
 }
 
 const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
@@ -101,6 +102,13 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
       unsubCollections();
     };
   }, []);
+
+  const updateGlobalSettings = async (settings: any) => {
+    await setDoc(doc(db, "settings", "global"), {
+      ...settings,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  };
 
   const updateComingSoon = async (status: boolean) => {
     await setDoc(doc(db, 'settings', 'system'), {
@@ -175,7 +183,7 @@ export function MasterDataProvider({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <MasterDataContext.Provider value={{ cities, cuisines, diningCollections, appSettings, isComingSoon, loading, seedData, updateComingSoon }}>
+    <MasterDataContext.Provider value={{ cities, cuisines, diningCollections, appSettings, isComingSoon, loading, seedData, updateComingSoon, updateGlobalSettings }}>
       {children}
     </MasterDataContext.Provider>
   );

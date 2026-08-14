@@ -127,6 +127,8 @@ export default function AdminDashboardView() {
     loading: masterLoading,
     isComingSoon,
     updateComingSoon,
+    appSettings,
+    updateGlobalSettings,
     diningCollections,
   } = useMasterData();
   const sortedCollections = React.useMemo(() => [...(diningCollections || [])].filter(c => c.isActive).sort((a, b) => a.name.localeCompare(b.name)), [diningCollections]);
@@ -177,6 +179,7 @@ export default function AdminDashboardView() {
   >("general");
   const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
   const [isAddPartnerModalOpen, setIsAddPartnerModalOpen] = useState(false);
+  const [partnerFormError, setPartnerFormError] = useState<string | null>(null);
   const [partnerForm, setPartnerForm] = useState({ name: '', email: '', password: '', restaurantId: '' });
   const [isCreatingPartner, setIsCreatingPartner] = useState(false);
   const [isUploadingGlobal, setIsUploadingGlobal] = useState(false);
@@ -281,7 +284,7 @@ export default function AdminDashboardView() {
   const [citySearchQuery, setCitySearchQuery] = useState("");
   const [cuisineSearchQuery, setCuisineSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<
-    "fleet" | "overview" | "pulse" | "inventory" | "approvals" | "portal" | "malls" | "collections"
+    "fleet" | "overview" | "pulse" | "inventory" | "approvals" | "portal" | "malls" | "collections" | "users"
   >("fleet");
   const [overviewYear, setOverviewYear] = useState(new Date().getFullYear());
   const [statusFilter, setStatusFilter] = useState<
@@ -568,6 +571,13 @@ export default function AdminDashboardView() {
         "categorySlots",
         "menuCategories",
         "liveMenu",
+        "collections",
+        "mallName",
+        "isQrMenuEnabled",
+        "menuImages",
+        "blackoutDates",
+        "blackoutSlots",
+        "autoApprovalThresholds",
       ];
 
       const updateData: any = {};
@@ -629,8 +639,9 @@ export default function AdminDashboardView() {
 
   const handleAddPartnerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPartnerFormError(null);
     if (!partnerForm.email || !partnerForm.password || !partnerForm.restaurantId) {
-      setNotification({ type: 'error', message: 'Please fill all required fields.' });
+      setPartnerFormError('Please fill all required fields.');
       return;
     }
     
@@ -638,24 +649,27 @@ export default function AdminDashboardView() {
     try {
       let secondaryApp;
       try {
-        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
       } catch (e: any) {
         if (e.code === 'app/duplicate-app') {
           const { getApp } = await import('firebase/app');
-          secondaryApp = getApp("Secondary");
+          secondaryApp = getApp("SecondaryApp_" + Date.now());
         } else {
           throw e;
         }
       }
       
+      const { setPersistence, inMemoryPersistence } = await import('firebase/auth');
       const secondaryAuth = getAuth(secondaryApp);
+      await setPersistence(secondaryAuth, inMemoryPersistence);
+      
       let newUserId = '';
       try {
         const cred = await createUserWithEmailAndPassword(secondaryAuth, partnerForm.email, partnerForm.password);
         newUserId = cred.user.uid;
       } catch (e: any) {
         if (e.code === 'auth/email-already-in-use') {
-          setNotification({ type: 'error', message: 'Email already in use by another account.' });
+          setPartnerFormError('User email already exists. Link them by manually editing the restaurant to add their email.');
           setIsCreatingPartner(false);
           return;
         } else {
@@ -691,10 +705,9 @@ export default function AdminDashboardView() {
       setPartnerForm({ name: '', email: '', password: '', restaurantId: '' });
     } catch (err: any) {
       console.error(err);
-      setNotification({ type: 'error', message: err.message });
+      setPartnerFormError(err.message);
     } finally {
       setIsCreatingPartner(false);
-      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -703,17 +716,19 @@ export default function AdminDashboardView() {
       // Create a secondary app to create user without logging out admin
       let secondaryApp;
       try {
-        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp2_" + Date.now());
       } catch (e: any) {
         if (e.code === 'app/duplicate-app') {
           const { getApp } = await import('firebase/app');
-          secondaryApp = getApp("Secondary");
+          secondaryApp = getApp("SecondaryApp2_" + Date.now());
         } else {
           throw e;
         }
       }
       
+      const { setPersistence, inMemoryPersistence } = await import('firebase/auth');
       const secondaryAuth = getAuth(secondaryApp);
+      await setPersistence(secondaryAuth, inMemoryPersistence);
       
       try {
         await createUserWithEmailAndPassword(secondaryAuth, email, Math.random().toString(36).slice(-8) + "A1!");
@@ -878,8 +893,10 @@ export default function AdminDashboardView() {
 
   const usersWithBiz = useMemo(() => {
     return filteredUsers.map((u) => {
-      const biz = restaurants.find((r) => r.ownerId === u.uid);
-      return { ...u, bizName: biz?.name, bizCity: biz?.city };
+      const associatedBiz = restaurants.filter(
+        (r) => r.ownerId === u.uid || r.partnerEmails?.includes(u.email)
+      );
+      return { ...u, associatedBiz };
     });
   }, [filteredUsers, restaurants]);
 
@@ -3777,7 +3794,7 @@ export default function AdminDashboardView() {
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50",
-      onClick: () => setActiveModal("users"),
+      onClick: () => setActiveTab("users"),
     },
     {
       label: "Cities",
@@ -3977,6 +3994,7 @@ export default function AdminDashboardView() {
             {[
               { id: "overview", label: "Dashboard", icon: BarChart3 },
               { id: "fleet", label: "Restaurants", icon: Store, badge: restaurants.filter((r) => !r.approved && (r as any).status === "Pending").length },
+              { id: "users", label: "Users", icon: Users },
               { id: "malls", label: "Malls", icon: Building2 },
               { id: "collections", label: "Collections", icon: LayoutGrid },
               { id: "inventory", label: "Master Data", icon: Database },
@@ -4024,7 +4042,10 @@ export default function AdminDashboardView() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button 
-                      onClick={() => setIsAddPartnerModalOpen(true)}
+                      onClick={() => {
+                        setPartnerFormError(null);
+                        setIsAddPartnerModalOpen(true);
+                      }}
                       className="px-4 py-2 bg-[#363636] hover:bg-black text-white rounded-xl text-[10px] font-black tracking-widest uppercase transition-colors"
                     >
                       + Create Partner
@@ -4248,6 +4269,145 @@ export default function AdminDashboardView() {
               </motion.div>
             )}
 
+            {activeTab === "users" && (
+              <motion.div
+                key="users"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-8"
+              >
+                <div>
+                  <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
+                    System Users
+                  </h2>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">
+                    Manage users and their associated restaurants
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-[40px] p-10 border border-slate-300 shadow-vibrant">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-10">
+                    <div className="relative w-full max-w-md">
+                      <Search
+                        className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={20}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search users by name, email, or restaurant..."
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        className="w-full pl-16 pr-8 py-4 bg-slate-50 border border-slate-300 rounded-[20px] outline-none focus:ring-4 focus:ring-brand/10 text-sm font-bold text-[#363636] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-300">
+                          <th className="py-6 px-4">Profile & Identity</th>
+                          <th className="py-6 px-4">Business & Location</th>
+                          <th className="py-6 px-4">Access Level</th>
+                          <th className="py-6 px-4">Contact</th>
+                          <th className="py-6 px-4">Onboarded</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {usersWithBiz.map((u: any) => (
+                          <tr
+                            key={u.uid}
+                            className="hover:bg-slate-50/50 transition-colors"
+                          >
+                            <td className="py-6 px-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-[16px] bg-brand/10 border border-brand/20 flex items-center justify-center overflow-hidden shrink-0">
+                                  {u.photoURL ? (
+                                    <img
+                                      src={u.photoURL}
+                                      alt={u.displayName || "User"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="font-normal leading-[1.2] text-brand text-lg">
+                                      {u.displayName?.charAt(0) ||
+                                        u.email.charAt(0)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-normal leading-[1.2] text-[#363636] text-lg leading-tight">
+                                    {u.displayName || "Anonymous"}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    UID: {u.uid.slice(-8).toUpperCase()}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-6 px-4">
+                              {u.associatedBiz?.length > 0 ? (
+                                <div className="flex flex-col gap-2">
+                                  {u.associatedBiz.map((biz: any) => (
+                                    <div key={biz.id} className="flex flex-col">
+                                      <span className="text-sm font-normal leading-[1.2] text-brand">
+                                        {biz.name}
+                                      </span>
+                                      <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                        <MapPin size={10} />
+                                        {biz.city}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs font-bold text-slate-300 italic">
+                                  No business linked
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-6 px-4">
+                              <span
+                                className={cn(
+                                  "px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border",
+                                  u.role === "admin"
+                                    ? "bg-purple-50 text-purple-600 border-purple-100"
+                                    : u.role === "owner"
+                                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                                      : "bg-slate-100 text-slate-500 border-slate-300",
+                                )}
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="py-6 px-4">
+                              <span className="text-sm font-bold text-slate-500">
+                                {u.email}
+                              </span>
+                            </td>
+                            <td className="py-6 px-4">
+                              <span className="text-xs font-bold text-slate-400">
+                                {u.createdAt?.toDate
+                                  ? formatDate(u.createdAt)
+                                  : "Initial Onboarding"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {usersWithBiz.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="py-12 text-center text-slate-400">
+                              <p className="font-medium text-sm">No users found matching "{userSearchQuery}"</p>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </motion.div>
+            )}
             {activeTab === "overview" && (
               <motion.div
                 key="overview"
@@ -4725,19 +4885,29 @@ export default function AdminDashboardView() {
                     </div>
                   </div>
 
-                  <div className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-vibrant flex flex-col justify-center opacity-50 cursor-not-allowed">
+                  <div className="bg-white p-8 rounded-[40px] border border-slate-300 shadow-vibrant space-y-6">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center">
-                        <Settings size={24} />
+                      <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                        <Image size={24} />
                       </div>
                       <div>
-                        <p className="font-normal leading-[1.2] text-slate-400 text-lg uppercase tracking-tight">
-                          Advanced System Lockdown
+                        <p className="font-normal leading-[1.2] text-[#363636] text-lg uppercase tracking-tight">
+                          Home Hero Image
                         </p>
-                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">
-                          Read-Only Mode (TBD)
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                          Applies to Landing Page
                         </p>
                       </div>
+                    </div>
+                    
+                    <div>
+                      <input 
+                        type="text" 
+                        value={appSettings?.homeHeroImage || ""}
+                        onChange={(e) => updateGlobalSettings({ homeHeroImage: e.target.value })}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all font-medium text-slate-700"
+                      />
                     </div>
                   </div>
                 </div>
@@ -5094,150 +5264,6 @@ export default function AdminDashboardView() {
                       </div>
                     </div>
                   )}
-                </div>
-              </motion.div>
-            </div>
-          )}
-          {activeModal === "users" && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-vibrant-dark/80 backdrop-blur-md"
-              />
-              <motion.div
-                initial={{ opacity: 0, y: 100 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 100 }}
-                className="bg-white w-full h-full relative z-10 overflow-hidden flex flex-col"
-              >
-                <div className="p-10 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
-                  <div>
-                    <h2 className="text-3xl text-[#363636] font-normal leading-[1.2]">
-                      Member Directory
-                    </h2>
-                    <p className="text-slate-500 font-bold mt-1 uppercase text-[10px] tracking-widest">
-                      {users.length} Registered Nodes
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setActiveModal(null)}
-                    className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-brand transition-all flex items-center gap-2 font-black shadow-xl"
-                  >
-                    <X size={20} />
-                    <span>Close Directory</span>
-                  </button>
-                </div>
-
-                <div className="p-10 bg-slate-50 border-b border-gray-100">
-                  <div className="max-w-4xl mx-auto relative">
-                    <Search
-                      className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={20}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search users by name, email, or restaurant..."
-                      value={userSearchQuery}
-                      onChange={(e) => setUserSearchQuery(e.target.value)}
-                      className="w-full pl-16 pr-8 py-6 bg-white border border-slate-300 rounded-[32px] outline-none focus:ring-8 focus:ring-brand/5 text-xl text-[#363636] shadow-sm font-normal leading-[1.2]"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex-grow overflow-y-auto px-10 pb-20">
-                  <div className="max-w-7xl mx-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-300">
-                          <th className="py-8">Profile & Identity</th>
-                          <th className="py-8">Business & Location</th>
-                          <th className="py-8">Access Level</th>
-                          <th className="py-8">Contact</th>
-                          <th className="py-8">Onboarded</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {usersWithBiz.map((u) => (
-                          <tr
-                            key={u.uid}
-                            className="hover:bg-slate-50/50 transition-colors"
-                          >
-                            <td className="py-8">
-                              <div className="flex items-center gap-6">
-                                <div className="w-14 h-14 rounded-[20px] bg-brand/10 border border-brand/20 flex items-center justify-center overflow-hidden shrink-0">
-                                  {u.photoURL ? (
-                                    <img
-                                      src={u.photoURL}
-                                      alt={u.displayName || "User"}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="font-normal leading-[1.2] text-brand text-lg">
-                                      {u.displayName?.charAt(0) ||
-                                        u.email.charAt(0)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="font-normal leading-[1.2] text-[#363636] text-xl leading-tight">
-                                    {u.displayName || "Anonymous"}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    UID: {u.uid.slice(-8).toUpperCase()}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-8">
-                              {u.bizName ? (
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-normal leading-[1.2] text-brand">
-                                    {u.bizName}
-                                  </span>
-                                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase mt-1">
-                                    <MapPin size={10} />
-                                    {u.bizCity}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-xs font-bold text-slate-300 italic">
-                                  No business linked
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-8">
-                              <span
-                                className={cn(
-                                  "px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border",
-                                  u.role === "admin"
-                                    ? "bg-purple-50 text-purple-600 border-purple-100"
-                                    : u.role === "owner"
-                                      ? "bg-amber-50 text-amber-600 border-amber-100"
-                                      : "bg-slate-100 text-slate-500 border-slate-300",
-                                )}
-                              >
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="py-8">
-                              <span className="text-sm font-bold text-slate-500">
-                                {u.email}
-                              </span>
-                            </td>
-                            <td className="py-8">
-                              <span className="text-xs font-bold text-slate-400">
-                                {u.createdAt?.toDate
-                                  ? formatDate(u.createdAt)
-                                  : "Initial Onboarding"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               </motion.div>
             </div>
@@ -6129,6 +6155,12 @@ export default function AdminDashboardView() {
                   </button>
                 </div>
                 <form onSubmit={handleAddPartnerSubmit} className="p-6 md:p-8 space-y-6">
+                  {partnerFormError && (
+                    <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-start gap-3">
+                      <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                      <p className="text-sm font-medium leading-relaxed">{partnerFormError}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Partner Name</label>
                     <input 

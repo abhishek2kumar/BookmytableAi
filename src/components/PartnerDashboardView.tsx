@@ -460,6 +460,7 @@ export default function PartnerDashboardView() {
   const [formData, setFormData] = useState<Partial<Restaurant>>({});
   const [saving, setSaving] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [staffFormError, setStaffFormError] = useState<string | null>(null);
   const [newStaffForm, setNewStaffForm] = useState({ name: '', email: '', password: '' });
   const [creatingStaff, setCreatingStaff] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -609,7 +610,7 @@ export default function PartnerDashboardView() {
     if (activeTab === 'bookings') {
       const unread = bookings.filter(b => b.status === 'confirmed' && !b.ownerViewed);
       unread.forEach(b => {
-        updateDoc(doc(db, 'bookings', b.id), { ownerViewed: true }).catch(e => console.error("Failed to mark viewed", e));
+        updateDoc(doc(db, 'bookings', b.id), { ownerViewed: true, updatedAt: serverTimestamp() }).catch(e => console.error("Failed to mark viewed", e));
       });
     }
   }, [activeTab, bookings]);
@@ -644,7 +645,8 @@ export default function PartnerDashboardView() {
     if (!selectedRes) return;
     try {
       await updateDoc(doc(db, 'restaurants', selectedRes.id), {
-        [feature]: value
+        [feature]: value,
+        updatedAt: serverTimestamp()
       });
       const updatedRes = { ...selectedRes, [feature]: value };
       setSelectedRes(updatedRes);
@@ -697,30 +699,34 @@ export default function PartnerDashboardView() {
 
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStaffFormError(null);
     if (!newStaffForm.email || !newStaffForm.password || !selectedRes) return;
     
     setCreatingStaff(true);
     try {
       let secondaryApp;
       try {
-        secondaryApp = initializeApp(firebaseConfig, "Secondary");
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryApp_" + Date.now());
       } catch (e: any) {
         if (e.code === 'app/duplicate-app') {
           const { getApp } = await import('firebase/app');
-          secondaryApp = getApp("Secondary");
+          secondaryApp = getApp("SecondaryApp_" + Date.now());
         } else {
           throw e;
         }
       }
       
+      const { setPersistence, inMemoryPersistence } = await import('firebase/auth');
       const secondaryAuth = getAuth(secondaryApp);
+      await setPersistence(secondaryAuth, inMemoryPersistence);
+      
       let newUserId = '';
       try {
         const cred = await createUserWithEmailAndPassword(secondaryAuth, newStaffForm.email, newStaffForm.password);
         newUserId = cred.user.uid;
       } catch (e: any) {
         if (e.code === 'auth/email-already-in-use') {
-          setNotification({ type: 'error', message: 'Email already in use.' });
+          setStaffFormError('User email already exists. To link them to this restaurant, please ask the admin to edit this restaurant and add their email manually.');
           setCreatingStaff(false);
           return;
         } else {
@@ -733,7 +739,8 @@ export default function PartnerDashboardView() {
       // Add to users collection
       if (newUserId) {
         await updateDoc(doc(db, 'restaurants', selectedRes.id), {
-          partnerEmails: [...(selectedRes.partnerEmails || []), newStaffForm.email]
+          partnerEmails: [...(selectedRes.partnerEmails || []), newStaffForm.email],
+          updatedAt: serverTimestamp()
         });
       }
 
@@ -742,10 +749,9 @@ export default function PartnerDashboardView() {
       setNewStaffForm({ name: '', email: '', password: '' });
     } catch (err: any) {
       console.error(err);
-      setNotification({ type: 'error', message: err.message });
+      setStaffFormError(err.message);
     } finally {
       setCreatingStaff(false);
-      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -757,7 +763,8 @@ export default function PartnerDashboardView() {
     const newEmails = (selectedRes.partnerEmails || []).filter(e => e !== emailToRemove);
     try {
       await updateDoc(doc(db, 'restaurants', selectedRes.id), {
-        partnerEmails: newEmails
+        partnerEmails: newEmails,
+        updatedAt: serverTimestamp()
       });
       setNotification({ type: 'success', message: 'Staff access removed.' });
     } catch (err: any) {
@@ -898,7 +905,7 @@ export default function PartnerDashboardView() {
         if (selectedRes?.id) {
           try {
             const docRef = doc(db, 'restaurants', selectedRes.id);
-            await updateDoc(docRef, { [field]: arr });
+            await updateDoc(docRef, { [field]: arr, updatedAt: serverTimestamp() });
             if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
               const storageRef = ref(storage, imgUrl);
               await deleteObject(storageRef);
@@ -994,7 +1001,7 @@ export default function PartnerDashboardView() {
         if (selectedRes?.id) {
           try {
             const docRef = doc(db, 'restaurants', selectedRes.id);
-            await updateDoc(docRef, { menuCategories: arr });
+            await updateDoc(docRef, { menuCategories: arr, updatedAt: serverTimestamp() });
             if (imgUrl && imgUrl.includes('firebasestorage.googleapis.com')) {
               const storageRef = ref(storage, imgUrl);
               await deleteObject(storageRef);
@@ -1127,7 +1134,7 @@ export default function PartnerDashboardView() {
 
     const updateBookingStatus = async (bookingId: string, newStatus: string) => {
       try {
-        await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus });
+        await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus, updatedAt: serverTimestamp() });
       } catch (err) {
         console.error("Failed to update status", err);
       }
@@ -2684,7 +2691,10 @@ export default function PartnerDashboardView() {
                          <p className="text-slate-500 text-sm mt-1">Manage who has access to this restaurant's dashboard.</p>
                        </div>
                        <button
-                         onClick={() => setIsAddingStaff(true)}
+                         onClick={() => {
+                           setStaffFormError(null);
+                           setIsAddingStaff(true);
+                         }}
                          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-2"
                        >
                          <Plus size={16} /> Add Staff
@@ -3856,6 +3866,12 @@ export default function PartnerDashboardView() {
                 </button>
               </div>
               <form onSubmit={handleAddStaffSubmit} className="p-6 md:p-8 space-y-6">
+                {staffFormError && (
+                  <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl flex items-start gap-3">
+                    <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                    <p className="text-sm font-medium leading-relaxed">{staffFormError}</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Staff Name</label>
                   <input 

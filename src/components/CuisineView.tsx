@@ -10,11 +10,12 @@ import { RestaurantCard } from './RestaurantCard';
 import { useLocationContext } from './LocationContext';
 
 export default function CuisineView() {
-  const { cuisineId } = useParams();
+  const { city, cuisineId } = useParams();
   const navigate = useNavigate();
   const { cuisines } = useMasterData();
   const { restaurants, loading } = useRestaurants(true);
   const { coords: userCoords, city: selectedCity } = useLocationContext();
+  const currentCityName = city ? city.charAt(0).toUpperCase() + city.slice(1) : selectedCity;
   const [visibleCount, setVisibleCount] = useState(8);
 
   const cuisineInfo = cuisines.find(c => c.id === cuisineId || c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') === cuisineId);
@@ -41,7 +42,7 @@ export default function CuisineView() {
         
         // Normalize city names for comparison
         const resCityNorm = res.city ? res.city.toLowerCase() : '';
-        const selectedCityNorm = selectedCity.toLowerCase();
+        const selectedCityNorm = currentCityName.toLowerCase();
         
         // Match by city field or location string containing the city name
         const matchesCity = resCityNorm === selectedCityNorm || 
@@ -90,12 +91,35 @@ export default function CuisineView() {
   
   const getSeoData = () => {
     let locName = cuisineName || cuisineId || 'Cuisine';
-    let url = `https://www.bookmytable.co.in/cuisine/${cuisineId}`;
-    let title = `${locName} Restaurants, ${selectedCity} - Bookmytable`;
-    let description = `Explore ${locName} restaurants in ${selectedCity} and book table instantly with discounts on Bookmytable...`;
-    let keywords = `book table online, resturants in ${selectedCity}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
+    let url = `https://www.bookmytable.co.in/${currentCityName.toLowerCase()}/cuisine/${cuisineId}`;
+    let title = `Explore Best ${locName} Restaurants in ${currentCityName} - Bookmytable`;
+    let description = `Explore ${locName} restaurants in ${currentCityName} and book table instantly with discounts on Bookmytable...`;
+    let keywords = `best ${locName} restaurant in ${currentCityName}, book table online, resturants in ${currentCityName}, restaurants in ${locName}, online table booking, bookmytable, booking, hotel, resturant`;
 
-    return { title, url, description, keywords, locName };
+    // Generate JSON-LD Schema for the list of restaurants
+    const schemaData = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "itemListElement": filteredRestaurants.slice(0, 10).map((res, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "item": {
+          "@type": "Restaurant",
+          "name": res.name,
+          "image": res.images?.[0] || RESTAURANT_IMAGE_FALLBACK,
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": currentCityName,
+            "addressRegion": res.location,
+            "addressCountry": "IN"
+          },
+          "servesCuisine": locName,
+          "url": `https://www.bookmytable.co.in${getRestaurantUrl(res)}`
+        }
+      }))
+    };
+
+    return { title, url, description, keywords, locName, schemaData };
   };
 
   const seoData = getSeoData();
@@ -111,11 +135,14 @@ export default function CuisineView() {
         <meta name="twitter:app:name:iphone" content="Bookmytable" />
         <meta name="twitter:app:name:ipad" content="Bookmytable" />
         <meta name="twitter:app:country" content="in" />
-        <meta property="og:title" content={`${seoData.locName} Restaurants, ${selectedCity} - Bookmytable India`} />
+        <meta property="og:title" content={seoData.title} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={seoData.url} />
         <meta property="og:site_name" content="Bookmytable" />
         <meta property="og:description" content={seoData.description} />
+        <script type="application/ld+json">
+          {JSON.stringify(seoData.schemaData)}
+        </script>
       </Helmet>
       {/* Immersive Header Section */}
       <div className="relative h-[350px] md:h-[450px] flex items-center justify-center bg-slate-900 overflow-hidden">
@@ -143,9 +170,9 @@ export default function CuisineView() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
+            className="text-4xl md:text-6xl font-normal leading-[1.2] text-white mb-6 tracking-tight drop-shadow-2xl"
           >
-            {cuisineName}
+            Best {cuisineName} Restaurants in {currentCityName}
           </motion.h1>
           
           <motion.p 

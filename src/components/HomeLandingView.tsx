@@ -10,7 +10,7 @@ import { Helmet } from 'react-helmet-async';
 
 export default function HomeLandingView() {
   const navigate = useNavigate();
-  const { cities } = useMasterData();
+  const { cities, appSettings } = useMasterData();
   const { setCity, setCoords, detectLocation, isDetecting } = useLocationContext();
   const { restaurants } = useRestaurants(true);
   const [searchValue, setSearchValue] = useState('');
@@ -223,7 +223,7 @@ export default function HomeLandingView() {
       <section className="relative h-[500px] md:h-[600px] flex items-center justify-center bg-slate-900 overflow-hidden">
         <div className="absolute inset-0">
           <img 
-            src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=2000" 
+            src={appSettings?.homeHeroImage || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=2000"} 
             alt="Hero Background" 
             className="w-full h-full object-cover opacity-50"
             referrerPolicy="no-referrer"

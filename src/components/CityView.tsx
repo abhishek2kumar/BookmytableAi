@@ -163,7 +163,20 @@ export default function CityView() {
   }, [cuisines]);
 
   const loading = restaurantsLoading || masterDataLoading;
-  const { coords: userCoords, city: contextCity } = useLocationContext();
+  const { coords: userCoords, city: contextCity, setCity, setCoords } = useLocationContext();
+
+  // Sync URL param city with global context so the navbar reflects the correct location
+  useEffect(() => {
+    if (queryCityName && queryCityName.toLowerCase() !== contextCity.toLowerCase()) {
+      setCity(queryCityName);
+      
+      const matchingCity = cities.find(c => c.name.toLowerCase() === queryCityName.toLowerCase());
+      if (matchingCity && matchingCity.lat && matchingCity.lng) {
+        setCoords({ lat: matchingCity.lat, lng: matchingCity.lng });
+      }
+    }
+  }, [queryCityName, contextCity, setCity, setCoords, cities]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOverlayOpen, setIsSearchOverlayOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(8);
@@ -706,7 +719,7 @@ export default function CityView() {
                 : sortedCuisines.map((cuisine) => (
                     <Link
                       key={cuisine.id}
-                      to={`/cuisine/${cuisine.name
+                      to={`/${queryCitySlug}/cuisine/${cuisine.name
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
                         .replace(/^-+|-+$/g, "")}`}
@@ -736,7 +749,7 @@ export default function CityView() {
 
       {/* COLLECTIONS SECTION */}
       {!locationSlug && !hasActiveFilters && diningCollections.some(c => c.isActive && (!c.city || c.city.toLowerCase() === queryCityName.toLowerCase())) && (
-      <section className="relative bg-slate-50 py-6 md:py-16 border-t border-slate-100">
+      <section className="relative bg-slate-50 py-4 md:py-8 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-3 md:px-8">
           <div className="mb-4 md:mb-6">
             <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -839,7 +852,7 @@ export default function CityView() {
 
         {/* Featured Section */}
         {!hasActiveFilters && !locationSlug && (loading || featuredRestaurants.length > 0) && (
-          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+          <section className="relative group/section py-4 md:py-8 bg-white border-y border-slate-100">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -881,7 +894,7 @@ export default function CityView() {
 
         {/* Spotlight Section */}
         {!hasActiveFilters && !locationSlug && !loading && spotlightRestaurants.length > 0 && (
-          <section className="relative group/section py-6 md:py-16 bg-slate-50">
+          <section className="relative group/section py-4 md:py-8 bg-slate-50">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -950,7 +963,7 @@ export default function CityView() {
 
         {/* Top Discount Section */}
         {!hasActiveFilters && !locationSlug && (loading || discountedRestaurants.length > 0) && (
-          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+          <section className="relative group/section py-4 md:py-8 bg-white border-y border-slate-100">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -997,7 +1010,7 @@ export default function CityView() {
 
         {/* Food Courts Section */}
         {!hasActiveFilters && !locationSlug && mallGroups.length > 0 && (
-          <section className="relative group/section py-6 md:py-16 bg-orange-50/50">
+          <section className="relative group/section py-4 md:py-8 bg-orange-50/50">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -1045,7 +1058,7 @@ export default function CityView() {
 
         {/* Nearby Section */}
         {!hasActiveFilters && !locationSlug && (loading || nearbyRestaurants.length > 0) && (
-          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+          <section className="relative group/section py-4 md:py-8 bg-white border-y border-slate-100">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -1089,7 +1102,7 @@ export default function CityView() {
 
         {/* Famous Locations */}
         {!hasActiveFilters && !locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section py-6 md:py-16 bg-slate-50">
+          <section className="relative group/section py-4 md:py-8 bg-slate-50">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">
@@ -1129,7 +1142,7 @@ export default function CityView() {
 
         {/* Takeaway Restaurants */}
         {!hasActiveFilters && !loading && takeawayRestaurants.length > 0 && (
-          <section className="relative group/section py-6 md:py-16 bg-white border-y border-slate-100">
+          <section className="relative group/section py-4 md:py-8 bg-white border-y border-slate-100">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="flex items-center justify-between mb-4 md:mb-8">
               <div>
@@ -1177,7 +1190,7 @@ export default function CityView() {
         {/* Main Listing Section */}
         <section
           id="all-restaurants"
-          className={cn("py-6 md:py-16 bg-slate-50")}
+          className={cn("py-4 md:py-8 bg-slate-50")}
         >
           <div className="max-w-7xl mx-auto px-3 md:px-8">
           {!hasActiveFilters && !locationSlug && (
@@ -1262,7 +1275,7 @@ export default function CityView() {
 
         {/* Famous Locations on Area Page */}
         {!hasActiveFilters && locationSlug && !loading && famousLocations.length > 0 && (
-          <section className="relative group/section py-6 md:py-16 bg-white border-t border-gray-100">
+          <section className="relative group/section py-4 md:py-8 bg-white border-t border-gray-100">
             <div className="max-w-7xl mx-auto px-3 md:px-8">
             <div className="mb-4 md:mb-6">
               <h2 className="text-xl md:text-2xl text-[#363636] font-normal leading-[1.2]">

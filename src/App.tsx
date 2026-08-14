@@ -89,6 +89,7 @@ export default function App() {
                     <Route path="/:cityId" element={<CityView />} />
                     <Route path="/:cityId/:locationSlug" element={<CityView />} />
                     <Route path="/cuisine/:cuisineId" element={<CuisineView />} />
+                    <Route path="/:city/cuisine/:cuisineId" element={<CuisineView />} />
                     <Route path="/:city/collections/:collectionSlug" element={<CollectionView />} />
                     <Route path="/collections/:collectionSlug" element={<CollectionView />} />
                     <Route path="/:city/restaurant/:slug" element={<RestaurantDetailsView />} />
