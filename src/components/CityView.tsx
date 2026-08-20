@@ -719,7 +719,7 @@ export default function CityView() {
                 : sortedCuisines.map((cuisine) => (
                     <Link
                       key={cuisine.id}
-                      to={`/${queryCitySlug}/cuisine/${cuisine.name
+                      to={`/${queryCityName.toLowerCase()}/cuisine/${cuisine.name
                         .toLowerCase()
                         .replace(/[^a-z0-9]+/g, "-")
                         .replace(/^-+|-+$/g, "")}`}
