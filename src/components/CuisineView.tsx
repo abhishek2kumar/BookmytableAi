@@ -106,7 +106,7 @@ export default function CuisineView() {
         "item": {
           "@type": "Restaurant",
           "name": res.name,
-          "image": res.images?.[0] || RESTAURANT_IMAGE_FALLBACK,
+          "image": res.image || RESTAURANT_IMAGE_FALLBACK,
           "address": {
             "@type": "PostalAddress",
             "addressLocality": currentCityName,

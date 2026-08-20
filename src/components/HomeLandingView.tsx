@@ -403,7 +403,7 @@ export default function HomeLandingView() {
                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                   <a href="#" className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl transition-all flex items-center gap-3 group/btn">
                     <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                       <Zap size={20} className="text-white fill-white" />
+                       <svg viewBox="0 0 512 512" fill="currentColor" className="w-5 h-5 text-white"><path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg>
                     </div>
                     <div className="text-left">
                        <p className="text-[10px] font-normal leading-[1.2] uppercase text-white/40 mb-1">Get it on</p>
@@ -412,7 +412,7 @@ export default function HomeLandingView() {
                   </a>
                   <a href="#" className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 px-8 py-4 rounded-2xl transition-all flex items-center gap-3 group/btn">
                     <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                       <Zap size={20} className="text-white fill-white" />
+                       <svg viewBox="0 0 384 512" fill="currentColor" className="w-5 h-5 text-white"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
                     </div>
                     <div className="text-left">
                        <p className="text-[10px] font-normal leading-[1.2] uppercase text-white/40 mb-1">Download on the</p>
@@ -422,98 +422,12 @@ export default function HomeLandingView() {
                </div>
             </div>
             
-            <div className="relative scale-110 md:translate-x-10">
-               <div className="w-64 h-[500px] bg-slate-900 rounded-[2.5rem] border-[8px] border-slate-800 shadow-2xl relative overflow-hidden group-hover:-translate-y-4 transition-transform duration-700">
-                  {/* Phone Notch/Header */}
-                  <div className="absolute top-0 inset-x-0 h-6 bg-slate-800 z-30 flex items-center justify-center">
-                     <div className="w-16 h-1 bg-slate-700 rounded-full" />
-                  </div>
-                  
-                  {/* App Content Preview */}
-                  <div className="absolute inset-0 bg-white pt-6 overflow-hidden flex flex-col">
-                    {/* Tiny App Header */}
-                    <div className="px-3 py-2 flex items-center justify-between border-b border-slate-300 bg-white/80 backdrop-blur-sm z-10">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={10} className="text-brand" />
-                        <span className="text-[9px] font-normal text-[#363636] leading-[1.2]">Pune, Maharashtra</span>
-                        <ChevronDown size={8} className="text-slate-400" />
-                      </div>
-                      <div className="w-5 h-5 bg-slate-100 rounded-full flex items-center justify-center">
-                        <div className="w-2.5 h-2.5 bg-brand/20 rounded-full" />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto scrollbar-none pb-12">
-                      {/* Tiny App Hero */}
-                      <div className="px-3 py-3 space-y-3">
-                         <div className="space-y-1">
-                           <h4 className="text-[10px] text-[#363636] font-normal leading-[1.2]">Explore the best<br/>dining in Pune</h4>
-                           <div className="h-1.5 w-12 bg-brand/20 rounded-full" />
-                         </div>
-                         <div className="h-7 w-full bg-slate-50 border border-slate-300 rounded-lg flex items-center px-2 shadow-sm">
-                            <Search size={10} className="text-slate-300 mr-1.5" />
-                            <div className="h-1.5 w-24 bg-slate-200/50 rounded-full" />
-                         </div>
-                      </div>
-
-                      {/* Tiny Categories */}
-                      <div className="px-3 space-y-2 mb-4">
-                         <div className="flex justify-between items-center">
-                            <span className="text-[8px] font-normal text-[#363636] leading-[1.2] uppercase tracking-wider">Cuisines</span>
-                            <div className="h-1 w-6 bg-brand/10 rounded-full" />
-                         </div>
-                         <div className="flex gap-2 overflow-x-auto scrollbar-none">
-                            {['Italian', 'Chinese', 'Indian', 'Bakery'].map((c, i) => (
-                              <div key={i} className="flex flex-col items-center gap-1 shrink-0">
-                                 <div className={cn("w-10 h-10 rounded-lg shadow-sm border border-slate-50", i === 0 ? "bg-brand/10" : "bg-slate-50")} />
-                                 <div className="h-1 w-6 bg-slate-200 rounded-full" />
-                              </div>
-                            ))}
-                         </div>
-                      </div>
-
-                      {/* Tiny Restaurant List */}
-                      <div className="px-3 space-y-3">
-                         <div className="flex justify-between items-center">
-                            <span className="text-[8px] font-normal text-[#363636] leading-[1.2] uppercase tracking-wider">Trending Now</span>
-                         </div>
-                         {[1,2,3].map(i => (
-                           <div key={i} className="bg-white border border-slate-300 rounded-xl overflow-hidden shadow-sm">
-                              <div className="h-20 w-full bg-slate-100 relative">
-                                 <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-1 rounded-md shadow-sm flex items-center gap-0.5">
-                                    <Star size={6} className="fill-brand text-brand" />
-                                    <span className="text-[6px] font-normal leading-[1.2] text-brand">4.5</span>
-                                 </div>
-                                 <div className="absolute bottom-2 left-2 h-3.5 w-16 bg-brand/90 rounded px-1 flex items-center gap-1">
-                                    <Zap size={6} className="text-white fill-white" />
-                                    <span className="text-[6px] font-normal leading-[1.2] text-white uppercase">50% OFF</span>
-                                 </div>
-                              </div>
-                              <div className="p-2 space-y-1">
-                                 <div className="flex justify-between items-start">
-                                    <div className="h-2 w-16 bg-slate-900 rounded-full" />
-                                 </div>
-                                 <div className="flex justify-between">
-                                    <div className="h-1.5 w-12 bg-slate-300 rounded-full" />
-                                    <div className="h-1.5 w-8 bg-slate-200 rounded-full" />
-                                 </div>
-                              </div>
-                           </div>
-                         ))}
-                      </div>
-                    </div>
-
-                    {/* Tiny Tab Bar */}
-                    <div className="absolute bottom-0 inset-x-0 border-t border-slate-300 px-6 py-3 flex justify-between bg-white/90 backdrop-blur-md">
-                        {[1,2,3,4].map(i => (
-                          <div key={i} className={cn("w-1.5 h-1.5 rounded-full", i === 1 ? "bg-brand" : "bg-slate-200")} />
-                        ))}
-                    </div>
-                  </div>
-
-                  {/* Glass overlay for realism */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none z-20" />
-               </div>
+            <div className="relative md:translate-x-10 group-hover:-translate-y-4 transition-transform duration-700">
+               <img 
+                 src="/mobile-app-mockup.png?v=2" 
+                 alt="Mobile App Preview" 
+                 className="w-full max-w-[320px] h-auto object-contain drop-shadow-2xl"
+               />
                
                {/* Decorative floating stats */}
                <motion.div 

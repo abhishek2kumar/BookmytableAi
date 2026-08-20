@@ -738,10 +738,13 @@ export default function PartnerDashboardView() {
 
       // Add to users collection
       if (newUserId) {
+        const updatedEmails = [...(selectedRes.partnerEmails || []), newStaffForm.email];
         await updateDoc(doc(db, 'restaurants', selectedRes.id), {
-          partnerEmails: [...(selectedRes.partnerEmails || []), newStaffForm.email],
+          partnerEmails: updatedEmails,
           updatedAt: serverTimestamp()
         });
+        setSelectedRes(prev => prev ? { ...prev, partnerEmails: updatedEmails } : null);
+        setRestaurants(prev => prev.map(r => r.id === selectedRes.id ? { ...r, partnerEmails: updatedEmails } : r));
       }
 
       setNotification({ type: 'success', message: 'Staff account created successfully.' });
@@ -766,6 +769,8 @@ export default function PartnerDashboardView() {
         partnerEmails: newEmails,
         updatedAt: serverTimestamp()
       });
+      setSelectedRes(prev => prev ? { ...prev, partnerEmails: newEmails } : null);
+      setRestaurants(prev => prev.map(r => r.id === selectedRes.id ? { ...r, partnerEmails: newEmails } : r));
       setNotification({ type: 'success', message: 'Staff access removed.' });
     } catch (err: any) {
       setNotification({ type: 'error', message: 'Error removing staff' });

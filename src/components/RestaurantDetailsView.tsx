@@ -1026,13 +1026,13 @@ export default function RestaurantDetailsView() {
   };
 
   const canonicalUrl = useMemo(() => {
-    if (!restaurant) return `https://www.bookmytable.co.in/restaurant/${slug}`;
+    if (!restaurant) return `https://www.bookmytable.co.in/restaurant/${slug}${tab ? `/${tab}` : ''}`;
     const seoCity = slugify(restaurant.city || "ind");
     const seoName = slugify(restaurant.name || "restaurant");
     const seoLoc = slugify(restaurant.location || "");
     const combined = seoLoc ? `${seoName}-${seoLoc}` : seoName;
-    return `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}`;
-  }, [restaurant, slug]);
+    return `https://www.bookmytable.co.in/${seoCity}/restaurant/${combined}${tab ? `/${tab}` : ''}`;
+  }, [restaurant, slug, tab]);
 
   if (restaurantsLoading)
     return (
@@ -2391,26 +2391,26 @@ export default function RestaurantDetailsView() {
                 </div>
 
                 {/* Leave Review */}
-                <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-300 shadow-sm flex flex-col justify-center">
-                  <h3 className="text-[20px] md:text-2xl mb-4 block text-[#363636] font-normal leading-[1.2]">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <h3 className="text-base mb-3 block text-[#363636] font-medium leading-[1.2]">
                     Rate your experience
                   </h3>
 
-                  <div className="flex gap-2 mb-4">
+                  <div className="flex gap-1 mb-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         onClick={() => setUserRating(star)}
-                        className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                          userRating >= star
-                            ? "bg-amber-100 text-amber-500 shadow-sm"
-                            : "bg-slate-50 text-slate-300 hover:bg-slate-100",
-                        )}
+                        className="p-1 transition-all active:scale-90"
                       >
                         <Star
-                          size={16}
-                          className={userRating >= star ? "fill-amber-500" : ""}
+                          size={24}
+                          className={cn(
+                            "transition-colors",
+                            userRating >= star
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-slate-200 hover:text-amber-200"
+                          )}
                         />
                       </button>
                     ))}
@@ -2419,7 +2419,7 @@ export default function RestaurantDetailsView() {
                   <input
                     type="text"
                     placeholder="Tell us what you loved..."
-                    className="w-full p-3 bg-slate-50 border border-slate-300 focus:border-brand focus:bg-white rounded-xl outline-none text-sm font-medium transition-all"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 focus:border-brand focus:bg-white rounded-lg outline-none text-sm font-medium transition-all mb-3"
                     value={userComment}
                     onChange={(e) => setUserComment(e.target.value)}
                   />
@@ -2429,16 +2429,16 @@ export default function RestaurantDetailsView() {
                     disabled={
                       isPostingReview || !userComment.trim() || hasReviewed
                     }
-                    className="mt-4 w-full bg-slate-900 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50 active:scale-95 shadow-sm"
+                    className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50 active:scale-95 shadow-sm"
                   >
                     {isPostingReview ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" />
                     ) : hasReviewed ? (
                       <Check size={14} />
                     ) : (
                       <Send size={14} />
                     )}
-                    {hasReviewed ? "Reviewed" : "Submit Review"}
+                    {hasReviewed ? "Reviewed" : "Submit"}
                   </button>
                 </div>
               </div>
@@ -2860,6 +2860,9 @@ export default function RestaurantDetailsView() {
           </div>
         </motion.div>
       </AnimatePresence>
+
+
+
 
       {/* Search Overlay */}
       <AnimatePresence>
